@@ -3,13 +3,15 @@ using Pkg
 Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
 cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
 
-using DynamicGrids, Crayons, DynamicGridsGtk, Plots, ColorSchemes
-using GeoData, NCDatasets, ArchGDAL, RasterDataSources
-using Dispersal, Dates, Plots, GrowthMaps, Unitful, Statistics
-using Unitful: °C, K, cal, mol, mm
+using DynamicGrids
+using Crayons, DynamicGridsGtk, Plots, ColorSchemes
+# using GeoData, NCDatasets, ArchGDAL, RasterDataSources
+# using Dispersal, Dates, Plots, GrowthMaps, Unitful, Statistics
+# using Unitful: °C, K, cal, mol, mm
 using Rasters
 using RasterDataSources
 using GeoInterface
+
 ############# NOT NEEDED ############################
 init = rand(Bool, 150, 200)
 output = REPLOutput(init; tspan=1:200, fps=30, color=Crayon(foreground=:red, background=:black, bold=true))
@@ -250,9 +252,17 @@ sol_by_country = Rasters.zon(sum, raster; of=shp.geometry)
 
 ### Load and plot the file
 # Set the environment variable for raster data sources to a default path
-ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
+ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio"
 
-### Mask
-awap_masked = mask(awap; with=wc_mask)
-b = plot(awap_masked; clims=(10, 45))
+bioclim_5 = Raster(WorldClim{BioClim}, 5, res="5m")
+iberian_temp = Raster(joinpath(meta_path, "Rasters", "iberian_temperature.tif"))
+iberian_temp = iberian_temp[X(-9 .. 3), Y(35 .. 44)]
 
+plot(iberian_temp)
+
+cucu = Rasters.crop(bioclim_5, to = iberian_temp)
+
+pepe = DataFrame(iberian_temp)
+non_missing_line_count = count(isequal(true), .!ismissing.(pepe))
+
+plot(iberian_temp)
