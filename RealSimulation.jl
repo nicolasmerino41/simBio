@@ -20,7 +20,6 @@ using Base.Threads
 using DynamicGrids
 using Dispersal
 
-# cd("C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling") # Legion 
 meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
 ###################################FUNCTIONS###########################
 #######################################################################

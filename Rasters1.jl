@@ -28,3 +28,5 @@ plot(iberian_peninsula)
 
 world[X(-10 .. 3)]
 world[X(-10 .. 3), Y(36 .. 43)]
+
+Between(10, 20)
