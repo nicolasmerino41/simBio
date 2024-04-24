@@ -56,4 +56,3 @@ polygon_list = []
 # Extracting the centroids of each geometry in the spain_vector DataFrame
 spain_centroids = [centroid(geom) for geom in spain_vector.geometry]
 
-

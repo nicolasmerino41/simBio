@@ -117,3 +117,45 @@ CairoMakie.activate!()
 
 A = Raster(WorldClim{BioClim}, 5, res="5m")
 madagascar = view(A, X(43.25 .. 50.48), Y(-25.61 .. -12.04))
+
+
+### Load and plot the file
+# Set the environment variable for raster data sources to a default path
+ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio"
+
+bioclim_5 = Raster(WorldClim{BioClim}, 5, res="5m")
+
+iberian_temp = Raster(joinpath(meta_path, "Rasters", "iberian_temperature.tif"))
+iberian_temp = iberian_temp[X(-10 .. 4), Y(35 .. 44)]
+
+plot(iberian_temp)
+
+cucu = Rasters.crop(bioclim_5, to = iberian_temp)
+
+pepe = DataFrame(iberian_temp)
+non_missing_line_count = count(isequal(true), .!ismissing.(pepe))
+
+plot(iberian_temp)
+using DataFrames
+
+countries = Shapefile.Table("C:\\Users\\MM-1\\Downloads\\country_shapes\\country_shapes.shp") |> DataFrame
+plot(countries.geometry, color = :black)
+
+countries
+Portugal_borders = filter(x -> x.cntry_name in ["Portugal"], countries).geometry[1]
+Spain_borders = filter(x -> x.cntry_name in ["Spain"], countries).geometry[1]
+
+portugal_raster = Rasters.rasterize(Portugal_borders, res = 0.1, missingval = 0, fill=1, boundary = :touches)
+spain_raster = Rasters.rasterize(Spain_borders, res = 0.1, missingval = 0, fill=1, boundary = :touches)
+
+portugal_raster_cropped = Rasters.crop(portugal_raster, to = iberian_temp)
+spain_raster_cropped = Rasters.crop(spain_raster, to = iberian_temp)
+
+IP_raster = mosaic(portugal_raster_cropped, spain_raster_cropped)
+plot(spain_raster_cropped)
+
+plot(IP_borders.geometry)
+spain_border_rasterised
+
+utm = Shapefile.Table(joinpath(meta_path, "ATLAS_data", "UTMgrid_IberianPeninsula", "UTM_GRID.shp")) |> DataFrame
+plot(utm.geometry)

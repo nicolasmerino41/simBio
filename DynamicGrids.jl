@@ -2,6 +2,7 @@ using Pkg
 
 Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
 cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
+meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
 
 using DynamicGrids
 using Crayons, DynamicGridsGtk, Plots, ColorSchemes
@@ -11,6 +12,8 @@ using Crayons, DynamicGridsGtk, Plots, ColorSchemes
 using Rasters
 using RasterDataSources
 using GeoInterface
+using ArchGDAL
+using Shapefile
 
 ############# NOT NEEDED ############################
 init = rand(Bool, 150, 200)
@@ -250,19 +253,3 @@ pixel_count = count(!ismissing, australia)
 australia_masked = Rasters.mask(australia, with = shp.geometry[australia_index], missingvalue = 0)
 sol_by_country = Rasters.zon(sum, raster; of=shp.geometry)
 
-### Load and plot the file
-# Set the environment variable for raster data sources to a default path
-ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio"
-
-bioclim_5 = Raster(WorldClim{BioClim}, 5, res="5m")
-iberian_temp = Raster(joinpath(meta_path, "Rasters", "iberian_temperature.tif"))
-iberian_temp = iberian_temp[X(-9 .. 3), Y(35 .. 44)]
-
-plot(iberian_temp)
-
-cucu = Rasters.crop(bioclim_5, to = iberian_temp)
-
-pepe = DataFrame(iberian_temp)
-non_missing_line_count = count(isequal(true), .!ismissing.(pepe))
-
-plot(iberian_temp)
