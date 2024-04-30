@@ -1,21 +1,21 @@
 using Pkg
 # Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 # Laptop
-Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+# Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+# cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
 # Packages
-using Rasters, NCDatasets, Plots, Shapefile, ArchGDAL
+using Rasters, NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
-using Dates, DimensionalData
+using Dates, DimensionalData, Distributions
 using NCDatasets, RasterDataSources
-using IntervalSets
 using DynamicGrids
+using Plots, ColorSchemes
 # Dispersal
 #################################################################################################
 
@@ -94,7 +94,7 @@ K_values = fill(rand(100:1000.0), grid_size)
 self_regulation_values = fill(0.01, grid_size)
 
 # Define the rule for updating population abundance
-abundance_rule = Neighbors(Moore(1)) do data, neighborhood, cell, I
+ruleset = Neighbors(Moore(1)) do data, neighborhood, cell, I
         
     # Get the abundance, K, and self-regulation values for the current cell
     abundance = data[I...]
@@ -110,8 +110,13 @@ abundance_rule = Neighbors(Moore(1)) do data, neighborhood, cell, I
     return new_abundance
 end
 
+using DynamicGridsInteract, Blink
 # Set up the output
-output = ArrayOutput(init_abundances_array; tspan=1:100)
+output = DynamicGridsInteract.InteractOutput(init_abundances_array; 
+    ruleset=ruleset,
+    tspan=1:100, 
+    store=false, 
+)
 
 # Run the simulation
 caca = sim!(output, abundance_rule)
@@ -196,26 +201,43 @@ init
 ################# Building the model again from scratch ########################
 ################################################################################
 ################################################################################
+using DynamicGrids
+using Dispersal
+using GrowthMaps
 # Creating the real npp array
 npp_utm_df = CSV.read("npp_absolute_df.csv", DataFrame)
 rename!(npp_utm_df, 3 => :npp, 4 => :X, 5 => :Y)
 select(npp_utm_df, :X, :Y, :npp)
-npp_array = fill(npp_df.npp, (72, 72))
+npp_values = npp_utm_df.npp
+npp_values = push!(npp_values, 0.0)
+# Create a 77x77 matrix filled with the values from npp_utm_df.npp
+matrix_size = 77
+npp_array = reshape(npp_values[1:end], matrix_size, matrix_size)
 # Creating a simplified self-regulation array
-self_regulation_array = fill(0.01, grid_size)
+self_regulation_array = fill(0.01, 77, 77)
 # Creating abundance_array
 init_abundances_array = rand(10.0:100.0, 77, 77)
+
+# Random rule DOESN'T WORK
+random = Cell{Tuple{:abun, :K, :self_reg}, :abun
+    }() do abun, K, self_reg
+    if abun > 20
+        max(abun + growth(abun, self_reg, K), 0)
+    else
+        abun + 3
+    end
+end
 
 # Define the rule for updating population abundance
 abundance_rule = Neighbors(Moore(1)) do data, neighborhood, cell, I
         
     # Get the abundance, K, and self-regulation values for the current cell
     abundance = data[I...]
-    K = K_values[I...]  
-    self_regulation = self_regulation_values[I...]
+    K = npp_array[I...]  
+    self_regulation = self_regulation_array[I...]
     
     # Update the abundance using the growth function
-# Apply a binomial event with p=0.5 to potentially reduce the abundance
+    # Apply a binomial event with p=0.5 to potentially reduce the abundance
     binomial_event = rand(Binomial(1, 0.5))
     new_abundance = abundance + growth(abundance, self_regulation, K) - (0.1 * abundance * binomial_event)
     
@@ -225,24 +247,24 @@ abundance_rule = Neighbors(Moore(1)) do data, neighborhood, cell, I
     return new_abundance
 end
 
-# Set up the output
-output = REPLOutput(init_abundances_array; tspan=1:100)
-sim!(output, abundance_rule)
-
-output = GifOutput(init_abundances_array;
+# ArrayOutput
+output_arr = ArrayOutput(init_abundances_array; tspan=1:100)
+# REPLOutput
+output_repl = REPLOutput(init_abundances_array; tspan=1:100)
+# GifOutput
+output_gif = GifOutput(init_abundances_array;
     filename="population_growth.gif",  # Renamed file to reflect content
     tspan=1:200,  # Adjusted to create a range of timesteps
-    fps=20,
-    scheme=ColorSchemes.rainbow,
+    fps=0.1,
+    scheme=ColorSchemes.algae,
     zerocolor=RGB24(0.0),
     minval=0.0,  # Ensures that the minimum value is zero
     maxval=maximum(npp_utm_df.npp),
     store=true  # Ensures that frames are stored
 )
-sim!(output, abundance_rule) 
+sim!(output_gif, abundance_rule)
 
 ######################################################################################
-
 basedir = realpath(joinpath(dirname(Base.pathof(Rasters)), "../docs"))
 humanpop_url = "https://github.com/cesaraustralia/DSuzukiiInvasionPaper/blob/master/data/population_density.tif?raw=true"
 humanpop_filename = "population_density.tif"
@@ -252,20 +274,14 @@ isfile(humanpop_filepath) || download(humanpop_url, humanpop_filepath);
 australia_population = Rasters.Raster(humanpop_filepath)
 plot(australia_population)
 
-
 timestep = Month(1);
 tspan = DateTime(2022, 1):timestep:DateTime(2030, 12)
-aust = DimensionalData.Lon(DimensionalData.Between(113, 154)), DimensionalData.(DimensionalData.Between(-45, -10))
-# aust = (DimensionalData.Between(-45, -10), DimensionalData.Between(113, 154))
-humanpop = ArchGDAL.GDALarray(humanpop_filepath; mappedcrs=EPSG(4326)) 
-humanpop1 = GDALarray(humanpop_filepath; mappedcrs=EPSG(4326)) |>
-    A -> replace_missing(A, missing) 
-end
+aust = X(10500000 .. 15400000), Y(-5300000 .. -1000000)
 
 australia_population_cropped = australia_population[X(10500000 .. 15400000), Y(-5300000 .. -1000000)]
+spanish_population_cropped = australia_population[X(-950000 .. 370000), Y(4200000 .. 5100000)]
 Rasters.dims(australia_population)
-plot(australia_population_cropped, title = "")
+plot(spanish_population_cropped, title = "")
 savefig("C:\\Users\\nicol\\.julia\\packages\\Rasters\\CrXfm\\docs\\build\\assets\\humanpop.png");
 
 
-    

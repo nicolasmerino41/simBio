@@ -1,3 +1,10 @@
+packages = ["Rasters", "NCDatasets", "Plots",
+            "Shapefile", "ArchGDAL", "CSV", 
+            "DataFrames", "Dates", "DimensionalData",
+            "RasterDataSources", "IntervalSets", "GrowthMaps",
+            "Dispersal", "DynamicGrids", "Unitful",
+            "Plots", "ColorSchemes", "Blink",
+            "Crayons"]
 ##############################################################
 Pkg.rm("GrowthMaps")
 # Retrieve a list of installed packages and their versions
@@ -15,4 +22,6 @@ for pkg_name in installed_pkg_names
     Pkg.add(pkg_name)
 end
 
-Pkg.status()
+for pkg_name in packages
+    Pkg.add(pkg_name)
+end
