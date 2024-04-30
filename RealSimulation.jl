@@ -1,26 +1,19 @@
 using Pkg
+# Desktop PC
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+# Laptop
+Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
-cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
-using CSV
-using DataFrames 
-using Rasters
-using ArchGDAL
-using Plots
-using Shapefile
-using GeoDataFrames
-using CodecBzip2
-using RCall
-using RData
-using NamedArrays
-using Distributions
-using Serialization
-using ThreadsX
-using Base.Threads
-using DynamicGrids
-using Dispersal
+# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
-meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
+# Packages
+using Rasters, ArchGDAL, NCDatasets, Plots, Shapefile
+using CSV, DataFrames
+#################################################################################################
+
 ###################################FUNCTIONS###########################
 #######################################################################
 ############### GROWTH ########################

@@ -1,13 +1,18 @@
 using Pkg
+# Desktop PC
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+# Laptop
+Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
-cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
+# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
-meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
-
-ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio"
-
-using Dates, Plots, DataFrames
+# Packages
+using Rasters, ArchGDAL, NCDatasets, Plots, Shapefile
+using CSV, DataFrames
+#################################################################################################
 
 lon, lat = X(25:1:30), Y(25:1:30)
 ti = Ti(DateTime(2001):Month(1):DateTime(2002))

@@ -1,16 +1,18 @@
 using Pkg
+# Desktop PC
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+# Laptop
+Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
-cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
-using Rasters, ArchGDAL, NCDatasets, GeoData, Plots, Shapefile
-using PlotShapefiles, HypothesisTests, Distributions
-using GeoInterface
-using RasterDataSources # This is needed to download common data sources
-using IntervalSets
-using DimensionalData, CoordinateTransformations
-
-meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
+# Packages
+using Rasters, NCDatasets, Plots, Shapefile, ArchGDAL
+using CSV, DataFrames
+#################################################################################################
 
 # Load the raster data
 raster = ArchGDAL.read("Rasters\\iberian_temperature.tif")

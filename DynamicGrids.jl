@@ -1,23 +1,28 @@
 using Pkg
+# Desktop PC
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+# Laptop
+Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
-cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
-meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
+# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
+# Packages
+using Rasters, NCDatasets, Plots, Shapefile, ArchGDAL
+using CSV, DataFrames
+using Dates, DimensionalData
+using NCDatasets, RasterDataSources
+using IntervalSets
 using DynamicGrids
-using Crayons, DynamicGridsGtk, Plots, ColorSchemes
-# using GeoData, NCDatasets, ArchGDAL, RasterDataSources
-# using Dispersal, Dates, Plots, GrowthMaps, Unitful, Statistics
-# using Unitful: °C, K, cal, mol, mm
-using Rasters
-using RasterDataSources
-using GeoInterface
-using ArchGDAL
-using Shapefile
+# Dispersal
+#################################################################################################
 
 ############# NOT NEEDED ############################
+#####################################################
 init = rand(Bool, 150, 200)
-output = REPLOutput(init; tspan=1:200, fps=30, color=Crayon(foreground=:red, background=:black, bold=true))
+output = REPLOutput(init; tspan=1:200, fps=30)
 sim!(output, Life())
 
 # Or define it from scratch (yes this is actually the whole implementation!)
@@ -33,6 +38,8 @@ output = ArrayOutput(init; tspan=1:100)
 sim!(output, ruleset; init=init)
 
 ########### Example Forest Fire ##############################
+##############################################################
+##############################################################
 using DynamicGrids, ColorSchemes, Colors, BenchmarkTools, ImageMagick
 
 DEAD, ALIVE, BURNING = 1, 2, 3
@@ -67,7 +74,8 @@ output = GifOutput(init;
 # Run the simulation, which will save a gif when it completes
 sim!(output, neighbors_rule)
 
-################# MY SIMULATION ######################
+################# MY SIMULATION ######################################
+######################################################################
 # Define the growth function
 function growth(abundance, self_regulation, K)
     return self_regulation * K * abundance * (1 - abundance / K)
@@ -112,7 +120,7 @@ output = GifOutput(init_abundances_array;
     filename="population_growth.gif",  # Renamed file to reflect content
     tspan=1:100,  # Adjusted to create a range of timesteps
     fps=1,
-    scheme=ColorSchemes.rainbow,
+    # scheme=ColorSchemes.rainbow,
     zerocolor=RGB24(0.0),
     minval=0.0,  # Ensures that the minimum value is zero
     maxval=1000.0,
@@ -123,6 +131,8 @@ sim!(output, abundance_rule)
 # output = REPLOutput(init_abundances_array; tspan=1:100, fps=30, color=Crayon(foreground=:red, background=:black, bold=true))
 
 ################## DISPERSAL #################################
+##############################################################
+##############################################################
 # Generate random initial abundance values for each cell
 num_cells = 5929
 # Refactored code block to create a matrix of size 77x77
@@ -131,8 +141,9 @@ init_abundances_array = rand(10.0:2000.0, round(Int, sqrt(num_cells)), round(Int
 grid_size = size(init_abundances_array)
 # Create constant vectors for carrying capacity (K) and self-regulation
 K_values = rand(100:1000.0,grid_size)
-timestep = Month(1);
-tspan = DateTime(2022, 1):timestep:DateTime(2030, 12)
+
+timestep = 1
+tspan = 1:timestep:100
 # Define your Gaussian kernel formulation
 gaussian_kernel = GaussianKernel(0.1)
 localdisp = InwardsDispersal(;
@@ -141,7 +152,7 @@ localdisp = InwardsDispersal(;
     distancemethod=AreaToArea(30),
 )
 
-logGrowth = LogisticGrowth(; rate=0.002, carrycap=1000, timestep=Day(1))
+logGrowth = LogisticGrowth(; rate=0.002, carrycap=1000, timestep=1)
 
 # Use tspan consistent with timestep
 ruleset = Ruleset(localdisp, logGrowth, timestep=timestep)
@@ -151,7 +162,7 @@ output = ArrayOutput(init_abundances_array; tspan=tspan)
 
 sim!(output, ruleset; init=init_abundances_array)
 
-output = GifOutput(init_abundances_array;
+    output = GifOutput(init_abundances_array;
     # Core keywords
     tspan=tspan,
     # Visualisation keywords
@@ -180,76 +191,81 @@ localdisp = InwardsDispersal(; radius=1, formulation=custom_kernel, distancemeth
 DispersalKernel(formulation=custom_formulation)
 
 ################ Ralf Example ####################
-struct Lon
-    range::Tuple{Int, Int}
+##############################################################
+init
+################# Building the model again from scratch ########################
+################################################################################
+################################################################################
+# Creating the real npp array
+npp_utm_df = CSV.read("npp_absolute_df.csv", DataFrame)
+rename!(npp_utm_df, 3 => :npp, 4 => :X, 5 => :Y)
+select(npp_utm_df, :X, :Y, :npp)
+npp_array = fill(npp_df.npp, (72, 72))
+# Creating a simplified self-regulation array
+self_regulation_array = fill(0.01, grid_size)
+# Creating abundance_array
+init_abundances_array = rand(10.0:100.0, 77, 77)
+
+# Define the rule for updating population abundance
+abundance_rule = Neighbors(Moore(1)) do data, neighborhood, cell, I
+        
+    # Get the abundance, K, and self-regulation values for the current cell
+    abundance = data[I...]
+    K = K_values[I...]  
+    self_regulation = self_regulation_values[I...]
+    
+    # Update the abundance using the growth function
+# Apply a binomial event with p=0.5 to potentially reduce the abundance
+    binomial_event = rand(Binomial(1, 0.5))
+    new_abundance = abundance + growth(abundance, self_regulation, K) - (0.1 * abundance * binomial_event)
+    
+    # Ensure abundance stays non-negative
+    new_abundance = max(new_abundance, 0.0)
+    
+    return new_abundance
 end
-struct Lat
-    range::Tuple{Int, Int}
-end
-function Between(a, b)
-    return (a, b)
-end
 
-basedir = realpath(joinpath(dirname(Base.pathof(Dispersal)), "../docs"))
-timestep = Month(1);
-tspan = DateTime(2022, 1):timestep:DateTime(2030, 12)
-aust = Lon(Between(113, 154)),
-       Lat(Between(-45, -10));
+# Set up the output
+output = REPLOutput(init_abundances_array; tspan=1:100)
+sim!(output, abundance_rule)
 
-localdisp = InwardsDispersal(;
-    radius=1, formulation=ExponentialKernel(; λ = 0.0125),
-    distancemethod=AreaToArea(30))
+output = GifOutput(init_abundances_array;
+    filename="population_growth.gif",  # Renamed file to reflect content
+    tspan=1:200,  # Adjusted to create a range of timesteps
+    fps=20,
+    scheme=ColorSchemes.rainbow,
+    zerocolor=RGB24(0.0),
+    minval=0.0,  # Ensures that the minimum value is zero
+    maxval=maximum(npp_utm_df.npp),
+    store=true  # Ensures that frames are stored
+)
+sim!(output, abundance_rule) 
 
-allee = AlleeExtinction(; minfounders=10.0);
+######################################################################################
 
+basedir = realpath(joinpath(dirname(Base.pathof(Rasters)), "../docs"))
 humanpop_url = "https://github.com/cesaraustralia/DSuzukiiInvasionPaper/blob/master/data/population_density.tif?raw=true"
 humanpop_filename = "population_density.tif"
 humanpop_filepath = joinpath(basedir, humanpop_filename)
 isfile(humanpop_filepath) || download(humanpop_url, humanpop_filepath);
 
-humanpop = Raster(humanpop_filepath; mappedcrs=EPSG(4326))[At(Band{Int64}(1)), aust...] |>
-    A -> replace_missing(A, missing) |>
-    A -> permutedims(A, (Lat, Lon)) |> 
-    A -> reorder(A, Lat=ReverseArray, Lon=ForwardArray)
+australia_population = Rasters.Raster(humanpop_filepath)
+plot(australia_population)
 
-    plot(humanpop)
-savefig(joinpath(basedir, "build/assets/humanpop.png"));
 
-cucu = Raster(humanpop_filepath; mappedcrs=EPSG(4326))[At(Band{Int64}(1)), aust...]
-plot(cucu)
+timestep = Month(1);
+tspan = DateTime(2022, 1):timestep:DateTime(2030, 12)
+aust = DimensionalData.Lon(DimensionalData.Between(113, 154)), DimensionalData.(DimensionalData.Between(-45, -10))
+# aust = (DimensionalData.Between(-45, -10), DimensionalData.Between(113, 154))
+humanpop = ArchGDAL.GDALarray(humanpop_filepath; mappedcrs=EPSG(4326)) 
+humanpop1 = GDALarray(humanpop_filepath; mappedcrs=EPSG(4326)) |>
+    A -> replace_missing(A, missing) 
+end
 
-raster_data = Raster(humanpop_filepath; mappedcrs=EPSG(4326))
-# Define the bounding box
-top_left_x = 
-top_left_y = ...
-bottom_right_x = ...
-bottom_right_y = ...
-aust = Lon(Between(113, 154)),
-       Lat(Between(-45, -10));
-       
-A = raster_data
-aust = A[X(113 .. 155), Y(-40 .. -25), RS.Band(1)]
+australia_population_cropped = australia_population[X(10500000 .. 15400000), Y(-5300000 .. -1000000)]
+Rasters.dims(australia_population)
+plot(australia_population_cropped, title = "")
+savefig("C:\\Users\\nicol\\.julia\\packages\\Rasters\\CrXfm\\docs\\build\\assets\\humanpop.png");
 
-shp = Shapefile.Table("all_primary_countries/all_primary_countries.shp") |> DataFrame
-plot(shp.geometry)
 
-raster = Raster("Harmonized_DN_NTL_2020_simVIIRS.tif")
-# plot(harmon)
-
-raster[X(Near(77.1025)), Y(Near(28.7041)), Band(1)] # value of image near longitude = 77.1025 and latitude = 28.7041
-raster[X(Near(77.1025)), Y(Near(28.7041)), Band(1)] |> Int 
-
-shp = dropmissing(shp)
-# plot(shp.geometry)
-
-australia_index = findall(x -> x == "Australia", shp.name)
-# Doesn't work| australia = Rasters.crop(raster; to = shp.geometry[australia_index])
-
-bounds = X(Rasters.Between(113, 154)), Y(Rasters.Between(-45, -10))
-australia = raster[bounds...] # |> plot
-# Count the number of non-missing pixels in the raster
-pixel_count = count(!ismissing, australia)
-
-australia_masked = Rasters.mask(australia, with = shp.geometry[australia_index], missingvalue = 0)
-sol_by_country = Rasters.zon(sum, raster; of=shp.geometry)
-
+    
