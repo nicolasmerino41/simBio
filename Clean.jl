@@ -1,17 +1,18 @@
 using Pkg
 # Desktop PC
-Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 # Laptop
-# Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
+using NamedArrays, StaticArrays
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
 using Dates, Distributions
@@ -54,18 +55,18 @@ function simbio_efficient_map!(K, self_regulation, abundances, A_matrix, num_ste
     return abundances
 end
 
-aaaa = NamedArray(aaa, (species_names, species_names), ("Species", "Species"))
-function lv_function(abundance, K, A_matrix, species::AbstractString)
-    return abundance + growth(abundance, self_regulation, K) .+ sum(parent(A_matrix[species, :]) .* self_regulation .* adjoint(abundances) .*abundances, dims=2)
-end
-parent(aaaa["Anthus campestris", :])
+# aaaa = NamedArray(aaa, (species_names, species_names), ("Species", "Species"))
+# function lv_function(abundance, K, A_matrix, species::AbstractString)
+#     return abundance + growth(abundance, self_regulation, K) .+ sum(parent(A_matrix[species, :]) .* self_regulation .* adjoint(abundances) .*abundances, dims=2)
+# end
+# parent(aaaa["Anthus campestris", :])
 ########################### CODE ############################
 #############################################################
 self_regulation = 0.001
 bioclim_5 = Raster(joinpath(meta_path, "Rasters", "iberian_temperature.tif"))
 spain = bioclim_5[X(-10 .. 4), Y(36 .. 45)]
 # Smaller Raster for layout #####################
-ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
+ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling"
 bioclim_paths = RasterDataSources.getraster(WorldClim{BioClim}, (5,7,8,12))
 bioclim_stack = RasterStack(WorldClim{BioClim}, (5, 7, 8, 12), res="10m")
 bioclim_stack = RasterStack(bioclim_paths)
@@ -129,12 +130,12 @@ function create_species_inits(init_raster, npp_raster, values)
     return species_inits
 end
 
-values = [0.05, 0.1, 0.3, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
+values = [0.2, 0.5, 0.8]
 inits = create_species_inits(init, npp_array, values)
 
 #### INIT TUPLE
 # For GIF
-transposed_init = permutedims(init, (2, 1))
+transposed_init = permutedims(inits[1], (2, 1))
 transposed_npp = permutedims(npp_array, (2, 1))
 # For Makie
 reversed_init = reverse(init, dims=2) 
@@ -160,15 +161,15 @@ pepe_for_makie = (
     a = reversed_inits[1], 
     b = reversed_inits[2],
     c = reversed_inits[3],
-    d = reversed_inits[4],
-    e = reversed_inits[5],
-    f = reversed_inits[6],
-    g = reversed_inits[7],
-    h = reversed_inits[8],
-    i = reversed_inits[9],
-    j = reversed_inits[10],
-    k = reversed_inits[11],
-    l = reversed_npp)
+    # d = reversed_inits[4],
+    # e = reversed_inits[5],
+    # f = reversed_inits[6],
+    # g = reversed_inits[7],
+    # h = reversed_inits[8],
+    # i = reversed_inits[9],
+    # j = reversed_inits[10],
+    # k = reversed_inits[11],
+    d = reversed_npp)
 #### RULES
 ## CELL
 cell_m = Cell{Tuple{:a,:b}, :a}() do data, (a, b), I
@@ -235,7 +236,7 @@ output = MakieOutput(pepe_for_makie; tspan=1:1000, ruleset=ruleset_m,
 
     # Setup the keys and titles for each plot
     plot_keys = [:a, :b, :c, :d]  # Assuming you have these keys in your NamedTuple `pepe_for_makie`
-    titles = ["Prey", "Meso-predator", "Top_predator", "Cell carrying capacity"]  # Custom titles for each plot
+    titles = ["Prey", "Top_predator", "Meso-predator", "Cell carrying capacity"]  # Custom titles for each plot
 
     # Create axes for each plot and customize them
     axes = [Axis(layout[i, j]; title=titles[(i-1)*2 + j]) for i in 1:2, j in 1:2]
@@ -251,8 +252,6 @@ output = MakieOutput(pepe_for_makie; tspan=1:1000, ruleset=ruleset_m,
     # Optional: Add a colorbar to one of the axes to show the color scale
     # colorbar!(layout[1:2, end], axes[1], vertical=false)
 end
-
-
 
 ## GIF
 output = GifOutput(pepe_for_gif;  
@@ -294,10 +293,10 @@ end
 ## CELL
 #= (it can work with reversed_npp[I...] now thanks to type-Float64 in growth()) but you
 need a different ruleset for makie or gif due to I[...] coordinates being reversed =#
-cell_s_makie = Cell{:a,:a}() do data, a, I
+cell_s_makie = Cell() do data, cell, I
       # Generates a random integer between 100 and 1000
       # println("a: ", a, " npp: ", reversed_npp[I...], " growth: ", growth(a, self_regulation, reversed_npp[I...]))
-      return a + growth(a, self_regulation, reversed_npp[I...])
+      return a + growth(cell, self_regulation, reversed_npp[I...])
 end
 cell_s_gif = Cell() do data, a, I
       return a + growth(a, self_regulation, transposed_npp[I...])
@@ -325,16 +324,15 @@ ruleset_s_makie = Ruleset(cell_s_makie, indisp_s) # You need a different ruleset
 
 # Personalised way
 output = MakieOutput(
-        pepe_for_makie; 
+        reversed_init; 
         tspan = tspan,
         ruleset = ruleset_s_makie,
-        mask = masklayer_for_makie,
-        fps = 100) do (; layout, frame)
+        mask = masklayer_for_makie) do (; layout, frame)
             ax = Axis(layout[1, 1])
-            Makie.heatmap!(ax, frame.a; interpolate=false, colormap=:inferno)
+            image!(ax, frame; interpolate=false, colormap=:inferno)
 end
 
-## GIF
+## GIF At least this one works
 ruleset_s_gif = Ruleset(cell_s_gif, indisp_s)
 output = GifOutput(transposed_init;  
     filename="SingleRaster.gif", 
@@ -347,6 +345,7 @@ output = GifOutput(transposed_init;
     scheme=ColorSchemes.inferno,
     zerocolor=RGB24(0.0)
 );
+
 sim!(output, ruleset_s_gif);
 ## LIFE
 ruleset_life = Ruleset(Life())
@@ -355,146 +354,6 @@ tspan = 1:100
 # Create our own plots with Makie.jl
 output = MakieOutput(rand(Bool, 200, 300); tspan, ruleset=ruleset_life) do (; layout, frame)
     image!(Axis(layout[1, 1]), frame; interpolate=false, colormap=:inferno)
-end
-####################################################################
-####################################################################
-####################################################################
-####################################################################
-####################################################################
-####################################################################
-using Makie, Observables
-
-function mk(pepe_for_makie, ruleset; tspan, fps=1, kw...)
-    MakieOutput(pepe_for_makie;
-        tspan=tspan,
-        fps=fps,
-        ruleset=ruleset,
-        store=false,
-        kw...
-    ) do (; layout, frame)
-        # Setup two axes for the two grids
-        ax1 = Axis(layout[1, 1]; title="Grid A")
-        ax2 = Axis(layout[1, 2]; title="Grid B")
-
-        # Ensure that we handle Observable updates correctly
-        # Using lift to reactively manage the frame updates
-        grid_a = lift(frame) do f
-            f.a
-        end
-        grid_b = lift(frame) do f
-            f.b
-        end
-
-        # Plotting each grid on its respective axis
-        image_a = Makie.image!(ax1, grid_a; colormap=:inferno, interpolate=false)
-        image_b = Makie.image!(ax2, grid_b; colormap=:inferno, interpolate=false)
-
-        # Adding color bars for clarity
-        Colorbar(layout[1, 1, Right()], image_a)
-        Colorbar(layout[1, 2, Right()], image_b)
-
-        return nothing  # Ensure the block returns nothing
-    end
-end
-
-output = mk(pepe_for_makie, ruleset_m; tspan = tspan, fps = 1)
-
-mk
-pepe_for_makie = (a = Observable(reversed_init), b = Observable(reversed_npp))
-MK.plot(pepe_for_makie.a)
-zero(eltype(pepe_for_makie.a))
-
-
-Makie.set_theme!(theme_light())
-const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
-
-function mk(init, ruleset; maxpops=zero(eltype(init.pred_pop)), landcover=nothing, tspan, kw...)
-    MakieOutput(init;
-        kw...,
-        tspan,
-        fps=100,
-        store=false,
-        ruleset,
-        sim_kw=(; printframe=true),
-    ) do (; layout, frame, time)
-
-        colorrange_obs = map(x -> Observable((zero(x), oneunit(x))), maxpops)
-        ax_lc = Axis(layout[1, 1]; title="Landcover")
-        if !isnothing(landcover)
-            # Landcover
-            lc = lift(time) do i
-                replace_missing(landcover[Ti(Near(tspan[i]))], NaN32)
-            end
-            # hidexdecorations!(ax_lc; grid=false)
-            # hideydecorations!(ax_lc; grid=false)
-            Makie.image!(ax_lc, lc; colormap=:batlow, colorrange=(0, 6), interpolate=false)
-        end
-
-        # Predators
-        pred_keys = propertynames(frame[].pred_pop[1])
-        npreds = length(pred_keys)
-        ncols = npreds + 1
-        pred_axes = map(2:ncols) do i
-            Axis(layout[1, i]; title=_title(pred_keys[i-1]))
-        end
-        hidexdecorations!.(pred_axes; grid=false)
-        hideydecorations!.(pred_axes; grid=false)
-        predators = map(1:npreds) do i
-            Observable(rebuild(init.pred_pop, (x -> iszero(x) ? NaN : Float64(x)).(getindex.(frame[].pred_pop, i))))
-        end
-        on(frame) do f
-            foreach(maximum(f.pred_pop), colorrange_obs) do m, obs 
-                obs[] = (obs[][1], max(m, obs[][2]))
-                notify(obs)
-            end
-            foreach(predators, 1:npreds) do pred, i
-                pred[] .= (x -> iszero(x) ? NaN : Float64(x)).(getindex.(frame[].pred_pop, i))
-                notify(pred)
-            end
-        end
-        foreach(2:ncols, pred_axes, predators, pred_keys, COLORMAPS[1:npreds], colorrange_obs) do i, ax, pred, k, colormap, cr
-            p = Makie.image!(ax, pred; colormap=:navia, colorrange=cr, interpolate=false)
-            Colorbar(layout[1, i, Right()], p)
-        end
-
-        # Endemics
-        extinct_keys = propertynames(frame[].endemic_presence[1])
-        n_extinct = length(extinct_keys)
-        extinct_strings = collect(string.(extinct_keys))
-        menus = map(1:ncols) do i
-            Menu(layout[3, i]; default=extinct_strings[i], options=extinct_strings)
-        end
-        extinct_axes = map(1:ncols, menus) do i, m
-            title = lift(m.selection) do s
-                _title(s)
-            end
-            ax = Axis(layout[2, i]; title)
-        end
-        hidexdecorations!.(extinct_axes; grid=false)
-        hideydecorations!.(extinct_axes; grid=false)
-        extincts = map(1:ncols) do i
-            Observable(replace_missing(rebuild(init.pred_pop, Float32.(getindex.(frame[].endemic_presence, i))), NaN32))
-        end
-
-        foreach(extincts, menus) do extinct, menu
-            onany(frame, menu.selection) do f, selection
-                i = findfirst(==(selection), extinct_strings)
-                extinct[] .= replace(Float32.(getindex.(f.endemic_presence, i)), 0.0f0 => NaN32)
-                notify(extinct)
-            end
-        end
-
-        endemic_cmaps = map(1:ncols) do i
-            cgrad(ColorScheme([RGB{Float64}(0.0, 0.0, 0.0), RGB{Float64}(i, 0.1i, 1/i)]), 2, categorical=true)
-        end
-        foreach(extinct_axes, extincts, endemic_cmaps) do ax, extinct, colormap
-            Makie.image!(ax, extinct; colorrange=(0.0, 1.0), colormap, interpolate=false)
-        end
-
-        # Link
-        linkaxes!(pred_axes..., extinct_axes..., ax_lc)
-        return nothing
-    end
 end
 
 

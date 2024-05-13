@@ -23,111 +23,180 @@ using ImageMagick, Makie, GLMakie, WGLMakie
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
-
-struct MyStructss{T <: AbstractFloat} <: FieldVector{2, T}
+############### STRUCT ###################
+struct MyStructs{T <: AbstractFloat} <: FieldVector{2, T}
     a::SVector{3, T}
     b::T
     
-    # Custom constructor
-    function MyStructss(a::SVector{3, T}) where T <: AbstractFloat
-        new{T}(a, sum(a))  # Correctly specify the type parameter with `new`
-    end
-end
-
-# Ensure MyStructss is immutable and behaves correctly in grid operations
-Base.zero(::Type{MyStructss{T}}) where T = MyStructss(SVector{3, T}(zero(T), zero(T), zero(T)))
-Base.oneunit(::Type{MyStructss{T}}) where T = MyStructss(SVector{3, T}(oneunit(T), oneunit(T), oneunit(T)))
-
-Base.isless(a::MyStructss, b::MyStructss) = isless(a.b, b.b)  # Comparison based on the total abundance 'b'
-
-# Arithmetic operations should also account for immutability
-Base.:*(x::MyStructss, scalar::Real) = MyStructss(x.a .* scalar)  # Element-wise multiplication for vector
-Base.:/(x::MyStructss, scalar::Real) = MyStructss(x.a ./ scalar)  # Element-wise division for vector
-Base.:+(x1::MyStructss, x2::MyStructss) = MyStructss(x1.a .+ x2.a)  # Element-wise addition for vectors
-Base.:-(x1::MyStructss, x2::MyStructss) = MyStructss(x1.a .- x2.a)  # Element-wise subtraction for vectors
-
-# Visualization function to reflect total abundance 'b' in grayscale
-DynamicGrids.to_rgb(::ObjectScheme, obj::MyStructss) = begin
-    intensity = clamp(obj.b / 1000, 0.0, 1.0)  # Normalize and clamp 'b' to the range [0,1]
-    RGB(intensity, intensity, intensity)       # Create a grayscale color based on intensity
-end
-
-
-rule = Cell{:grid1}() do data, state, I
-        2state
-end
-init = (grid1 = MyStructss(SVector(150.0, 200.0, 100.0)))  # Initialize with three species automatically calculating 'b'
-output = ArrayOutput(init; tspan=1:3)ERROR: The constructor for MyStructss{Float64}(::Float64, ::Float64) 
-
-
-
-
-
-
-# Example to create an instance of MyStruct
-abundances = SVector(150.0, 200.0, 100.0)  # Example abundances for three species
-abundances
-cell = MyStructss(abundances)  # b is automatically set to the sum of abundances
-cell.b
-
-using StaticArrays
-using Base: @kwdef
-
-using StaticArrays
-using Base: @kwdef
-
-@kwdef struct MyStructss{T <: AbstractFloat} <: FieldVector{2, T}
-    a::SVector{3, T}
-    b::T
-
-    # Primary constructor
-    function MyStructss(a::SVector{3, T}) where T <: AbstractFloat
+    # Custom constructor for automatic sum calculation
+    function MyStructs(a::SVector{3, T}) where T <: AbstractFloat
         new{T}(a, sum(a))
     end
-
-    # Explicit constructor for direct initialization
-    function MyStructss(a::SVector{3, T}, b::T) where T <: AbstractFloat
-        new{T}(a, b)
-    end
-
-    # Debug constructor for incorrect calls
-    function MyStructss(a::Float64, b::Float64)
-        @warn "Incorrect constructor call for MyStructss with (Float64, Float64)"
-        new{Float64}(SVector{3, Float64}(a, b, 0), a + b)
-    end
+    
+    # Explicit constructor allowing manual setting of both `a` and `b`
+    MyStructs(a::SVector{3, T}, b::T) where T <: AbstractFloat = new{T}(a, b)
 end
 
-# Define operations
-import Base: zero, oneunit, isless, *, +, -, size, getindex
+# Define zero and oneunit for MyStructs
+Base.zero(::Type{MyStructs{T}}) where {T <: AbstractFloat} = MyStructs(SVector{3, T}(zero(T), zero(T), zero(T)), zero(T))
+Base.oneunit(::Type{MyStructs{T}}) where {T <: AbstractFloat} = MyStructs(SVector{3, T}(oneunit(T), oneunit(T), oneunit(T)), oneunit(T))
 
-size(::MyStructss) = (2,)
-getindex(x::MyStructss, i::Int) = i == 1 ? x.a : x.b
+# Comparison based on 'b' field
+Base.isless(x::MyStructs, y::MyStructs) = isless(x.b, y.b)
 
-zero(::Type{MyStructss{T}}) where {T <: AbstractFloat} = MyStructss(SVector{3, T}(zero(T), zero(T), zero(T)))
-oneunit(::Type{MyStructss{T}}) where {T <: AbstractFloat} = MyStructss(SVector{3, T}(one(T), one(T), one(T)))
+# Element-wise arithmetic operations ensuring 'b' is recalculated correctly
+Base.:+(x::MyStructs, y::MyStructs) = MyStructs(x.a .+ y.a, sum(x.a .+ y.a))
+Base.:-(x::MyStructs, y::MyStructs) = MyStructs(x.a .- y.a, sum(x.a .- y.a))
+Base.:*(x::MyStructs, scalar::Real) = MyStructs(x.a .* scalar, sum(x.a .* scalar))
+Base.:/(x::MyStructs, scalar::Real) = MyStructs(x.a ./ scalar, sum(x.a ./ scalar))
+Base.:-(x::MyStructs, scalar::Real) = MyStructs(x.a .- scalar, x.b - scalar*3)
+Base.:+(x::MyStructs, scalar::Real) = MyStructs(x.a .+ scalar, x.b + scalar*3)
 
-function *(x::MyStructss, scalar::Real)
-    new_a = x.a * scalar
-    MyStructss(new_a)  # Automatically recalculates 'b'
+
+a = MyStructs(SVector(150.0, 200.0, 100.0))  # Uses the auto-sum constructor
+b = MyStructs(SVector(150.0, 200.0, 100.0), 300.0)  # Uses the explicit constructor
+############ RULES ####################
+rule = Cell{}() do data, state, I
+    MyStructs(state.a .* 1.1)  # This will double each element of 'a' and recalculate 'b'
 end
-
-function +(x1::MyStructss, x2::MyStructss)
-    new_a = x1.a + x2.a
-    MyStructss(new_a)  # Automatically recalculates 'b'
+rule1 = Neighbors() do data, neighborhood, cell, I
+    
+    return MyStructs(data[I...].a .* 2)  
 end
-
-function -(x1::MyStructss, x2::MyStructss)
-    new_a = x1.a - x2.a
-    MyStructss(new_a)  # Automatically recalculates 'b'
-end
-
-
-# Simulation example
-rule = Cell{:grid1}() do data, state, I
-    2 * state  # Applies multiplication, 'b' recalculates automatically
-end
-
-# Initialize with direct values for 'a' and 'b' (only if absolutely necessary)
-init = (grid1 = MyStructss(SVector(150.0, 200.0, 100.0)))  # Direct initialization
+######### ARRAY OUTPUT ################
+init = (grid1 = [MyStructs(SVector(rand(10.0:100.0), rand(10.0:100.0), rand(10.0:100.0))) for _ in 1:1000, _ in 1:1000])
 output = ArrayOutput(init; tspan=1:3)
+sim!(output, rule)
+############## GIF ####################
+ruleset = Ruleset(rule)
+
+DynamicGrids.to_rgb(scheme::ObjectScheme, obj::MyStructs) = ARGB32(clamp(obj.b , 0.0, 1.0), clamp(obj.b , 0.0, 1.0), clamp(obj.b , 0.0, 1.0))
+DynamicGrids.to_rgb(scheme, obj::MyStructs) = get(scheme, obj.b)
+
+init = (grid1 = [MyStructs(SVector(rand(10.0:100.0), rand(10.0:100.0), rand(10.0:100.0))) for _ in 1:10, _ in 1:10])
+scheme = ObjectScheme()  # Assuming ObjectScheme is already tailored for use with MyStructs
+
+output = GifOutput(init; tspan=1:100, ruleset=Ruleset(rule), filename="grey_mystruct.gif", scheme=scheme, minval=0, maxval=1000, fps = 1)
+sim!(output, rule)
+
+############# MAKIE and multiple grids ####################
+cell = Cell{Tuple{:a, :b}, :a}() do data, (a,b), I
+    return MyStructs(a .+ growth.(a.a, self_regulation, b))
+end
+indisp_sarray = InwardsDispersal(
+    formulation = ExponentialKernel(λ=0.0125),
+    distancemethod = AreaToArea(30)
+)
+pepe_for_makie = (a = reverse(inits[1], dims=2), b = reversed_npp)
+
+init_my_struct = deepcopy(inits[1])
+for row in axes(init_my_struct, 1), col in axes(init_my_struct, 2)
+    if !isnan(init_my_struct[row, col]) && (row in 45:50) && (col in 45:50)
+        init_my_struct[row, col] = MyStructs(SVector(rand(10.0:100.0), rand(10.0:100.0), rand(10.0:100.0)))
+    else
+        init_my_struct[row, col] = MyStructs(SVector(0.0,0.0, 0.0))
+    end
+end
+
+output = MakieOutput(pepe_for_makie;
+        tspan=1:100,
+        ruleset=Ruleset(indisp_sarray),
+        fps=1,
+        mask=masklayer_for_makie
+) do (; layout, frame)
+    ax1 = Axis(layout[1, 1])
+    ax2 = Axis(layout[1, 2])
+    image!(ax1, frame.a)
+    image!(ax2, frame.b)
+end
+
+using StaticArrays
+
+# Assuming `inits[1]` gives the dimensions or similarly accessible raster data
+dims = size(inits[1])  # Extract dimensions from an existing raster for continuity
+
+# Create an array of MyStructs to serve as the raster
+init_my_struct = Array{MyStructs{Float64}, 2}(undef, dims...)
+
+# Populate the raster
+for row in 1:dims[1], col in 1:dims[2]
+    if row in 45:50 && col in 45:50
+        # Assign random MyStructs values for specific cells within a specified range
+        init_my_struct[row, col] = MyStructs(SVector(rand(10.0:100.0), rand(10.0:100.0), rand(10.0:100.0)))
+    else
+        # Assign zero MyStructs values outside that range
+        init_my_struct[row, col] = MyStructs(SVector(0.0, 0.0, 0.0))
+    end
+end
+MK.plot(init_my_struct)
+using Makie
+
+@MK.recipe(MyStructsPlot, MyStructs) do scene
+    Theme(
+        colormap = :viridis,
+        colorrange = nothing
+    )
+end
+
+parent_init = parent(inits[1])
+DimensionalData.dims(parent_init, que)
+
+dims(inits[1] 
+
+matrix_struct = Matrix{MyStructs{Float32}}(undef, 84, 54)
+for row in axes(parent_init, 1), col in axes(parent_init, 2)
+    if !isnan(parent_init[row, col]) && (row in 45:50) && (col in 45:50)
+        matrix_struct[row, col] = MyStructs(SVector(rand(Float32(10.0):Float32(100.0)),
+            rand(Float32(10.0):Float32(100.0)), rand(Float32(10.0):Float32(100.0))))
+    else
+        matrix_struct[row, col] = MyStructs(SVector(Float32(0.0), Float32(0.0), Float32(0.0)))
+    end
+end
+lookup(inits[1], X)
+# Create a new Raster using the data and metadata from the reference raster
+custom_raster = DimArray(matrix_struct)
+
+DimensionalData..Dimensions(inits[1])
+function Makie.plot!(plot::Matrix{MyStructs{Float32}})
+    dims = size(plot[:input][1])
+    values = [plot[:input][1][row, col].b for row in 1:dims[1], col in 1:dims[2]]
+    image!(plot, values; plot[:attributes]...)
+end
+##################### SAME FOR 256 species ################
+struct MyStructs256{T <: AbstractFloat} <: FieldVector{2, T}
+    a::SVector{256, T}
+    b::T
+    
+    # Custom constructor for automatic sum calculation
+    function MyStructs256(a::SVector{256, T}) where T <: AbstractFloat
+        new{T}(a, sum(a))
+    end
+    
+    # Explicit constructor allowing manual setting of both `a` and `b`
+    MyStructs256(a::SVector{3, T}, b::T) where T <: AbstractFloat = new{T}(a, b)
+end
+
+# Define zero and oneunit for MyStructs
+Base.zero(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructs256(SVector{256, T}(ntuple(_ -> zero(T), 256)))
+Base.oneunit(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructs256(SVector{256, T}(ntuple(_ -> oneunit(T), 256)))
+
+# Comparison based on 'b' field
+Base.isless(x::MyStructs256, y::MyStructs256) = isless(x.b, y.b)
+
+# Element-wise arithmetic operations ensuring 'b' is recalculated correctly
+Base.:+(x::MyStructs256, y::MyStructs256) = MyStructs256(x.a .+ y.a, sum(x.a .+ y.a))
+Base.:-(x::MyStructs256, y::MyStructs256) = MyStructs256(x.a .- y.a, sum(x.a .- y.a))
+Base.:*(x::MyStructs256, scalar::Real) = MyStructs256(x.a .* scalar, sum(x.a .* scalar))
+Base.:/(x::MyStructs256, scalar::Real) = MyStructs256(x.a ./ scalar, sum(x.a ./ scalar))
+Base.:-(x::MyStructs256, scalar::Real) = MyStructs256(x.a .- scalar, x.b - scalar*3)
+Base.:+(x::MyStructs256, scalar::Real) = MyStructs256(x.a .+ scalar, x.b + scalar*3)
+
+init = (grid1 = [MyStructs256(SVector{256}(rand(Float32, 256) .* 90.0 .+ 10.0)) for _ in 1:84, _ in 1:54])
+
+rule = Cell{}() do data, state, I
+    MyStructs256(state.a .* 1.1)  # This will double each element of 'a' and recalculate 'b'
+end
+
+@time output = ArrayOutput(init; tspan=1:100)
+@time sim!(output, rule)
 
