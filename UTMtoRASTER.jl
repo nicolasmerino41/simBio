@@ -1,12 +1,12 @@
 using Pkg
 # Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 # Laptop
-Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+# Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+# cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
 # meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
 # Packages
@@ -23,8 +23,7 @@ using ImageMagick, Makie, GLMakie, WGLMakie
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
-
-utmraster = Raster("C:/Users/nicol/OneDrive/PhD/JuliaSimulation/simBio/updated_utmraster.tif") 
+utmraster = Raster("C:/Users/MM-1/OneDrive/PhD/JuliaSimulation/simBio/updated_utmraster.tif") 
 pr = parent(utmraster)
 MK.plot(utmraster, colormap = :inferno);
 RS.values(utmraster)
@@ -81,7 +80,7 @@ for i in 1:size(species_df, 1)
         end
     end
 end
-MK.plot(reverse(DA_sum_r, dims=1), colormap = :redsblues);
+MK.plot(reverse(DA_sum_r, dims=1), colormap = :redsblues)
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
 
@@ -127,16 +126,16 @@ for i in 1:size(species_df, 1)
         end
     end
 end
+MK.plot(npp_DA_p, colormap = :darkrainbow)
 npp_DA_r = reverse(npp_DA, dims=1)
 npp_DA_p = permutedims(npp_DA, (2, 1))
-MK.plot(npp_DA_p, colormap = :darkrainbow);
 ########################## RULES #################################
 ################################################################## 
 # Merge rule with non-negative constraint for MyStructs256
 merge_rule = Cell{}() do data, state, I
     
     merged_state = state + MyStructs256(SVector{256}(
-            intrinsic_growth_256(state, 0.01, npp_DA_p[I...]*1000).a .+ # You can switch the 100-0 by
+            intrinsic_growth_256(state, 0.01, npp_DA_p[I...]).a .+ # You can switch the 100-0 by
             # transposed_npp[I...] if needed 
             trophic_optimized(state, full_IM).a)
         )
@@ -150,23 +149,19 @@ merge_rule = Cell{}() do data, state, I
     # end
 end
 
-function (kernel::CustomKernel)(distance)
-    return exp(-(distance^2) / (2*(kernel.α^2)))
-end
-
 indisp = InwardsDispersal{}(;
-    formulation=CustomKernel(1.0),
+    formulation=pepe_kernel(λ = 0.1),
     distancemethod=AreaToArea(30)
 )
 
 ruleset = Ruleset(merge_rule, indisp)
 full_IM = results[1][0.001]
 # full_IM = full_IM_list[2][10]
-# pepe = (grid1 = DA_with_abundances_p, grid2 = npp_DA_p)
+pepe = (grid1 = DA_with_abundances_p, grid2 = npp_DA_p)
 gif_output = GifOutput(
     DA_with_abundances_p; tspan = 1:100,
-    filename = "mystruct256_customdisp.gif",
-    fps = 1, 
+    filename = "mystruct256_Atlas.gif",
+    fps = 20, 
     scheme=ColorSchemes.darkrainbow,
     zerocolor=RGB24(0.0),
     minval = 0.0, maxval = 10000,
@@ -179,8 +174,10 @@ array_output = ArrayOutput(
     mask = DA_sum_p
 )
 r = sim!(array_output, ruleset)
-ulu = deepcopy(r[10][10, 10])
-dos_pepe = deepcopy(r[2][10, 10])
+uno = r[1]
+uno_dos = r[2]
+uno_diez = r[10]
+uno_tres = r[3]
 max_values = MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
 for i in 1:length(r)
     maxu = maximum(r[i])
@@ -194,7 +191,7 @@ Base.@kwdef struct pepe_kernel{P} <: KernelFormulation
     λ::P = Param(1.0, bounds=(0.0, 2.0))
 end
 
-(f::pepe_kernel)(d) = f.λ * d
+(f::pepe_kernel)(d) = f.λ
 (f::pepe_kernel)(d) = exp(-d / (2 * f.λ^2))
 function (kernel::pepe_kernel)(distance)
     value = exp(-distance / (2 * kernelλ^2))

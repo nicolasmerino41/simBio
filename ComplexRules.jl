@@ -114,6 +114,7 @@ end
 
 # Define neighbors for custom kernel
 function DynamicGrids.neighbors(kernel::CustomDispersalKernel, hood, center::MyStructs256, I)
+    if center.b >= 0.0 
     result_a = zero(center.a)
     for i in 1:256
         for (j, neighbor) in enumerate(hood)
@@ -124,6 +125,7 @@ function DynamicGrids.neighbors(kernel::CustomDispersalKernel, hood, center::MyS
         end
     end
     return MyStructs256(result_a)
+    end
 end
 # Define kernel product for MyStructs256
 function Dispersal.kernelproduct(hood::Window{1, 2, 25, MyStructs256{Float64}}, kernel::SVector{25, Float64})
