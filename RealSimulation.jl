@@ -1,19 +1,26 @@
 using Pkg
 # Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 # Laptop
 Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
 cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
 # meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
 meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
-
+cd("C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling")
 # Packages
-using Rasters, ArchGDAL, NCDatasets, Plots, Shapefile
+using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
+using Rasters, RasterDataSources, DimensionalData
+using DynamicGrids, Dispersal
+using Dates, Distributions
+using Plots
+using Colors, Crayons, ColorSchemes
+using ImageMagick, Makie, GLMakie, WGLMakie
+using Unitful: °C, K, cal, mol, mm
+const DG = DynamicGrids
 #################################################################################################
-
 ###################################FUNCTIONS###########################
 #######################################################################
 ############### GROWTH ########################
@@ -192,7 +199,7 @@ diets = hcat(diets.sourceTaxonName, diets.targetGenericItemName)
 
 # fn = download("C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling\\Rasters\\iberian_temperature.tif")
 temp = Rasters.Raster("Rasters\\iberian_temperature.tif")
-Plots.plot(temp)
+Plots.plot(temp);
 using Plots
 
 Amph = CSV.read("Atlas_data/DB_Amphibians_IP.txt", delim='\t', DataFrame)
@@ -215,16 +222,16 @@ merged_web = innerjoin(web, DataFrame(species=spain_fauna), on=(:predator => :sp
 merged_web = merged_web[in.(merged_web.prey, Ref(spain_fauna)), :]
 # Obtaining the species names that are at least predator/prey
 unique_species_in_web = unique(vcat(merged_web.predator, merged_web.prey))
-println("There is ", length(unique_species_in_web), " unique species in the food web")
+println("There are ", length(unique_species_in_web), " unique species in the food web")
 
 # Initializing an empty matrix with zeros for the Iberian species interaction
 n = length(unique_species_in_web)
 iberian_interact_matrix = zeros(Int, n, n)
 iberian_interact_matrix = NamedArray(iberian_interact_matrix, (unique_species_in_web, unique_species_in_web))
-# # Creating a mapping from species names to matrix indices
-# species_to_index = Dict(zip(unique_species_in_web, 1:n))
-# species_names = collect(keys(species_to_index))
-# Filling the matrix with 1s where there are predator-prey interactions
+## Creating a mapping from species names to matrix indices
+species_to_index = Dict(zip(unique_species_in_web, 1:n))
+species_names = collect(keys(species_to_index))
+#Filling the matrix with 1s where there are predator-prey interactions
 for i in 1:nrow(merged_web)
     iberian_interact_matrix[merged_web.predator[i], merged_web.prey[i]] = 1
 end
@@ -249,8 +256,7 @@ lista = CSV.File("listamatrices.csv") |> DataFrame
 ############################## UNNECESSARY ################################
 ###########################################################################
 ###########################################################################
-if false
-abundances_df = CSV.File("abundances_df.csv") |> DataFrame
+
 
 ####################### Re-doing the list abundances ####################
 #########################################################################
@@ -318,16 +324,17 @@ for i in 1:length(submatrices)
 end
 
 iberian_interact_matrix = float(iberian_interact_matrix)
-function turn_adj_into_inter(adjacency, sigma, epsilon)
+function turn_adj_into_inter(adjacencyy, sigma, epsilon)
+    adjacency = deepcopy(adjacencyy)
     epsilon = float(epsilon)
     u = adjacency
     for i in names(adjacency, 1)
         for j in names(adjacency, 2)
-            if adjacency[i, j] != 0 && i != j && adjacency[i, j] > 0 && adjacency[j, i] == 0
+            if adjacency[i, j] != 0.0 && i != j && adjacency[i, j] > 0.0 && adjacency[j, i] == 0.0
                 predator_mass = Float64(gbif_sizes[gbif_sizes.species .== i, :bodyMass][1])
                 prey_mass = Float64(gbif_sizes[gbif_sizes.species .== j, :bodyMass][1])
                 sd = Float64(gbif_sizes[gbif_sizes.species .== i, :sigma][1])  # Use the sigma value for the predator
-                println(length(predator_mass))
+                # println(length(predator_mass))
                 # Calculate interaction strength based on size-selection kernel
                 kernel = size_selection_kernel(predator_mass, prey_mass, sd, beta)
                 intensity = max(0.001*sd, kernel)
@@ -336,11 +343,11 @@ function turn_adj_into_inter(adjacency, sigma, epsilon)
                 x = round(abs(rand(normal_dist)), digits = 20)
                 u[i, j] = x / epsilon
                 u[j, i] = -x
-            elseif adjacency[i, j] != 0 && i != j && adjacency[i, j] > 0 && adjacency[j, i] > 0
+            elseif adjacency[i, j] != 0.0 && i != j && adjacency[i, j] > 0.0 && adjacency[j, i] > 0.0
                 predator_mass = Float64(gbif_sizes[gbif_sizes.species .== i, :bodyMass][1])
                 prey_mass = Float64(gbif_sizes[gbif_sizes.species .== j, :bodyMass][1])
                 sd = Float64(gbif_sizes[gbif_sizes.species .== i, :sigma][1])  # Use the sigma value for the predator
-                println(length(predator_mass))
+                # println(length(predator_mass))
                 # Calculate interaction strength based on size-selection kernel
                 kernel = size_selection_kernel(predator_mass, prey_mass, sd, beta)
                 intensity = max(0.001 * sigma, kernel)
@@ -348,7 +355,7 @@ function turn_adj_into_inter(adjacency, sigma, epsilon)
                 # Draw from a semi-Gaussian distribution
                 normal_dist = Normal(0, sigma * intensity)
                 x = round(abs(rand(normal_dist)), digits = 20)
-                u[i, j] = x / 4
+                u[i, j] = x / 4.0
             elseif i == j
                 u[i, j] = -self_regulation
             end
@@ -387,7 +394,6 @@ simbio_results_vect = Vector{Vector{Float64}}(undef, num_cells)
 #     simbio_results_vect[cell] = simbio_efficient(K_list[cell], self_regulation, abundances, A_matrix, num_steps)
 #     println(cell)
 # end
-end
 ###################### Non equilbrium simulations, building A_matrices ##########################
 #################################################################################################
 # Creating submatrices per each cell
@@ -481,7 +487,6 @@ end # Remove if needed
 # serialize("fullA_matrix_list.jls", fullA_matrix_list)
 # Load the serialized object from the file and cast to the specific type
 fullA_matrix_list = deserialize("fullA_matrix_list.jls")::Vector{Matrix{Float64}}
-
 ################ Building IM's #################################################
 #################################################################################
 sigmas = [1.000, 0.100, 0.010, 0.001]
@@ -606,6 +611,7 @@ for sigma in 1:length(fullIM_list)
         fullIM_list[sigma][cell] = zero_out_diagonal!(fullIM_list[sigma][cell])
     end
 end
+aaa = fullIM_list[3][1]
 ############################# EMPTY ABUNDANCES #############################
 # Build a list of matrices for each cell
 num_species = 256
@@ -646,7 +652,7 @@ for cell in 1:num_cells
 end
 vabundances_notnamed = [copy(vabundances_notnamed) for _ in 1:length(sigmas)]
 
-K = rand(100:1000.0, num_species)
+K1 = rand(100:1000.0, num_species)
 self_regulation = fill(0.0001, num_species)
 
 ############ SIMBIO #########################
@@ -654,7 +660,7 @@ if false
 updated_abundances = deepcopy(mabundances)
 @time for sigma in 1:length(sigmas)
     for cell in 1:20 
-        updated_abundances[sigma][cell] = simbio(K, self_regulation, mabundances[sigma][cell], fullIM_list[sigma][cell]) 
+        updated_abundances[sigma][cell] = simbio(K1, self_regulation, mabundances[sigma][cell], fullIM_list[sigma][cell]) 
     end 
 end
 end
@@ -663,27 +669,27 @@ if false
 vupdated_abundances = deepcopy(vabundances)
 @time for sigma in 1:length(sigmas)
     for cell in 1:10
-        vupdated_abundances[sigma][cell] = simbio_efficient(K, self_regulation, vabundances[sigma][cell], fullIM_list[sigma][cell], num_steps)
+        vupdated_abundances[sigma][cell] = simbio_efficient(K1, self_regulation, vabundances[sigma][cell], fullIM_list[sigma][cell], num_steps)
     end
 end
 end
 ############ SIMBIO EFFICIENT THREADS ################
-if false
+if true
 vupdated_abundances = deepcopy(vabundances)
 @time Threads.@threads for sigma in 1:length(sigmas)
     for cell in 1:10
         # Perform the same operation on each thread
-        vupdated_abundances[sigma][cell] = simbio_efficient(K, self_regulation, vabundances[sigma][cell], fullIM_list[sigma][cell], num_steps)
+        vupdated_abundances[sigma][cell] = simbio_efficient(K1, self_regulation, vabundances[sigma][cell], fullIM_list[sigma][cell], num_steps)
     end
 end
 end
 ############### SIMBIO_EFFICIENT_MAP ################
-if false
+if true
     vupdated_abundances = deepcopy(vabundances_notnamed)
 @time for sigma in 1:length(sigmas)
-    for cell in 1:10
+    for cell in 1:100
     # println("eso ", typeof(vabundances_notnamed[sigma][cell]))
-    vupdated_abundances[sigma][cell] = simbio_efficient_map!(K, self_regulation, vabundances_notnamed[sigma][cell], fullIM_list[sigma][cell], num_steps)
+    vupdated_abundances[sigma][cell] = simbio_efficient_map!(K1, self_regulation, vabundances_notnamed[sigma][cell], fullIM_list[sigma][cell], num_steps)
     end
 end
 end
@@ -693,7 +699,7 @@ if false
 @time Threads.@threads for sigma in 1:length(sigmas)
     for cell in 1:100
     # println("eso ", typeof(vabundances_notnamed[sigma][cell]))
-    vupdated_abundances[sigma][cell] = simbio_efficient_map!(K, self_regulation, vabundances_notnamed[sigma][cell], fullIM_list[sigma][cell], num_steps)
+    vupdated_abundances[sigma][cell] = simbio_efficient_map!(K1, self_regulation, vabundances_notnamed[sigma][cell], fullIM_list[sigma][cell], num_steps)
     end
 end
 end
@@ -701,17 +707,17 @@ end
 # Read distance matrix
 distance_matrix = CSV.read("distance_matrix.csv", DataFrame)[:,2:end]
 
-function simbio_spatial_map!(K, self_regulation, abundances, A_matrix, num_steps)
+function simbio_spatial_map!(K1, self_regulation, abundances, A_matrix, num_steps)
     num_species = length(abundances)
     
     # Check if lengths match
-    if num_species != length(self_regulation) || num_species != length(K)
+    if num_species != length(self_regulation) || num_species != length(K1)
         throw(ArgumentError("The number of species must be equal to the length of the self_regulation and K vectors"))
     end
 
     for t in 1:num_steps
         # Calculate growth rates
-        growth_rates = growth.(abundances, self_regulation, K)
+        growth_rates = growth.(abundances, self_regulation, K1)
         # println(growth_rates)
         # Calculate total change in abundances
         delta_abundances = growth_rates .+ sum(A_matrix .* self_regulation .* adjoint(abundances) .*abundances, dims=2)[:, 1]
@@ -729,7 +735,7 @@ end
 @time Threads.@threads for sigma in 1:length(sigmas)
     for cell in 1:100
     # println("eso ", typeof(vabundances_notnamed[sigma][cell]))
-    vupdated_abundances[sigma][cell] = simbio_spatial_map!(K, self_regulation, vabundances_notnamed[sigma][cell], fullIM_list[sigma][cell], num_steps)
+    vupdated_abundances[sigma][cell] = simbio_spatial_map!(K1, self_regulation, vabundances_notnamed[sigma][cell], fullIM_list[sigma][cell], num_steps)
     end
 end
 

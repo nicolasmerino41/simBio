@@ -1,18 +1,18 @@
 using Pkg
 # Desktop PC
-Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 # Laptop
-# Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
 # meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
-using NamedArrays, StaticArrays
+using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization
@@ -23,6 +23,7 @@ using ImageMagick, Makie, GLMakie, WGLMakie
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
+
 ######################## DEFINING BASIC MYSTRUCTS256 METHODS ####################################
 #################################################################################################
 struct MyStructs256{T <: AbstractFloat} <: FieldVector{2, T}
@@ -51,6 +52,8 @@ Base.:*(x::MyStructs256, scalar::Real) = MyStructs256(x.a .* scalar, sum(x.a .* 
 Base.:/(x::MyStructs256, scalar::Real) = MyStructs256(x.a ./ scalar, sum(x.a ./ scalar))
 Base.:-(x::MyStructs256, scalar::Real) = MyStructs256(x.a .- scalar, x.b - scalar*256)
 Base.:+(x::MyStructs256, scalar::Real) = MyStructs256(x.a .+ scalar, x.b + scalar*256)
+# Define what a NaN is for MyStructs256
+Base.isnan(x::MyStructs256) = isnan(x.b) || any(isnan, x.a)
 
 # Adding a method in the sum function for MyStructs256
 function Base.sum(structs::MyStructs256...)
@@ -92,35 +95,38 @@ struct CustomKernel <: KernelFormulation
 end
 # Define kernel formulation
 function (kernel::CustomKernel)(distance)
-    value = exp(-distance / (2 * kernel.α^2))
-    return value < 1.0 ? 0.0 : value
+    return 1
 end
 
 abstract type AbstractKernelNeighborhood end
-# Define custom dispersal kernel
+
 struct CustomDispersalKernel{N<:DG.Neighborhood, F<:KernelFormulation} <: AbstractKernelNeighborhood
     neighborhood::N
     formulation::F
 end
+
 function CustomDispersalKernel(; 
-    neighborhood::DG.Neighborhood=Moore(1), 
-    formulation::KernelFormulation=CustomKernel(1.0)
+    neighborhood::DG.Neighborhood=Moore(2), 
+    formulation::KernelFormulation=CustomKernel(0.1)
 )
     CustomDispersalKernel{typeof(neighborhood), typeof(formulation)}(neighborhood, formulation)
 end
+
 # Define neighbors for custom kernel
 function DynamicGrids.neighbors(kernel::CustomDispersalKernel, hood, center::MyStructs256, I)
     result_a = zero(center.a)
     for i in 1:256
         for (j, neighbor) in enumerate(hood)
+            if center.a[i] > 0.0
             dist = distance(I, hood.coords[j])
-            result_a = result_a + kernel.formulation(dist) * neighbor.a[i]
+            result_a += kernel.formulation(dist) * neighbor.a[i]
+            end
         end
     end
     return MyStructs256(result_a)
 end
 # Define kernel product for MyStructs256
-function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{Float64}}, kernel::SVector{9, Float64})
+function Dispersal.kernelproduct(hood::Window{1, 2, 25, MyStructs256{Float64}}, kernel::SVector{25, Float64})
     result_a = zero(SVector{256, Float64})
     for (i, k) in enumerate(kernel)
         result_a += hood[i].a .* k
@@ -164,7 +170,7 @@ function growth(abundance::AbstractFloat, self_regulation::AbstractFloat, K::Abs
     return self_regulation * K * abundance * (1 - abundance / K)
 end
 function intrinsic_growth_256(abundance::MyStructs256, self_regulation::AbstractFloat, K::AbstractFloat)
-    return MyStructs256(self_regulation .* K .* abundance.a .* (1.0 .- (abundance.a ./ K)))
+    return MyStructs256(self_regulation .* K .* abundance.a .* (1.0 .- (abundance.b / K)))
 end
 
 function trophic(abundances, A_matrix)
@@ -189,15 +195,18 @@ troph = Cell{}() do data, state, I
 end
 # Merge rule with non-negative constraint for MyStructs256
 merge_rule = Cell{}() do data, state, I
-    merged_state = state + MyStructs256(SVector{256}(
-            intrinsic_growth_256(state, 0.01, transposed_npp[I...] .* 0.1).a .+ #= You can switch the 100-0 by
+    if -0.1 < state.b
+        
+        merged_state = state + MyStructs256(SVector{256}(
+            intrinsic_growth_256(state, 0.01, 100.0).a .+ #= You can switch the 100-0 by
             transposed_npp[I...] if needed =#
             trophic_optimized(state, full_IM).a)
         )
     # if any(merged_state.a .< 0.0) || any(isnan.(merged_state.a))
     #     println("merged_state is NA", state, merged_state)
     # end
-    return MyStructs256(max.(merged_state.a, 0.0))  # Ensure non-negative values
+    return MyStructs256(max.(merged_state.a, 0.0))
+    end
 end
 ##################### DISPERSAL RULES ##############################
 ####################################################################
@@ -205,7 +214,7 @@ dispersal_rule = Neighbors{}() do data, neighborhood, cell, I
     return MyStructs256((cell + sum(neighborhood)*0.1).a - cell.a*0.1*length(neighborhood))
 end
 indisp = InwardsDispersal{}(;
-    formulation=CustomKernel(0.02),
+    formulation=CustomKernel(0.0002),
     distancemethod=AreaToArea(30)
 )
 ruleset = Ruleset(merge_rule, indisp)
@@ -220,42 +229,45 @@ full_IM = full_IM_list[2][10]
 ######### ARRAY OUTPUT ################ 
 #######################################
 init = (grid1 =  [MyStructs256(SVector{256, Float64}([rand([0.0, rand(10:100)]) for _ in 1:256])) for _ in 1:77, _ in 1:77])
-output = ArrayOutput(permutedims_D; tspan=1:100)
-result = sim!(output, ruleset)
+init[80:200] = [MyStructs256(SVector{256, Float64}(fill(NaN, 256))) for _ in 1:121]
+ext= Extent(xmin=0, xmax=76, ymin=0, ymax=76)
+# masklayer = boolmask(init, to = )
+output = ArrayOutput(init; tspan=1:100, mask = boolmask(init));
+@time sim!(output, ruleset)
 
 ########### VISUAL OUTPUTS ################
 ###########################################
 # Visualization settings
-max_value = maximum(init).b
-min_value = minimum(init).b
 DynamicGrids.to_rgb(scheme::ObjectScheme, obj::MyStructs256) = ARGB32(
-    clamp(obj.b, 0.0, 1.0),
-    clamp(obj.b, 0.0, 1.0),
-    clamp(obj.b, 0.0, 1.0)
+    clamp(obj.b/25600, 0.0, 1.0),
+    clamp(obj.b/25600, 0.0, 1.0),
+    clamp(obj.b/25600, 0.0, 1.0)
 )
-DynamicGrids.to_rgb(scheme, obj::MyStructs256) = get(scheme, obj.b)
+DynamicGrids.to_rgb(scheme, obj::MyStructs256) = get(scheme, clamp(obj.b, 0.0, 1.0))
 
 ##### GifOutput #####
-ruleset = Ruleset(indisp, merge_rule)
+ruleset = Chain(indisp)
 # chained_ruleset = Chain(indisp, merge_rule)
 permutedims_D = permutedims(D, (2, 1)) # If you put in init it works fine
 gif_output = GifOutput(
     permutedims_D; tspan = 1:50,
     filename = "mystruct256_withgoodisp.gif",
     ruleset = ruleset,
-    minval=0, maxval=9000,
-    fps =10, 
-    scheme=ColorSchemes.inferno
-)
+    minval=0, maxval=5000,
+    fps =10,
+    mask = boolmask(transposed_npp), 
+    scheme=ColorSchemes.inferno,
+    zerocolor=RGB24(0.0)
+);
 # Run the simulation
-@time sim!(gif_output, ruleset)
+result = sim!(gif_output, ruleset);
 
 ############# MyStructs256Raster DimensionalArray and MakieOutput ################
 ################ It works with GifOutput but not MakieOutput #####################
 ##################################################################################
 ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
 bioclim_paths = RasterDataSources.getraster(WorldClim{BioClim}, (5,7,8,12))
-bioclim_stack = RasterStack(WorldClim{BioClim}, (5, 7, 8, 12), res="10m")
+# bioclim_stack = RasterStack(WorldClim{BioClim}, (5, 7, 8, 12), res="10m")
 bioclim_stack = RasterStack(bioclim_paths)
 bioclim_5 = bioclim_stack[:bio5]
 spain = bioclim_5[X(-10 .. 4), Y(36 .. 45)]
@@ -271,7 +283,7 @@ for row in axes(spain, 1), col in axes(spain, 2)
 end
 reversed_D = reverse(D, dims=2)
 MyStructs256Plot(reversed_D);
-
+ 
 # Create a MakieOutput object
 makie_output = MakieOutput(reversed_D, tspan = 1:100; fps = 10, ruleset = Ruleset(merge_rule)) do (; layout, frame)
     ax = Axis(layout[1, 1])
@@ -280,3 +292,4 @@ makie_output = MakieOutput(reversed_D, tspan = 1:100; fps = 10, ruleset = Rulese
     # Plot the frame data
     image!(ax, frame; interpolate=false, colormap=:inferno)
 end
+

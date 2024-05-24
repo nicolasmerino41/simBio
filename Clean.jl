@@ -7,15 +7,16 @@ Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
 # meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
-using NamedArrays, StaticArrays
+Pkg.add("OrderedCollections")
+using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
-using Dates, Distributions
+using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, GLMakie, WGLMakie
@@ -23,6 +24,7 @@ using ImageMagick, Makie, GLMakie, WGLMakie
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
+
 ###################################FUNCTIONS###########################
 #######################################################################
 ############### GROWTH ########################
@@ -129,8 +131,22 @@ function create_species_inits(init_raster, npp_raster, values)
     end
     return species_inits
 end
-
-values = [0.2, 0.5, 0.8]
+function create_species_inits_forMyStructs256(init_raster, npp_raster, values)
+    species_inits = []
+    for value in values
+        species_init = deepcopy(init_raster)
+        for row in axes(species_init, 1), col in axes(species_init, 2)
+            if !isnan(species_init[row, col]) && (row in 45:50) && (col in 45:50)
+                species_init[row, col] = MyStructs256(SVector{256, Float64}([rand([0.0, rand(10:100)]) for _ in 1:256])) 
+            else
+                species_init[row, col] = MyStructs256(SVector{256, Float64}([rand([0.0, rand(10:100)]) for _ in 1:256])) 
+            end
+        end
+        push!(species_inits, species_init)
+    end
+    return species_inits
+end
+values = [0.2]
 inits = create_species_inits(init, npp_array, values)
 
 #### INIT TUPLE
@@ -206,14 +222,21 @@ indisp_m_sp2 = InwardsDispersal{:b, :b}(
     formulation=ExponentialKernel(λ=0.0125),
     distancemethod=AreaToArea(30)
 )
+struct CustomKernel <: KernelFormulation
+    α::Float64
+end
+# Define an outer constructor to accept keyword arguments
+CustomKernel(; α::Float64) = CustomKernel(α)
+# Define the functor method for CustomKernel
+(kernel::CustomKernel)(distance) = exp(-distance / (2 * kernel.α^2))
+
 # Define inwards dispersal for species 'c', affecting only 'c'
 indisp_m_sp3 = InwardsDispersal{:c, :c}(
-    formulation=ExponentialKernel(λ=0.0125),
+    formulation=CustomKernel(α=0.125),
     distancemethod=AreaToArea(30)
 )
-
 ruleset_m = Ruleset(cell_m_sp1, cell_m_sp2, cell_m_sp3, indisp_m_sp1, indisp_m_sp2, indisp_m_sp3)
-###################     # VISUALISATION ####################
+#################### VISUALISATION ####################
 ## MAKIE
 # Default way
 # output = DG.MakieOutput(pepe_for_makie; tspan,
@@ -233,7 +256,7 @@ output = MakieOutput(pepe_for_makie; tspan=1:1000, ruleset=ruleset_m,
 
     # Define the global color limits
     color_limits = (10.0, 2000.0)
-
+    
     # Setup the keys and titles for each plot
     plot_keys = [:a, :b, :c, :d]  # Assuming you have these keys in your NamedTuple `pepe_for_makie`
     titles = ["Prey", "Top_predator", "Meso-predator", "Cell carrying capacity"]  # Custom titles for each plot
