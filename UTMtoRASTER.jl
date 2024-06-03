@@ -1,13 +1,8 @@
 using Pkg
-# Desktop PC
-Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-# Laptop
-# Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-
-meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+PC = "MM-1"
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
+meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
@@ -18,11 +13,12 @@ using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
-using ImageMagick, Makie, GLMakie, WGLMakie
+using ImageMagick, Makie, WGLMakie
 # using Unitful: °C, K, cal, mol, mm
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
+
 utmraster = Raster("C:/Users/MM-1/OneDrive/PhD/JuliaSimulation/simBio/updated_utmraster.tif") 
 pr = parent(utmraster)
 MK.plot(utmraster, colormap = :inferno);
@@ -65,6 +61,19 @@ for i in 1:size(species_df, 1)
     end
 end
 
+###### Let's do a small example of the simBio with the actual ATLAS data ######
+# DA_with_abundances = deepcopy(DA)
+# for row in axes(DA, 1), col in axes(DA, 2)
+#     if DA[row, col] != MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
+#         new_a = SVector{256, Float64}([DA[row, col].a[i] != 0.0 ? 100 : DA[row, col].a[i] for i in 1:256])
+#         DA_with_abundances[row, col] = MyStructs256(new_a)
+#     end
+# end
+# serialize("DA_with_abundances.jls", DA_with_abundances)
+# serialize("DA_with_abundances_all100.jls", DA_with_abundances)
+# Load the serialized object from the file and cast to the specific type
+DA_with_abundances = deserialize("DA_with_abundances_all100.jls")::DimArray{MyStructs256{Float64},2}
+
 # This is for visualising richness in the raster or for creating a boolmask
 DA_sum = DimArray(reshape(fill(0.0, 125*76), 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 DA_sum = falses(dims(DA_with_abundances))
@@ -80,22 +89,9 @@ for i in 1:size(species_df, 1)
         end
     end
 end
-MK.plot(reverse(DA_sum_r, dims=1), colormap = :redsblues)
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
-
-###### Let's do a small example of the simBio with the actual ATLAS data ######
-DA_with_abundances = deepcopy(DA)
-# for row in axes(DA, 1), col in axes(DA, 2)
-#     if DA[row, col] != MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
-#         new_a = SVector{256, Float64}([DA[row, col].a[i] != 0.0 ? 100 : DA[row, col].a[i] for i in 1:256])
-#         DA_with_abundances[row, col] = MyStructs256(new_a)
-#     end
-# end
-# serialize("DA_with_abundances.jls", DA_with_abundances)
-# serialize("DA_with_abundances_all100.jls", DA_with_abundances)
-# Load the serialized object from the file and cast to the specific type
-DA_with_abundances = deserialize("DA_with_abundances_all100.jls")::DimArray{MyStructs256{Float64},2}
+MK.plot(reverse(DA_sum_r, dims=1), colormap = :redsblues);
 
 DA_with_abundances_r = reverse(DA_with_abundances, dims=1)
 DA_with_abundances_p = permutedims(DA_with_abundances, (2, 1))
@@ -126,58 +122,94 @@ for i in 1:size(species_df, 1)
         end
     end
 end
-MK.plot(npp_DA_p, colormap = :darkrainbow)
 npp_DA_r = reverse(npp_DA, dims=1)
 npp_DA_p = permutedims(npp_DA, (2, 1))
+MK.plot(npp_DA_p, colormap = :darkrainbow);
 ########################## RULES #################################
 ################################################################## 
 # Merge rule with non-negative constraint for MyStructs256
 merge_rule = Cell{}() do data, state, I
+    merged_state = state + 
+        MyStructs256(SVector{256}(
+            intrinsic_growth_256(state, 0.01, 200.0).a .+
+            trophic_optimized(state, full_IM).a
+        ))
+    return MyStructs256(max.(0.0, merged_state.a))
+end
+merge_rule_m = Cell{Tuple{:state, :npp}, :state}() do data, (state, npp), I
     
-    merged_state = state + MyStructs256(SVector{256}(
-            intrinsic_growth_256(state, 0.01, npp_DA_p[I...]).a .+ # You can switch the 100-0 by
-            # transposed_npp[I...] if needed 
-            trophic_optimized(state, full_IM).a)
-        )
-    
-    # if any(merged_state.a .< 0.0) || any(isnan.(merged_state.a))
-    #     println("merged_state is NA", state, merged_state)
-    # end
-    return MyStructs256(max.(merged_state.a, 0.0))
-    # if state.b > 26000.0
-    #     println(state.b)
-    # end
+    merged_state = state + 
+        MyStructs256(SVector{256}(
+            intrinsic_growth_256(state, 0.01, 100.0).a .+
+            trophic_optimized(state, full_IM).a
+        ))
+    return MyStructs256(max.(0.0, merged_state.a))
+end
+function (kernel::CustomKernel)(distance)
+    # println(distance)
+    return distance
+
+    # return exp(-(distance^2) / (2*(kernel.α^2)))
 end
 
-indisp = InwardsDispersal{}(;
-    formulation=pepe_kernel(λ = 0.1),
+indisp = InwardsDispersal{:state, :state}(;
+    formulation=ExponentialKernel(λ = 0.00125),
     distancemethod=AreaToArea(30)
-)
+);
 
-ruleset = Ruleset(merge_rule, indisp)
+ruleset = Ruleset(indisp)
 full_IM = results[1][0.001]
 # full_IM = full_IM_list[2][10]
-pepe = (grid1 = DA_with_abundances_p, grid2 = npp_DA_p)
+# pepe = (grid1 = DA_with_abundances_p, grid2 = npp_DA_p)
+
 gif_output = GifOutput(
-    DA_with_abundances_p; tspan = 1:100,
-    filename = "mystruct256_Atlas.gif",
+    Matrix(DA_with_abundances_p); tspan = 1:100,
+    filename = "custkernel1_sigma001.gif",
     fps = 20, 
     scheme=ColorSchemes.darkrainbow,
     zerocolor=RGB24(0.0),
-    minval = 0.0, maxval = 10000,
-    mask = DA_sum_p
+    minval = 0.0, maxval = 20000.0,
+    mask = Matrix(DA_sum_p)
 )
-@time saved = sim!(gif_output, ruleset)
- 
+@time saved = sim!(gif_output, Ruleset(merge_rule))
+
+#= If you get this error: ERROR: The constructor for MyStructs256{Float64}(::Float64, ::Float64)
+is missing! is likely due to kernelproduct and Window{9/25}=#
+DA_shity = deepcopy(DA_with_abundances_p)
+for col in axes(DA_shity, 2), row in axes(DA_shity, 1) 
+    DA_shity[row, col] = MyStructs256(SVector{256, Float64}(fill(100.0, 256)))
+end
+
 array_output = ArrayOutput(
-    DA_with_abundances_p; tspan = 1:10,
-    mask = DA_sum_p
+    pepe; tspan = 1:100,
+    # mask = Matrix(DA_sum_p)
 )
-r = sim!(array_output, ruleset)
-uno = r[1]
-uno_dos = r[2]
-uno_diez = r[10]
-uno_tres = r[3]
+@time r = sim!(array_output, Ruleset(merge_rule_m, indisp))
+u = r[2]
+
+pepe = ( 
+    state = Matrix(DA_with_abundances),
+    npp = Matrix(npp_DA)
+)
+
+# MakieOutput
+makie_output = MakieOutput(
+    pepe, tspan = 1:100; 
+    fps = 10, ruleset = Ruleset(merge_rule_m, indisp),
+    mask = Matrix(DA_sum) 
+) do (; layout, frame)
+    ax1 = Axis(layout[1, 1])
+    ax2 = Axis(layout[1, 2])
+    Makie.heatmap!(ax1, frame.state, colormap = :inferno)
+    Makie.heatmap!(ax2, frame.npp, colormap = :inferno) 
+    ax1.yreversed[] = true
+    ax2.yreversed[] = true
+end
+
+for i in 50:60
+    println(r[2][i, 50])
+end
+
 max_values = MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
 for i in 1:length(r)
     maxu = maximum(r[i])
@@ -187,14 +219,22 @@ for i in 1:length(r)
     end
 end
 
-Base.@kwdef struct pepe_kernel{P} <: KernelFormulation
-    λ::P = Param(1.0, bounds=(0.0, 2.0))
+ruleset = Ruleset(Life())
+# And the time-span for it to run
+tspan = 1:100
+# Create our own plots with Makie.jl
+output = MakieOutput(rand(Bool, 200, 300); tspan, ruleset) do (; layout, frame)
+    image!(Axis(layout[1, 1]), frame; interpolate=false, colormap=:inferno)
 end
 
-(f::pepe_kernel)(d) = f.λ
-(f::pepe_kernel)(d) = exp(-d / (2 * f.λ^2))
-function (kernel::pepe_kernel)(distance)
-    value = exp(-distance / (2 * kernelλ^2))
+init = fill(0.0, (3,3))
+init[2,2] = 10.0   
+disp = InwardsDispersal(
+    formulation=ExponentialKernel(λ = 0.125),
+    distancemethod=AreaToArea(30)
+)
+rule = Ruleset(disp; boundary=Reflect())
+out = ArrayOutput(init; tspan=1:100)
+r = sim!(out, rule)
 
-    return value < 1.0 ? 0.0 : value
-end
+sum(r[100])

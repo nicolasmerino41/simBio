@@ -1,13 +1,8 @@
 using Pkg
-# Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-# Laptop
-Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-
-# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+PC = "MM-1"
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
+meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
@@ -18,7 +13,7 @@ using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
-using ImageMagick, Makie, GLMakie, WGLMakie
+using ImageMagick, Makie, WGLMakie
 # using Unitful: °C, K, cal, mol, mm
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
@@ -81,21 +76,11 @@ function Base.maximum(a::AbstractFloat, b::MyStructs256)
     return MyStructs256(max.(a, b.a))
 end
 
-# Example instances
-init1 = MyStructs256(SVector{256, Float64}(fill(1.0, 256)))
-init2 = MyStructs256(SVector{256, Float64}(fill(2.0, 256)))
-# Sum the instances
-result = sum(init1, init2, init1)
-
 ################## MYSTRUCTS256 KERNEL METHODS ################
 ###############################################################
 ###############################################################
 struct CustomKernel <: KernelFormulation
     α::Float64
-end
-# Define kernel formulation
-function (kernel::CustomKernel)(distance)
-    return 1
 end
 
 abstract type AbstractKernelNeighborhood end
@@ -106,15 +91,14 @@ struct CustomDispersalKernel{N<:DG.Neighborhood, F<:KernelFormulation} <: Abstra
 end
 
 function CustomDispersalKernel(; 
-    neighborhood::DG.Neighborhood=Moore(2), 
-    formulation::KernelFormulation=CustomKernel(0.1)
+    neighborhood::DG.Neighborhood=Moore(1), 
+    formulation::KernelFormulation=CustomKernel(1.0)
 )
     CustomDispersalKernel{typeof(neighborhood), typeof(formulation)}(neighborhood, formulation)
 end
 
 # Define neighbors for custom kernel
 function DynamicGrids.neighbors(kernel::CustomDispersalKernel, hood, center::MyStructs256, I)
-    if center.b >= 0.0 
     result_a = zero(center.a)
     for i in 1:256
         for (j, neighbor) in enumerate(hood)
@@ -122,49 +106,24 @@ function DynamicGrids.neighbors(kernel::CustomDispersalKernel, hood, center::MyS
             dist = distance(I, hood.coords[j])
             result_a += kernel.formulation(dist) * neighbor.a[i]
             end
+            caaclkj
         end
     end
     return MyStructs256(result_a)
-    end
 end
 # Define kernel product for MyStructs256
-function Dispersal.kernelproduct(hood::Window{1, 2, 25, MyStructs256{Float64}}, kernel::SVector{25, Float64})
-    result_a = zero(SVector{256, Float64})
+function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{Float64}}, kernel::SVector{9, Float64})
+    
+    result_a = SVector{256, Float64}(fill(0.0, 256))
+    
     for (i, k) in enumerate(kernel)
-        result_a += hood[i].a .* k
+        result_a += hood[i].a * k
     end
-    result_b = sum(result_a)
-    return MyStructs256(result_a, result_b)
+    # println(sum(result_a))
+    # result_b = sum(result_a)
+    return MyStructs256(SVector(result_a)) #, result_b)
 end
-################## MYSTRUCTS256 MAKIE RECIPE ######################
-###################################################################
-###################################################################
-@MK.recipe(MyStructs256Plot, matrix) do scene
-    Theme(
-        colormap = :inferno
-    )
-end
-
-function MK.plot!(p::MyStructs256Plot)
-    matrix = to_value(p[1]) # First argument is the matrix
-
-    # Extract b values and normalize them
-    b_values = [obj.b for obj in matrix]
-    max_val = maximum(b_values)
-    min_val = minimum(b_values)
-    normalized_b = @. (b_values - min_val) / (max_val - min_val)
-    
-    # Create color array
-    color_array = @. RGB(normalized_b, normalized_b, normalized_b)  # Grayscale based on `b`
-    
-    # Reshape to original matrix dimensions
-    color_matrix = reshape(color_array, size(matrix))
-    
-    # Plot the image
-    image!(p, color_matrix)
-end
-
-######################### FUNCTIONS ############################
+#################### FUNCTIONS ############################
 ################################################################
 ################################################################
 function growth(abundance::AbstractFloat, self_regulation::AbstractFloat, K::AbstractFloat)
@@ -172,9 +131,8 @@ function growth(abundance::AbstractFloat, self_regulation::AbstractFloat, K::Abs
     return self_regulation * K * abundance * (1 - abundance / K)
 end
 function intrinsic_growth_256(abundance::MyStructs256, self_regulation::AbstractFloat, K::AbstractFloat)
-    return MyStructs256(self_regulation .* K .* abundance.a .* (1.0 .- (abundance.b / K)))
+    return MyStructs256((self_regulation * K) .* abundance.a .* (1.0 .- (abundance.a ./ K)))
 end
-
 function trophic(abundances, A_matrix)
     return sum(abundances.a * abundances.a' .* A_matrix, dims=2)
 end
@@ -186,7 +144,6 @@ end
 function merge_intr_troph(intr, troph)
     return MyStructs256(SVector(intr.a .+ troph.a))
 end
-
 ########################## RULES #################################
 ##################################################################
 int_gr = Cell{}() do data, state, I

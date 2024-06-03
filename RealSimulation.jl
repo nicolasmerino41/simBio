@@ -1,25 +1,22 @@
 using Pkg
-# Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-# Laptop
-Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
+PC = "MM-1"
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
+meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
-# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
-cd("C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling")
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
+using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
-using Dates, Distributions
+using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
-using ImageMagick, Makie, GLMakie, WGLMakie
-using Unitful: °C, K, cal, mol, mm
-const DG = DynamicGrids
+using ImageMagick, Makie, WGLMakie
+# using Unitful: °C, K, cal, mol, mm
+const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
+const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
 ###################################FUNCTIONS###########################
 #######################################################################
@@ -55,10 +52,6 @@ function simbio(K, self_regulation, abundances, A_matrix, num_steps=nothing)
     
     return abundances
 end
-
-# growth_rate = growth(abundances[species], t])
-# sum(P_matrix_list[1][species, :] .* abundances .* abundances[species])
-# new_abundances[species] = abundances[species] + growth_rate - predation_effect
 
 ########################### SIMBIO EFFICIENT ############################
 #########################################################################
@@ -144,7 +137,7 @@ function size_selection_kernel(predator_mass, prey_mass, sd, beta)
 end
 beta = float(3)
 
-gbif_sizes = CSV.read("Lists\\gbif_sizes.csv", DataFrame)[:, 2:end]
+gbif_sizes = CSV.read(joinpath(meta_path, "Lists\\gbif_sizes.csv"), DataFrame)[:, 2:end]
 ####################### DISTANCE DECAY ###############################
 ######################################################################
 function distance_decay(distance, ro, abundance, K)
@@ -179,7 +172,7 @@ function fill_diagonal!(mat, val)
     end
 end
 
-web = CSV.read("Metaweb_data\\TetraEU_pairwise_interactions.csv", DataFrame)
+web = CSV.read(joinpath(meta_path, "Metaweb_data\\TetraEU_pairwise_interactions.csv"), DataFrame)
 
 web = DataFrame(predator = web.sourceTaxonName, prey = web.targetTaxonName)
 
@@ -194,18 +187,18 @@ x = vcat(unique_predators, unique_preys)
 unique_species = unique(x)
 
 # Read the CSV file
-diets = CSV.File("Metaweb_data\\TetraEU_generic_diet.csv") |> DataFrame
+diets = CSV.File(joinpath(meta_path, "Metaweb_data\\TetraEU_generic_diet.csv")) |> DataFrame
 diets = hcat(diets.sourceTaxonName, diets.targetGenericItemName)
 
-# fn = download("C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling\\Rasters\\iberian_temperature.tif")
-temp = Rasters.Raster("Rasters\\iberian_temperature.tif")
+# fn = download("C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling\\Rasters\\iberian_temperature.tif")
+temp = Rasters.Raster(joinpath(meta_path, "Rasters\\iberian_temperature.tif"))
 Plots.plot(temp);
 using Plots
 
-Amph = CSV.read("Atlas_data/DB_Amphibians_IP.txt", delim='\t', DataFrame)
-Bird = CSV.read("Atlas_data/DB_Birds_IP.txt", delim='\t', DataFrame)
-Mamm = CSV.read("Atlas_data/DB_Mammals_IP.txt", delim='\t', DataFrame)
-Rept = CSV.read("Atlas_data/DB_Reptiles_IP.txt", delim='\t', DataFrame)
+Amph = CSV.read(joinpath(meta_path, "Atlas_data/DB_Amphibians_IP.txt"), delim='\t', DataFrame)
+Bird = CSV.read(joinpath(meta_path, "Atlas_data/DB_Birds_IP.txt"), delim='\t', DataFrame)
+Mamm = CSV.read(joinpath(meta_path, "Atlas_data/DB_Mammals_IP.txt"), delim='\t', DataFrame)
+Rept = CSV.read(joinpath(meta_path, "Atlas_data/DB_Reptiles_IP.txt"), delim='\t', DataFrame)
 # data = load("Abundance lists ATLAS\\eq_dens_5928cells.RData")
 amphibian_names = names(Amph)
 reptile_names = names(Rept)
@@ -252,7 +245,7 @@ predation_matrix = rand(250,250)
 self_regulation = rand(1, 250)*0.001
 diagm(predation_matrix) = self_regulation
 
-lista = CSV.File("listamatrices.csv") |> DataFrame
+lista = CSV.File(joinpath(meta_path, "listamatrices.csv")) |> DataFrame
 ############################## UNNECESSARY ################################
 ###########################################################################
 ###########################################################################
@@ -443,7 +436,7 @@ end # Remove if needed
 # # Serialize object and save to file
 # serialize("A_matrix_list.jls", A_matrix_list)
 # Load the serialized object from the file and cast to the specific type
-A_matrix_list = deserialize("A_matrix_list.jls")::Vector{Matrix{Float64}}
+A_matrix_list = deserialize(joinpath(meta_path, "A_matrix_list.jls"))::Vector{Matrix{Float64}}
 
 ################# Creating fullA_matrix list #######################################
 ####################################################################################
@@ -486,7 +479,7 @@ end # Remove if needed
 # # Serialize object and save to file
 # serialize("fullA_matrix_list.jls", fullA_matrix_list)
 # Load the serialized object from the file and cast to the specific type
-fullA_matrix_list = deserialize("fullA_matrix_list.jls")::Vector{Matrix{Float64}}
+fullA_matrix_list = deserialize(joinpath(meta_path, "fullA_matrix_list.jls"))::Vector{Matrix{Float64}}
 ################ Building IM's #################################################
 #################################################################################
 sigmas = [1.000, 0.100, 0.010, 0.001]
@@ -605,7 +598,7 @@ end
 @time fullIM_builder(sigmas, fullA_matrix_list)
 end
 # serialize("fullIM_list.jls", fullIM_list)
-fullIM_list = deserialize("fullIM_list.jls")::Vector{Vector{Matrix{Float64}}}
+fullIM_list = deserialize(joinpath(meta_path, "fullIM_list.jls"))::Vector{Vector{Matrix{Float64}}}
 for sigma in 1:length(fullIM_list) 
     for cell in 1:length(fullIM_list[sigma])
         fullIM_list[sigma][cell] = zero_out_diagonal!(fullIM_list[sigma][cell])
@@ -705,7 +698,7 @@ end
 end
 ############## simbio_spatial_map ################
 # Read distance matrix
-distance_matrix = CSV.read("distance_matrix.csv", DataFrame)[:,2:end]
+distance_matrix = CSV.read(joinpath(meta_path, "distance_matrix.csv"), DataFrame)[:,2:end]
 
 function simbio_spatial_map!(K1, self_regulation, abundances, A_matrix, num_steps)
     num_species = length(abundances)
