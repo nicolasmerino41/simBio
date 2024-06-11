@@ -14,12 +14,11 @@ using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, WGLMakie
-# using Unitful: °C, K, cal, mol, mm
+using Unitful: °C, K, cal, mol, mm
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
-
-utmraster = Raster("C:/Users/MM-1/OneDrive/PhD/JuliaSimulation/simBio/updated_utmraster.tif") 
+utmraster = Raster(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio\\updated_utmraster.tif")) 
 pr = parent(utmraster)
 MK.plot(utmraster, colormap = :inferno);
 RS.values(utmraster)
@@ -50,27 +49,28 @@ utmraster_DA = DimArray(utmraster)
 utmraster_da = map(x -> isnothing(x) || isnan(x) ? false : true, utmraster_DA)
 MK.plot(utmraster_DA);
 
-DA = DimArray(reshape([MyStructs256(SVector{256, Float64}(fill(0.0, 256))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+DA = DimArray(reshape([mMyStructs256(Vector{Float64}(fill(0.0, 256))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 for i in 1:size(species_df, 1)
     # println(perro_cropped.Value[i])
     for j in 1:125*76
         # println(utmraster_da[j])
         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-            DA[j] = MyStructs256(SVector{256, Float64}(species_df_matrix[i, 5:260]))
+            DA[j] = mMyStructs256(Vector{Float64}(species_df_matrix[i, 5:260]))
         end
     end
 end
 
 ###### Let's do a small example of the simBio with the actual ATLAS data ######
-# DA_with_abundances = deepcopy(DA)
-# for row in axes(DA, 1), col in axes(DA, 2)
-#     if DA[row, col] != MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
-#         new_a = SVector{256, Float64}([DA[row, col].a[i] != 0.0 ? 100 : DA[row, col].a[i] for i in 1:256])
-#         DA_with_abundances[row, col] = MyStructs256(new_a)
-#     end
-# end
+DA_with_abundances = deepcopy(DA)
+for row in axes(DA, 1), col in axes(DA, 2)
+    if DA[row, col] != mMyStructs256(Vector{Float64}(fill(0.0, 256)))
+        new_a = Vector{Float64}([DA[row, col].a[i] != 0.0 ? 100 : DA[row, col].a[i] for i in 1:256])
+        DA_with_abundances[row, col] = mMyStructs256(new_a)
+    end
+end
 # serialize("DA_with_abundances.jls", DA_with_abundances)
 # serialize("DA_with_abundances_all100.jls", DA_with_abundances)
+# serialize("DA_with_abundances_all100_mMyStructs256.jls", DA_with_abundances)
 # Load the serialized object from the file and cast to the specific type
 DA_with_abundances = deserialize("DA_with_abundances_all100.jls")::DimArray{MyStructs256{Float64},2}
 
@@ -89,6 +89,7 @@ for i in 1:size(species_df, 1)
         end
     end
 end
+
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
 MK.plot(reverse(DA_sum_r, dims=1), colormap = :redsblues);
@@ -101,7 +102,6 @@ for row in axes(DA_with_abundances_p, 1), col in axes(DA_with_abundances_p, 2)
         DA_with_abundances_p_masked[row, col] = MyStructs256(SVector{256, Float64}(fill(-100.0, 256)))
     end
 end
-
 ######################### NPP ####################################
 npp_absolute = CSV.File(joinpath(meta_path, "npp_absolute_df.csv")) |> DataFrame
 rename!(npp_absolute, [:ID, :UTMCODE, :npp]) 
@@ -132,7 +132,8 @@ merge_rule = Cell{}() do data, state, I
     merged_state = state + 
         MyStructs256(SVector{256}(
             intrinsic_growth_256(state, 0.01, 200.0).a .+
-            trophic_optimized(state, full_IM).a
+            trophic_optimized(state, full_IM).a .+
+            competition(state, competition_matrix).a
         ))
     return MyStructs256(max.(0.0, merged_state.a))
 end
@@ -146,18 +147,15 @@ merge_rule_m = Cell{Tuple{:state, :npp}, :state}() do data, (state, npp), I
     return MyStructs256(max.(0.0, merged_state.a))
 end
 function (kernel::CustomKernel)(distance)
-    # println(distance)
-    return distance
-
-    # return exp(-(distance^2) / (2*(kernel.α^2)))
+    return exp(-(distance^2) / (2*(kernel.α^2)))
 end
 
 indisp = InwardsDispersal{:state, :state}(;
-    formulation=ExponentialKernel(λ = 0.00125),
+    formulation=CustomKernel(0.125),
     distancemethod=AreaToArea(30)
 );
 
-ruleset = Ruleset(indisp)
+ruleset = Ruleset(indisp, boundary = Reflect())
 full_IM = results[1][0.001]
 # full_IM = full_IM_list[2][10]
 # pepe = (grid1 = DA_with_abundances_p, grid2 = npp_DA_p)
@@ -171,8 +169,9 @@ gif_output = GifOutput(
     minval = 0.0, maxval = 20000.0,
     mask = Matrix(DA_sum_p)
 )
-@time saved = sim!(gif_output, Ruleset(merge_rule))
-
+@time saved = sim!(gif_output, ruleset)
+sum(saved[1]).b
+sum(saved[100]).b
 #= If you get this error: ERROR: The constructor for MyStructs256{Float64}(::Float64, ::Float64)
 is missing! is likely due to kernelproduct and Window{9/25}=#
 DA_shity = deepcopy(DA_with_abundances_p)
@@ -181,12 +180,17 @@ for col in axes(DA_shity, 2), row in axes(DA_shity, 1)
 end
 
 array_output = ArrayOutput(
-    pepe; tspan = 1:100,
-    # mask = Matrix(DA_sum_p)
+    Matrix(DA_with_abundances_p); tspan = 1:1000,
+    mask = Matrix(DA_sum_p)
 )
-@time r = sim!(array_output, Ruleset(merge_rule_m, indisp))
-u = r[2]
-
+array_output = ArrayOutput(
+    pepe; tspan = 1:100,
+    mask = Matrix(DA_sum)
+)
+@time r = sim!(array_output, Ruleset(indisp; boundary = Reflect()))
+a = sum(r[1].state).b
+b = sum(r[100].state).b
+(a-b)/a
 pepe = ( 
     state = Matrix(DA_with_abundances),
     npp = Matrix(npp_DA)
@@ -195,7 +199,7 @@ pepe = (
 # MakieOutput
 makie_output = MakieOutput(
     pepe, tspan = 1:100; 
-    fps = 10, ruleset = Ruleset(merge_rule_m, indisp),
+    fps = 10, ruleset = Ruleset(merge_rule_m; boundary = Reflect()),
     mask = Matrix(DA_sum) 
 ) do (; layout, frame)
     ax1 = Axis(layout[1, 1])
@@ -227,14 +231,41 @@ output = MakieOutput(rand(Bool, 200, 300); tspan, ruleset) do (; layout, frame)
     image!(Axis(layout[1, 1]), frame; interpolate=false, colormap=:inferno)
 end
 
-init = fill(0.0, (3,3))
-init[2,2] = 10.0   
+init = fill(0.0, (100, 100))
+init[2,2] = 1000000.0   
 disp = InwardsDispersal(
-    formulation=ExponentialKernel(λ = 0.125),
+    formulation=CustomKernel(0.125),
     distancemethod=AreaToArea(30)
 )
-rule = Ruleset(disp; boundary=Reflect())
+rule = Ruleset(disp; boundary=Wrap())
 out = ArrayOutput(init; tspan=1:100)
 r = sim!(out, rule)
+sum(r[1])
+sum(r[100])
 
+out = MakieOutput(init; tspan=1:100, ruleset) do (; layout, frame)
+    image!(Axis(layout[1, 1]), frame; interpolate=false, colormap=:inferno)
+end    
+
+init = fill(MyStructs256(SVector{256, Float64}(rand(256))), (100, 100))
+init = fill(MyStructs256(SVector{256, Float64}(rand(256)*100)), (100,100))
+out = ArrayOutput(init; tspan=1:100)
+r = sim!(out, rule)
+sum(r[1]).b
+sum(r[100]).b
+
+DA_trial = DimArray(reshape(rand(10.0:100.0, 100*100), 100, 100), (Dim{:a}(1:100), Dim{:b}(1:100)))
+DA_mask = trues(dims(DA_trial))
+for col in 1:20, row in 1:20
+    DA_mask[row, col] = false
+end
+MK.plot(DA_mask, colormap = :redsblues);
+
+indisp = InwardsDispersal(;
+    formulation=ExponentialKernel(λ = 0.125)
+)
+
+out = ArrayOutput(DA_trial; tspan=1:100, mask = DA_mask) 
+r = sim!(out, Ruleset(indisp; boundary=Wrap()))
+sum(r[1])
 sum(r[100])

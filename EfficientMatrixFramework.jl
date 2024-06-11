@@ -1,13 +1,8 @@
 using Pkg
-# Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-# Laptop
-Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-
-# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+PC = "MM-1"
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
+meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
@@ -18,8 +13,8 @@ using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
-using ImageMagick, Makie, GLMakie, WGLMakie
-# using Unitful: °C, K, cal, mol, mm
+using ImageMagick, Makie, WGLMakie
+using Unitful: °C, K, cal, mol, mm
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
@@ -77,33 +72,33 @@ end
 # println(mean(mean_v))
 # end
 
-# Loop for everything
-sim_results = OrderedDict{Float64, OrderedDict{Float64, Matrix}}()
-@time for epsilon in [0.1, 0.5, 1.0, 1.5, 3.0]
-    # Initialize an OrderedDict for the current epsilon
-    epsilon_results = OrderedDict{Float64, ArrayOutput}()
+# # Loop for everything
+# sim_results = OrderedDict{Float64, OrderedDict{Float64, Matrix}}()
+# @time for epsilon in [0.1, 0.5, 1.0, 1.5, 3.0]
+#     # Initialize an OrderedDict for the current epsilon
+#     epsilon_results = OrderedDict{Float64, ArrayOutput}()
 
-    for sigma in 1.0:-0.01:0.1
-        full_IM = results[epsilon][sigma]
+#     for sigma in 1.0:-0.01:0.1
+#         full_IM = results[epsilon][sigma]
         
-        array_output = ArrayOutput(
-            DA_with_abundances_p; tspan = 1:100,
-            mask = DA_sum_p
-        )
+#         array_output = ArrayOutput(
+#             DA_with_abundances_p; tspan = 1:100,
+#             mask = DA_sum_p
+#         )
         
-        r = sim!(array_output, ruleset)
+#         r = sim!(array_output, ruleset)
 
-        # Append the result to the epsilon_results OrderedDict
-        epsilon_results[sigma] = r
-        println("epsilon", epsilon, " sigma: ", sigma)
-    end
-    # Store the epsilon_results OrderedDict in the main results OrderedDict
-    sim_results[epsilon] = epsilon_results
-end
+#         # Append the result to the epsilon_results OrderedDict
+#         epsilon_results[sigma] = r
+#         println("epsilon", epsilon, " sigma: ", sigma)
+#     end
+#     # Store the epsilon_results OrderedDict in the main results OrderedDict
+#     sim_results[epsilon] = epsilon_results
+# end
 
-for i in 0.1:-0.001:0.01
-    println(i)
+# for i in 0.1:-0.001:0.01
+#     println(i)
     
-end
+# end
 
-r = turn_adj_into_inter(iberian_interact_NA, 0.001, 0.5)
+# r = turn_adj_into_inter(iberian_interact_NA, 0.001, 0.5)

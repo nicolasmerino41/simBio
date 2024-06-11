@@ -1,30 +1,23 @@
 using Pkg
-# Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-# Laptop
-Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
-cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
-
-# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+PC = "MM-1"
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
+meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
-Pkg.add("OrderedCollections")
 using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
-using ImageMagick, Makie, GLMakie, WGLMakie
-# using Unitful: °C, K, cal, mol, mm
+using ImageMagick, Makie, WGLMakie
+using Unitful: °C, K, cal, mol, mm
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
-
 ###################################FUNCTIONS###########################
 #######################################################################
 ############### GROWTH ########################
@@ -68,14 +61,13 @@ self_regulation = 0.001
 bioclim_5 = Raster(joinpath(meta_path, "Rasters", "iberian_temperature.tif"))
 spain = bioclim_5[X(-10 .. 4), Y(36 .. 45)]
 # Smaller Raster for layout #####################
-ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling"
+ENV["RASTERDATASOURCES_PATH"] = meta_path
 bioclim_paths = RasterDataSources.getraster(WorldClim{BioClim}, (5,7,8,12))
 bioclim_stack = RasterStack(WorldClim{BioClim}, (5, 7, 8, 12), res="10m")
 bioclim_stack = RasterStack(bioclim_paths)
 bioclim_5 = bioclim_stack[:bio5]
 spain = bioclim_5[X(-10 .. 4), Y(36 .. 45)]
 MK.plot(spain);
-
 ################### NPP #########################
 ################ Random NPP ##################
 npp_array = deepcopy(spain)
@@ -146,7 +138,7 @@ function create_species_inits_forMyStructs256(init_raster, npp_raster, values)
     end
     return species_inits
 end
-values = [0.2]
+values = [0.2, 0.5, 0.8]
 inits = create_species_inits(init, npp_array, values)
 
 #### INIT TUPLE

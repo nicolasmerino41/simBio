@@ -14,7 +14,7 @@ using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, WGLMakie
-# using Unitful: °C, K, cal, mol, mm
+using Unitful: °C, K, cal, mol, mm
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
@@ -344,7 +344,7 @@ function turn_adj_into_inter(adjacencyy, sigma, epsilon)
                 # Calculate interaction strength based on size-selection kernel
                 kernel = size_selection_kernel(predator_mass, prey_mass, sd, beta)
                 intensity = max(0.001 * sigma, kernel)
-
+                
                 # Draw from a semi-Gaussian distribution
                 normal_dist = Normal(0, sigma * intensity)
                 x = round(abs(rand(normal_dist)), digits = 20)
@@ -747,3 +747,5 @@ if vabundances === vupdated_abundances
 else
     println("vabundances and vupdated_abundances are not the same object.")
 end
+
+

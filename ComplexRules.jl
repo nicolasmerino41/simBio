@@ -14,11 +14,10 @@ using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, WGLMakie
-# using Unitful: °C, K, cal, mol, mm
+using Unitful: °C, K, cal, mol, mm
 const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 #################################################################################################
-
 ######################## DEFINING BASIC MYSTRUCTS256 METHODS ####################################
 #################################################################################################
 struct MyStructs256{T <: AbstractFloat} <: FieldVector{2, T}
@@ -75,7 +74,6 @@ end
 function Base.maximum(a::AbstractFloat, b::MyStructs256)
     return MyStructs256(max.(a, b.a))
 end
-
 ################## MYSTRUCTS256 KERNEL METHODS ################
 ###############################################################
 ###############################################################
@@ -117,7 +115,7 @@ function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{Float64}}, k
     result_a = SVector{256, Float64}(fill(0.0, 256))
     
     for (i, k) in enumerate(kernel)
-        result_a += hood[i].a * k
+        result_a += round.(hood[i].a .* k, sigdigits = 2)
     end
     # println(sum(result_a))
     # result_b = sum(result_a)
@@ -130,7 +128,7 @@ function growth(abundance::AbstractFloat, self_regulation::AbstractFloat, K::Abs
     # Assuming growth is a simple function of abundance, self-regulation, and carrying capacity (K)
     return self_regulation * K * abundance * (1 - abundance / K)
 end
-function intrinsic_growth_256(abundance::MyStructs256, self_regulation::AbstractFloat, K::AbstractFloat)
+function intrinsic_growth_256(abundance::MyStructs256, self_regulation::AbstractFloat, K::Union{AbstractFloat, AbstractArray})
     return MyStructs256((self_regulation * K) .* abundance.a .* (1.0 .- (abundance.a ./ K)))
 end
 function trophic(abundances, A_matrix)
@@ -138,6 +136,10 @@ function trophic(abundances, A_matrix)
 end
 function trophic_optimized(abundances, A_matrix)
     # Calculate the weighted interaction directly
+    interaction = A_matrix * abundances.a
+    return MyStructs256(SVector(interaction .* abundances.a))
+end
+function competition(abundances, A_matrix)
     interaction = A_matrix * abundances.a
     return MyStructs256(SVector(interaction .* abundances.a))
 end

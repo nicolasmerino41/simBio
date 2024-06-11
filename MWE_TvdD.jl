@@ -63,9 +63,8 @@ end
 example_matrix = [MyStructs256(SVector{256}(rand(Float32, 256) .* 90.0 .+ 10.0)) for _ in 1:3, _ in 1:3]
 fig, ax, pl = myplot(example_matrix, axis = (aspect = DataAspect(),)) # for me this errors!
 Makie.violin(example_matrix)
-Makie.heatmap(example_matrix)
+Makie.heatmap(example_matrix, clims = (0.0, 90.0), colormap = :inferno)
 Makie.scatter(example_matrix)
-
 ##################################MakieOutput###################################
 # This is just a random rule for the example
 rule = Cell{:a, :a}() do data, state, I
