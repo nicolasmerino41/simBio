@@ -74,7 +74,15 @@ end
 function Base.maximum(a::AbstractFloat, b::MyStructs256)
     return MyStructs256(max.(a, b.a))
 end
-################## MYSTRUCTS256 KERNEL METHODS ################
+function Base.zeros(dims::NTuple{2, Int}, type = nothing)
+    if type == MyStructs256{Float64}
+        return [MyStructs256(SVector{256, Float64}(fill(0.0, 256))) for _ in 1:dims[1], _ in 1:dims[2]]
+    else
+        return [0.0 for _ in 1:dims[1], _ in 1:dims[2]]
+    end
+end
+zeros((10, 10), MyStructs256{Float64})
+################# MYSTRUCTS256 KERNEL METHODS ################
 ###############################################################
 ###############################################################
 struct CustomKernel <: KernelFormulation
@@ -115,7 +123,18 @@ function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{Float64}}, k
     result_a = SVector{256, Float64}(fill(0.0, 256))
     
     for (i, k) in enumerate(kernel)
-        result_a += round.(hood[i].a .* k, sigdigits = 2)
+        result_a += hood[i].a .* k
+    end
+    # println(sum(result_a))
+    # result_b = sum(result_a)
+    return MyStructs256(SVector(result_a)) #, result_b)
+end
+function Dispersal.kernelproduct(hood::Window{2, 2, 25, MyStructs256{Float64}}, kernel::SVector{25, Float64})
+    
+    result_a = SVector{256, Float64}(fill(0.0, 256))
+    
+    for (i, k) in enumerate(kernel)
+        result_a += hood[i].a .* k
     end
     # println(sum(result_a))
     # result_b = sum(result_a)

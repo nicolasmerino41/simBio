@@ -9,7 +9,7 @@ using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
-using DynamicGrids, Dispersal, GrowthMaps
+using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization
 using Plots
 using Colors, Crayons, ColorSchemes
@@ -58,7 +58,7 @@ function int_Gr(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{
     return MyStructs256(self_regulation * (npp+0.1) .*
     SVector{256}((1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec))) .*
     SVector{256}((1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp))) .*
-    state.a .* (1.0 .- (state.a ./ ((npp+0.1)))))
+    state.a .* (1.0 - (state.b / ((npp+0.1)))))
 end
 function int_Gr_with_range(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
     return MyStructs256(self_regulation * (npp+0.1) .*
@@ -66,12 +66,21 @@ function int_Gr_with_range(state::MyStructs256, self_regulation::AbstractFloat, 
     SVector{256}((1 ./ (1 .+ abs.(temp .- species_temp_range.mean_Temp) ./ species_temp_range.sd_Temp))) .*
     state.a .* (1.0 .- (state.a ./ ((npp+0.1)))))
 end
-function int_Gr(state::mMyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
-    return mMyStructs256(self_regulation * npp .*
-    (1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec)) .*
-    (1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp)) .*
-    state.a .* (1.0 .- (state.a ./ (npp))))
+idx_tupled = [(i, j) for i in 1:dimensions[1], j in 1:dimensions[2]]
+function random_dimarray(dimensions::Tuple{Int64, Int64}; prevalence = 0.5)
+    init_array = DimArray(zeros(dimensions, MyStructs256{Float64}), (Dim{:X}(1:dimensions[1]), Dim{:Y}(1:dimensions[2])))
+    for i in idx
+        init_array[i] = MyStructs256(100.0 .* SVector{256}(sample([1,0], Weights([prevalence, 1-prevalence]), 256)))
+    end
+    return init_array
 end
+DA_random_with_abundances = random_dimarray(dimensions; prevalence = 0.1)
+# function int_Gr(state::mMyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
+#     return mMyStructs256(self_regulation * npp .*
+#     (1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec)) .*
+#     (1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp)) .*
+#     state.a .* (1.0 .- (state.a ./ (npp))))
+# end
 climatic_niche_rule = Cell{Tuple{:state, :npp, :temp, :prec}, :state}() do data, (state, temp, prec, npp), I
     # if any(isinf, state.a) || any(isnan, state.a)
     #     @warn "state has NA values"
@@ -94,19 +103,20 @@ end
 # DA_with_abundances[18, 1].a .* (1.0 .- (DA_with_abundances[18, 1].a ./ (100.0))))
 indisp = InwardsDispersal{:state, :state}(;
     formulation=CustomKernel(0.1),
-    distancemethod=AreaToArea(30)
+    distancemethod=AreaToArea(30),
+    radius = 1
 );
 masked_DA_with_abundances = deepcopy(DA_with_abundances)
 masked_DA_with_abundances .*= DA_sum
 pepe = ( 
-    state = Matrix(DA_with_abundances),
+    state = Matrix(DA_random_with_abundances),
     npp = Matrix(npp_DA),
     temp = temp_DA,
     prec = prec_DA
 )
 
-makie_output = MakieOutput(pepe, tspan = 1:100; 
-    fps = 10, ruleset = Ruleset(climatic_niche_rule, indisp; boundary = Reflect()),
+makie_output = MakieOutput(pepe, tspan = 1:1000; 
+    fps = 50, ruleset = Ruleset(climatic_niche_rule, indisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
     
     # Setup the keys and titles for each plot
@@ -127,10 +137,9 @@ makie_output = MakieOutput(pepe, tspan = 1:100;
 end
 
 array_output = ArrayOutput(
-    pepe; tspan = 1:100,
+    pepe; tspan = 1:1000,
     mask = Matrix(DA_sum)
 )
-
 @time r = sim!(array_output, Ruleset(climatic_niche_rule, indisp; boundary = Reflect()))
 
 pepe_for_gif = (

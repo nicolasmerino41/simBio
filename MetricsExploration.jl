@@ -110,3 +110,24 @@ end
 
 average_connectance(r, random_iberian_interact, "cell", time = 1, coords = (10,10))
 
+idx = findall(x -> x == 1.0, DA_sum)
+DA_with_presences = DimArray([fill(0.0, 256) for _ in 1:125, _ in 1:76], (Dim{:a}(1:125), Dim{:b}(1:76)))
+
+for row in axes(DA_with_abundances, 1), col in axes(DA_with_abundances, 2)
+    if DA_with_abundances[row, col].b != 0.0
+        for i in findall(!iszero, DA_with_abundances[row, col].a)
+            DA_with_presences[row, col][i] = 1.0
+        end
+    end
+end
+function richness_evaluation(array_output, DA_with_presences)
+    matches = 0
+    for i in idx 
+        above_ten = [x > 1 ? 1.0 : 0.0 for x in array_output[i].a]
+        matches += sum(above_ten .== DA_with_presences[i])
+    end
+    return matches/(length(idx)*256)
+end
+
+richness_evaluation(r[1000].state, DA_with_presences)
+

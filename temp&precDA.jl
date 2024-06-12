@@ -32,8 +32,22 @@ for index in CartesianIndices(matrix_abundances)
             temp_DA[index] = mean(neighbors)
         end
     end
-
 end
 
 println("Number of changes made: $x")
 println("Number of changes made: $y")
+
+init = fill(0.0, (15,15))
+init[5,5] = 1000000.0
+
+dispp = InwardsDispersal(
+    formulation=ExponentialKernel(0.125),
+    distancemethod=AreaToArea(30),
+    radius=2
+)
+
+ruleset = Ruleset(dispp; boundary=Wrap())
+
+out = ArrayOutput(init; tspan=1:100)
+p = sim!(out, ruleset)
+p[2]

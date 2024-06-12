@@ -49,13 +49,13 @@ utmraster_DA = DimArray(utmraster)
 utmraster_da = map(x -> isnothing(x) || isnan(x) ? false : true, utmraster_DA)
 MK.plot(utmraster_DA);
 
-DA = DimArray(reshape([mMyStructs256(Vector{Float64}(fill(0.0, 256))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+DA = DimArray(reshape([MyStructs256(SVector{256, Float64}(fill(0.0, 256))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 for i in 1:size(species_df, 1)
     # println(perro_cropped.Value[i])
     for j in 1:125*76
         # println(utmraster_da[j])
         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-            DA[j] = mMyStructs256(Vector{Float64}(species_df_matrix[i, 5:260]))
+            DA[j] = MyStructs256(SVector{256, Float64}(species_df_matrix[i, 5:260]))
         end
     end
 end
@@ -112,7 +112,7 @@ npp_absolute_in_kg = npp_absolute_in_kg[:, [2, 3]]
 species_df = leftjoin(species_df, npp_absolute_in_kg, on = :UTMCODE)
 species_df_matrix = Matrix(species_df)
 
-npp_DA = DimArray(zeros(125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+npp_DA = DimArray(zeros((125, 76)), (Dim{:a}(1:125), Dim{:b}(1:76)))
 for i in 1:size(species_df, 1)
     # println(perro_cropped.Value[i])
     for j in 1:125*76
