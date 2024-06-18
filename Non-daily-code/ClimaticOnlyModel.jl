@@ -1,6 +1,6 @@
 using Pkg
-PC = "nicol"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) #BadEnvironment
+PC = "MM-1"
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
@@ -10,7 +10,7 @@ using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
-using Dates, Distributions, Serialization
+using Dates, Distributions, Serialization, StatsBase
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, WGLMakie
@@ -66,6 +66,7 @@ function int_Gr_with_range(state::MyStructs256, self_regulation::AbstractFloat, 
     SVector{256}((1 ./ (1 .+ abs.(temp .- species_temp_range.mean_Temp) ./ species_temp_range.sd_Temp))) .*
     state.a .* (1.0 .- (state.a ./ ((npp+0.1)))))
 end
+dimensions = (125, 76)
 idx_tupled = [(i, j) for i in 1:dimensions[1], j in 1:dimensions[2]]
 function random_dimarray(dimensions::Tuple{Int64, Int64}; prevalence = 0.5)
     init_array = DimArray(zeros(dimensions, MyStructs256{Float64}), (Dim{:X}(1:dimensions[1]), Dim{:Y}(1:dimensions[2])))
@@ -103,20 +104,23 @@ end
 # DA_with_abundances[18, 1].a .* (1.0 .- (DA_with_abundances[18, 1].a ./ (100.0))))
 indisp = InwardsDispersal{:state, :state}(;
     formulation=CustomKernel(0.1),
-    distancemethod=AreaToArea(30),
-    radius = 1
+    distancemethod=AreaToArea(30)
 );
-masked_DA_with_abundances = deepcopy(DA_with_abundances)
-masked_DA_with_abundances .*= DA_sum
+outdisp = OutwardsDispersal{:state, :state}(;
+    formulation=CustomKernel(0.1),
+    distancemethod=AreaToArea(30),
+    mask_flag = Dispersal.Mask()
+);
+
 pepe = ( 
     state = Matrix(DA_random_with_abundances),
     npp = Matrix(npp_DA),
     temp = temp_DA,
     prec = prec_DA
 )
-
+typeof(pepe[1]) == Matrix{MyStructs256{Float64}}
 makie_output = MakieOutput(pepe, tspan = 1:1000; 
-    fps = 50, ruleset = Ruleset(climatic_niche_rule, indisp; boundary = Reflect()),
+    fps = 50, ruleset = Ruleset(climatic_niche_rule, outdisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
     
     # Setup the keys and titles for each plot
@@ -137,19 +141,15 @@ makie_output = MakieOutput(pepe, tspan = 1:1000;
 end
 
 array_output = ArrayOutput(
-    pepe; tspan = 1:1000,
+    pepe; tspan = 1:200,
     mask = Matrix(DA_sum)
 )
-@time r = sim!(array_output, Ruleset(climatic_niche_rule, indisp; boundary = Reflect()))
-
-pepe_for_gif = (
-    state = Matrix(DA_with_abundances_p),
-    npp = Matrix(npp_DA_p),
-    temp = Matrix(permutedims(temp_DA, (2, 1))),
-    prec = Matrix(permutedims(prec_DA, (2, 1)))
-)
-
-
-
-
-filter(!iszero, Matrix(npp_DA)) |> minimum
+@time r = sim!(array_output, Ruleset(climatic_niche_rule, outdisp; boundary = Reflect()))
+richness_evaluation(r[200].state, DA_with_presences)
+for i in 125 
+    for j in 1:76
+        if isone(Matrix(DA_sum)[i, j])
+            println(i, " ", j)
+        end
+    end 
+end

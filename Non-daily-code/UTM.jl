@@ -1,35 +1,42 @@
 using Pkg
 # Desktop PC
-# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio") 
-# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio")
+# Pkg.activate("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
+# cd("C:\\Users\\MM-1\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 # Laptop
 Pkg.activate("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio") 
 cd("C:\\Users\\nicol\\OneDrive\\PhD\\JuliaSimulation\\simBio")
 
-# meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
-meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
+meta_path = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling" # Desktop
+# meta_path = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling" # Laptop
 
 # Packages
-using Rasters, NCDatasets, Plots, Shapefile, ArchGDAL
+using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
+using Rasters, RasterDataSources, DimensionalData
+using DynamicGrids, Dispersal
+using Dates, Distributions
+using Plots
+using Colors, Crayons, ColorSchemes
+using ImageMagick, Makie, GLMakie, WGLMakie
+using Unitful: °C, K, cal, mol, mm
+const DG = DynamicGrids
 #################################################################################################
-
 spain_vector = Shapefile.Table(joinpath(meta_path, "ATLAS_data", "UTMgrid_IberianPeninsula", "UTM_GRID.shp")) |> DataFrame 
 # plot(spain_vector, color = :white, fill = true, alpha = 0.5)
 
 Amph = CSV.read(joinpath(meta_path, "Atlas_data", "DB_Amphibians_IP.txt"), delim='\t', DataFrame) |> DataFrame
-
+spain_vector[:geometry]
 spain_vector_with_amph = leftjoin(spain_vector, Amph, on = :UTMCODE)
 spain_vector_with_amph.rowsum = sum.(eachrow(spain_vector_with_amph[:, 3:end])) 
 
 rowsum = spain_vector_with_amph.rowsum
 
 # Plot the shapefile with rowsum values mapped to colors
-plot(spain_vector_with_amph.geometry, color = spain_vector_with_amph.rowsum, fill = true, alpha = 0.5)
-plot(spain_vector_with_amph.geometry, color = spain_vector_with_amph.rowsum, seriestype = :shape, fillalpha = 0.5, legend = false)
+Plots.plot(spain_vector_with_amph.geometry)
+Plots.plot(spain_vector_with_amph.geometry, color = spain_vector_with_amph.rowsum, seriestype = :shape, fillalpha = 0.5, legend = false)
 centroids = Shapefile.Table(joinpath(meta_path, "iberian_centroids_shp", "iberian_centroids.shp")) 
 geoms = Shapefile.shapes(centroids)
-
+Plots.plot(centroids)
 # Create a DataFrame to hold the X and Y coordinates of the first two points from each geometry
 geom_points_df = DataFrame(X = Float64[], Y = Float64[])
 

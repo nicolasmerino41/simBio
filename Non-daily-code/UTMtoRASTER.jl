@@ -1,6 +1,6 @@
 using Pkg
 PC = "MM-1"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
@@ -10,7 +10,7 @@ using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
-using Dates, Distributions, Serialization
+using Dates, Distributions, Serialization, StatsBase
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, WGLMakie
@@ -75,7 +75,6 @@ end
 DA_with_abundances = deserialize("DA_with_abundances_all100.jls")::DimArray{MyStructs256{Float64},2}
 
 # This is for visualising richness in the raster or for creating a boolmask
-DA_sum = DimArray(reshape(fill(0.0, 125*76), 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 DA_sum = falses(dims(DA_with_abundances))
 for i in 1:size(species_df, 1)
     # println(perro_cropped.Value[i])
@@ -89,6 +88,21 @@ for i in 1:size(species_df, 1)
         end
     end
 end
+DA_richness = DimArray(reshape(fill(0.0, 125*76), 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+for i in 1:size(species_df, 1)
+    # println(perro_cropped.Value[i])
+    for j in 1:125*76
+        
+        # println(utmraster_da[j])
+        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
+            DA_richness[j] =  species_df_matrix[i, 3]
+        # else
+        #     DA_sum[j] = false
+        end
+    end
+end
+# serialize("DA_richness.jls", DA_richness)
+DA_richness = deserialize("DA_richness.jls")::DimArray{Float64,2}
 
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))

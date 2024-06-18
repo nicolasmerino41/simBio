@@ -46,6 +46,14 @@ function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:My
     scalars = map(mystruct -> mystruct.b, A)
     return Makie.convert_arguments(t, scalars)
 end
+using Makie
+
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2})
+    # Count presence based on the threshold
+    richness = map(mystruct -> count(x -> x > 1.0, mystruct.a), A)
+    return Makie.convert_arguments(t, richness)
+end
+
 
 # # For a violin we plot each as a separate category
 # function Makie.convert_arguments(t::Type{<:Makie.Violin}, A::AbstractArray{<:MyStructs256, 2})

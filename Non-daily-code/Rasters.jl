@@ -24,22 +24,22 @@ spain_vector = open_shapefile("ATLAS_data/UTMgrid_IberianPeninsula/UTM_GRID.shp"
 spain = open_shapefile("spain.shp")
 PlotShapefiles.plotshape(spain)
 
-cucu = Shapefile.open("spain.shp")
-plot(cucu)
+cucu = Shapefile.Table(joinpath(meta_path, "spain.shp")) |> DataFrame # open_shapefile("spain.shp") 
+MK.plot(cucu.geometry)
 cucu = Shapefile.Table("spain.shp")
 
 pepe = read("spain.shp")
 typeof(pepe)
 plot(pepe) # This runs but not properly
-ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\MM-1\\OneDrive\\PhD\\Metaweb Modelling"
+ENV["RASTERDATASOURCES_PATH"] = "C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling"
 # bio5_path = "/wc2.1_10m_bio5.tif"
 # bio5_path = RasterDataSources.getraster(WorldClim{BioClim}, 5)
 bioclim_paths = RasterDataSources.getraster(WorldClim{BioClim}, (5,7,8,12))
 
-bioclim_stack = RasterStack(WorldClim{BioClim}, (5, 7, 8, 12), res="5m")
+bioclim_stack = RasterStack(WorldClim{BioClim}, (5, 7, 8, 12), res="10m")
 bioclim_stack = RasterStack(bioclim_paths)
 
-plot(bioclim_stack)
+Plots.plot(bioclim_stack)
 bioclim_5 = Raster(WorldClim{BioClim}, 5, res="5m")
 spain_bioclim = bioclim_stack[X(-9 .. 3), Y(36 .. 43)]
 spain_bioclim5 = bioclim_stack[X(10 .. 30), Y(36 .. 43)]
@@ -74,7 +74,8 @@ bandd
 values(bandd)
 maximum(skipmissing(bandd))
 
-
+############ CHELSA NPP
+bioclim_fkd = RasterDataSources.getraster(CHELSA{BioClim}, :bio2)
 
 
 
@@ -141,17 +142,17 @@ plot(iberian_temp)
 using DataFrames
 
 countries = Shapefile.Table("C:\\Users\\MM-1\\Downloads\\country_shapes\\country_shapes.shp") |> DataFrame
-plot(countries.geometry, color = :black)
+MK.plot(countries.geometry, color = :black)
 
 countries
-Portugal_borders = filter(x -> x.cntry_name in ["Portugal"], countries).geometry[1]
+Portugal_borders = filter(x -> x.cntry_name in ["Portugal", "Spain"], countries).geometry[1]
 Spain_borders = filter(x -> x.cntry_name in ["Spain"], countries).geometry[1]
 
 portugal_raster = Rasters.rasterize(Portugal_borders, res = 0.1, missingval = 0, fill=1, boundary = :touches)
 spain_raster = Rasters.rasterize(Spain_borders, res = 0.1, missingval = 0, fill=1, boundary = :touches)
 
-portugal_raster_cropped = Rasters.crop(portugal_raster, to = iberian_temp)
-spain_raster_cropped = Rasters.crop(spain_raster, to = iberian_temp)
+portugal_raster_cropped = Rasters.crop(spain, to = Portugal_borders)
+spain_raster_cropped = Rasters.crop(spain, to = iberian_temp)
 
 IP_raster = mosaic(portugal_raster_cropped, spain_raster_cropped)
 plot(spain_raster_cropped)
@@ -161,3 +162,5 @@ spain_border_rasterised
 
 utm = Shapefile.Table(joinpath(meta_path, "ATLAS_data", "UTMgrid_IberianPeninsula", "UTM_GRID.shp")) |> DataFrame
 plot(utm.geometry)
+
+spain_shape = Shapefile.Table("IP_shape.shp") |> DataFrame

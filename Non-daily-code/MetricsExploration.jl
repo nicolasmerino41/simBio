@@ -123,11 +123,11 @@ end
 function richness_evaluation(array_output, DA_with_presences)
     matches = 0
     for i in idx 
-        above_ten = [x > 1 ? 1.0 : 0.0 for x in array_output[i].a]
+        above_ten = [x > 10 ? 1.0 : 0.0 for x in array_output[i].a]
         matches += sum(above_ten .== DA_with_presences[i])
     end
     return matches/(length(idx)*256)
 end
 
-richness_evaluation(r[1000].state, DA_with_presences)
+richness_evaluation(r[100].state, DA_with_presences)
 

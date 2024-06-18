@@ -1,6 +1,6 @@
 using Pkg
 PC = "MM-1"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 
@@ -10,7 +10,7 @@ using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
-using Dates, Distributions, Serialization
+using Dates, Distributions, Serialization, StatsBase
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, WGLMakie
@@ -34,7 +34,13 @@ struct MyStructs256{T <: AbstractFloat} <: FieldVector{2, T}
 end
 
 # Define zero and oneunit for MyStructs256
+# Define zero and oneunit for MyStructs256
 Base.zero(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructs256(SVector{256, T}(fill(zero(T), 256)), zero(T))
+Base.zero(::MyStructs256{T}) where {T <: AbstractFloat} = MyStructs256(SVector{256, T}(fill(zero(T), 256)), zero(T))
+# Create an instance of MyStructs256
+u = MyStructs256(SVector{256, Float64}(fill(0.0, 256)), 2700.0)
+# Get the zero value for MyStructs256
+z = zero(u)
 Base.oneunit(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructs256(SVector{256, T}(fill(oneunit(T), 256)), oneunit(T))
 # Comparison based on 'b' field
 Base.isless(x::MyStructs256, y::MyStructs256) = isless(x.b, y.b)
@@ -112,7 +118,6 @@ function DynamicGrids.neighbors(kernel::CustomDispersalKernel, hood, center::MyS
             dist = distance(I, hood.coords[j])
             result_a += kernel.formulation(dist) * neighbor.a[i]
             end
-            caaclkj
         end
     end
     return MyStructs256(result_a)
@@ -125,9 +130,7 @@ function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{Float64}}, k
     for (i, k) in enumerate(kernel)
         result_a += hood[i].a .* k
     end
-    # println(sum(result_a))
-    # result_b = sum(result_a)
-    return MyStructs256(SVector(result_a)) #, result_b)
+    return MyStructs256(SVector(result_a))
 end
 function Dispersal.kernelproduct(hood::Window{2, 2, 25, MyStructs256{Float64}}, kernel::SVector{25, Float64})
     

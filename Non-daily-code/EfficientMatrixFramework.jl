@@ -1,23 +1,3 @@
-using Pkg
-PC = "MM-1"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
-cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
-meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
-
-# Packages
-using NCDatasets, Shapefile, ArchGDAL
-using CSV, DataFrames
-using NamedArrays, StaticArrays, OrderedCollections
-using Rasters, RasterDataSources, DimensionalData
-using DynamicGrids, Dispersal
-using Dates, Distributions, Serialization
-using Plots
-using Colors, Crayons, ColorSchemes
-using ImageMagick, Makie, WGLMakie
-using Unitful: °C, K, cal, mol, mm
-const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
-const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
-#################################################################################################
 # Load a DataFrame from a serialized file ('.jls' format).
 iberian_interact_df = deserialize("iberian_interact_df.jls")
 # Convert the DataFrame to a matrix for easier manipulation.

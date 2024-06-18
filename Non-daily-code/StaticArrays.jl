@@ -78,7 +78,6 @@ scheme = ObjectScheme()  # Assuming ObjectScheme is already tailored for use wit
 
 output = GifOutput(init; tspan=1:100, ruleset=Ruleset(rule), filename="grey_mystruct.gif", scheme=scheme, minval=0, maxval=1000, fps = 1)
 sim!(output, rule)
-
 ############# MAKIE and multiple grids ####################
 cell = Cell{Tuple{:a, :b}, :a}() do data, (a,b), I
     return MyStructs(a .+ growth.(a.a, self_regulation, b))
@@ -109,8 +108,6 @@ output = MakieOutput(pepe_for_makie;
     image!(ax1, frame.a)
     image!(ax2, frame.b)
 end
-
-using StaticArrays
 
 # Assuming `inits[1]` gives the dimensions or similarly accessible raster data
 dims = size(inits[1])  # Extract dimensions from an existing raster for continuity
@@ -200,3 +197,36 @@ end
 @time output = ArrayOutput(init; tspan=1:100)
 @time sim!(output, rule)
 
+############## RECIPE FOR MAKIE
+@MK.recipe(MyStructs256Plot, mystructs_matrix) do scene
+    Attributes(
+        colormap = :viridis,  # Choose a colormap
+        colorrange = nothing
+    )
+end
+
+function Makie.plot!(plot::MyStructs256)
+    # Extract the matrix from the plot object
+    mystructs_matrix = plot[1][]
+    nrows, ncols = size(mystructs_matrix)
+
+    # Prepare a matrix to hold the scalar 'b' values for visualization
+    values = Matrix{Float64}(undef, nrows, ncols)
+    for i in 1:nrows, j in 1:ncols
+        values[i, j] = mystructs_matrix[i, j].b  # Assuming you want to plot the scalar 'b'
+    end
+
+    # Create a heatmap plot using the values extracted
+    heatmap!(plot, values; plot.attributes...)
+    return plot
+end
+
+using StaticArrays
+
+# Example matrix of MyStructs256
+matrix_of_structs = [MyStructs256(SVector{256, Float64}(rand(256)), rand()) for i in 1:10, j in 1:10]
+
+# Plot using the custom recipe
+scene = Scene();
+mystructs256plot = MK.plot(matrix_of_structs)
+display(scene)

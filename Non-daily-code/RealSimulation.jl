@@ -1,16 +1,16 @@
 using Pkg
 PC = "MM-1"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio")) 
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
-
+# Pkg.add(path = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Dispersal.jl")
 # Packages
 using NCDatasets, Shapefile, ArchGDAL
 using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources, DimensionalData
 using DynamicGrids, Dispersal
-using Dates, Distributions, Serialization
+using Dates, Distributions, Serialization, StatsBase
 using Plots
 using Colors, Crayons, ColorSchemes
 using ImageMagick, Makie, WGLMakie
