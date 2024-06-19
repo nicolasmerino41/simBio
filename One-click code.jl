@@ -49,7 +49,22 @@ function fill_diagonal!(mat, val)
         mat[i, i] = val
     end
 end
-
+#################### get_neighbors ###################################
+######################################################################
+# Helper function to get the neighbors
+function get_neighbors(matrix, row, col)
+    neighbors = []
+    rows, cols = size(matrix)
+    
+    for r in max(row-1, 1):min(row+1, rows)
+        for c in max(col-1, 1):min(col+1, cols)
+            if (r != row || c != col) && !isnan(matrix[r, c])
+                push!(neighbors, matrix[r, c])
+            end
+        end
+    end
+    return neighbors
+end
 web = CSV.read(joinpath(meta_path, "Metaweb_data\\TetraEU_pairwise_interactions.csv"), DataFrame)
 
 web = DataFrame(predator = web.sourceTaxonName, prey = web.targetTaxonName)
@@ -67,11 +82,6 @@ unique_species = unique(x)
 # Read the CSV file
 diets = CSV.File(joinpath(meta_path, "Metaweb_data\\TetraEU_generic_diet.csv")) |> DataFrame
 diets = hcat(diets.sourceTaxonName, diets.targetGenericItemName)
-
-# fn = download("C:\\Users\\nicol\\OneDrive\\PhD\\Metaweb Modelling\\Rasters\\iberian_temperature.tif")
-temp = Rasters.Raster(joinpath(meta_path, "Rasters\\iberian_temperature.tif"))
-Plots.plot(temp);
-using Plots
 
 Amph = CSV.read(joinpath(meta_path, "Atlas_data/DB_Amphibians_IP.txt"), delim='\t', DataFrame)
 Bird = CSV.read(joinpath(meta_path, "Atlas_data/DB_Birds_IP.txt"), delim='\t', DataFrame)
@@ -311,7 +321,7 @@ end
 ####################################################################
 ####################################################################
 ####################################################################
-utmraster = Raster(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio\\updated_utmraster.tif")) 
+utmraster = Raster(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio\\Rasters\\updated_utmraster.tif")) 
 
 species_df = CSV.File("DFs\\Species_spain_df.csv") |> DataFrame
 
@@ -354,27 +364,28 @@ end
 #         DA_with_abundances[row, col] = mMyStructs256(new_a)
 #     end
 # end
-# serialize("DA_with_abundances.jls", DA_with_abundances)
-# serialize("DA_with_abundances_all100.jls", DA_with_abundances)
-# serialize("DA_with_abundances_all100_mMyStructs256.jls", DA_with_abundances)
+# serialize("Objects\\DA_with_abundances.jls", DA_with_abundances)
+# serialize("Objects\\DA_with_abundances_all100.jls", DA_with_abundances)
+# serialize("Objects\\DA_with_abundances_all100_mMyStructs256.jls", DA_with_abundances)
 # Load the serialized object from the file and cast to the specific type
-DA_with_abundances = deserialize("DA_with_abundances_all100.jls")::DimArray{MyStructs256{Float64},2}
+DA_with_abundances = deserialize("Objects\\DA_with_abundances_all100.jls")::DimArray{MyStructs256{Float64},2}
 
 # This is for visualising richness in the raster or for creating a boolmask
-DA_sum = falses(dims(DA_with_abundances))
-for i in 1:size(species_df, 1)
-    # println(perro_cropped.Value[i])
-    for j in 1:125*76
+# DA_sum = falses(dims(DA_with_abundances))
+# for i in 1:size(species_df, 1)
+#     # println(perro_cropped.Value[i])
+#     for j in 1:125*76
         
-        # println(utmraster_da[j])
-        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-            DA_sum[j] =  true #species_df_matrix[i, 3]
-        # else
-        #     DA_sum[j] = false
-        end
-    end
-end
-
+#         # println(utmraster_da[j])
+#         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
+#             DA_sum[j] =  true #species_df_matrix[i, 3]
+#         # else
+#         #     DA_sum[j] = false
+#         end
+#     end
+# end
+# serialize("Objects\\DA_sum.jls", DA_sum)
+DA_sum = deserialize("Objects\\DA_sum.jls")
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
 
@@ -382,7 +393,7 @@ DA_with_abundances_r = reverse(DA_with_abundances, dims=1)
 DA_with_abundances_p = permutedims(DA_with_abundances, (2, 1))
 DA_with_abundances_p_masked = deepcopy(DA_with_abundances_p)
 
-DA_richness = deserialize("DA_richness.jls")::DimArray{Float64,2}
+DA_richness = deserialize("Objects\\DA_richness.jls")::DimArray{Float64,2}
 ########################## IDX #####################################
 idx = findall(x -> x == 1.0, DA_sum)
 DA_with_presences = DimArray([fill(0.0, 256) for _ in 1:125, _ in 1:76], (Dim{:a}(1:125), Dim{:b}(1:76)))
@@ -414,8 +425,8 @@ function richness_evaluation(array_output, DA_with_presences)
     return matches/(length(idx)*256)
 end
 ######################### NPP ####################################
-npp_absolute = CSV.File(joinpath(meta_path, "DFs\\npp_absolute_df.csv")) |> DataFrame
-rename!(npp_absolute, [:ID, :UTMCODE, :npp]) 
+npp_absolute = CSV.File("DFs\\npp_absolute_df.csv") |> DataFrame
+rename!(npp_absolute, [:ID, :UTMCODE, :npp, :X, :Y]) 
 npp_absolute_in_kg = deepcopy(npp_absolute)
 npp_absolute_in_kg.npp = npp_absolute.npp .* 1000
 npp_absolute_in_kg = npp_absolute_in_kg[:, [2, 3]]
@@ -423,39 +434,33 @@ npp_absolute_in_kg = npp_absolute_in_kg[:, [2, 3]]
 species_df = leftjoin(species_df, npp_absolute_in_kg, on = :UTMCODE)
 species_df_matrix = Matrix(species_df)
 
-npp_DA = DimArray(zeros((125, 76)), (Dim{:a}(1:125), Dim{:b}(1:76)))
-for i in 1:size(species_df, 1)
-    # println(perro_cropped.Value[i])
-    for j in 1:125*76
-        # println(utmraster_da[j])
-        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-            npp_DA[j] = species_df_matrix[i, 261]
-        end
-    end
-end
-npp_DA_r = reverse(npp_DA, dims=1)
-npp_DA_p = permutedims(npp_DA, (2, 1))
+# npp_DA = DimArray(Raster("Rasters/npp_utmsize_kgC.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
 
-# Fixing utm issues with NPP
-number = 0.0
-idx = findall(x -> x == 1.0, DA_sum)
-for i in idx
-    neighbors = get_neighbors(npp_DA, i[1], i[2])
-    mean_neighbors = mean(neighbors)
-    if npp_DA[i] + 50 < mean_neighbors
-        println(i)
-        number += 1
-        npp_DA[i] = mean_neighbors + rand(40:70)
-    end
-end
-println(number)
-MK.plot(npp_DA);
+# highest_npp = maximum(filter(!isnan, npp_DA[:]))
+# lowest_npp = minimum(filter(!isnan, npp_DA[:]))
+# lowest_richness = minimum(filter(!iszero, DA_richness[:]))
+
+# npp_DA_r = reverse(npp_DA, dims=1)
+# npp_DA_p = permutedims(npp_DA, (2, 1))
+# MK.plot(npp_DA);
+# # fixing some NA's that should not be in npp_DA
+# for i in axes(npp_DA, 1), j in axes(npp_DA, 2)
+#     if isnan(npp_DA[i, j]) && !iszero(DA_random_with_abundances[i, j])
+#         println(i, j)
+#         neighbors = get_neighbors(npp_DA, i, j)
+#         neighbors = filter(!isnan, neighbors)
+#         npp_DA[i, j] = mean(neighbors)
+#     end 
+# end
+# serialize("Objects\\npp_DA.jls", npp_DA)
+npp_DA = deserialize("Objects\\npp_DA.jls")
+npp_DA = npp_DA./10000
 ################### EFFICIENT MATRIX FRAMEWORK #####################
 ####################################################################
 ####################################################################
 ####################################################################
 # Load a DataFrame from a serialized file ('.jls' format).
-iberian_interact_df = deserialize("iberian_interact_df.jls")
+iberian_interact_df = deserialize("Objects\\iberian_interact_df.jls")
 # Convert the DataFrame to a matrix for easier manipulation.
 iberian_interact_matrix = iberian_interact_df |> Matrix
 # Convert the modified matrix back to a DataFrame, preserving the original column names.
@@ -501,29 +506,15 @@ end
 ####################################################################
 ####################################################################
 ####################################################################
-temp_raster = RS.Raster("utm_raster_temp.tif")
+temp_raster = RS.Raster("Rasters\\utm_raster_temp.tif")
 MK.plot(temp_raster);
-prec_raster = RS.Raster("utm_raster_prec.tif")
+prec_raster = RS.Raster("Rasters\\utm_raster_prec.tif")
 MK.plot(prec_raster);
 
 temp_DA = DimArray(temp_raster, (Dim{:a}(1:125), Dim{:b}(1:76)))
 temp_DA = parent(temp_raster)
 prec_DA = DimArray(prec_raster, (Dim{:a}(1:125), Dim{:b}(1:76)))
 prec_DA = parent(prec_raster)
-# Helper function to get the neighbors
-function get_neighbors(matrix, row, col)
-    neighbors = []
-    rows, cols = size(matrix)
-    
-    for r in max(row-1, 1):min(row+1, rows)
-        for c in max(col-1, 1):min(col+1, cols)
-            if (r != row || c != col) && !isnan(matrix[r, c])
-                push!(neighbors, matrix[r, c])
-            end
-        end
-    end
-    return neighbors
-end
 
 matrix_abundances = Matrix(DA_with_abundances)
 x = 0
@@ -575,26 +566,51 @@ species_prec = species_prec[!, 2:4]
 # Reorder rows based on these indices
 species_prec = species_prec[order_indices, :]
 ####### Species_prec_range
-species_prec_range = CSV.File("DF\\species_prec_range.csv") |> DataFrame
+species_prec_range = CSV.File("DFs\\species_prec_range.csv") |> DataFrame
 species_prec_range = species_prec_range[!, 2:4]
 # Reorder rows based on these indices
 species_prec_range = species_prec_range[order_indices, :]
 
-function int_Gr(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
+##################### NEW NICHES ###########################
+######## bio rasters  ##############
+# bio5_DA = DimArray(Raster("Rasters/bio5.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
+# bio6_DA = DimArray(Raster("Rasters/bio6.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
+# bio12_DA = DimArray(Raster("Rasters/bio12.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
+
+# # fixing some NA's that should not be in bioDA (change number for each bioclim)
+# for i in axes(bio12_DA, 1), j in axes(bio12_DA, 2)
+#     if isnan(bio12_DA[i, j]) && !iszero(DA_random_with_abundances[i, j])
+#         println(i, j)
+#         neighbors = get_neighbors(bio12_DA, i, j)
+#         neighbors = filter(!isnan, neighbors)
+#         bio12_DA[i, j] = mean(neighbors)
+#     end 
+# end
+# serialize("Objects\\bio12.jls", bio12_DA)
+bio5_DA = deserialize("Objects\\bio5.jls")
+bio6_DA = deserialize("Objects\\bio6.jls")
+bio12_DA = deserialize("Objects\\bio12.jls")
+######## niches_df  ##############
+species_niches = CSV.File("DFs\\iberian_species_niches.csv", decimal = ',') |> DataFrame
+order_indices = indexin(names(iberian_interact_df), species_niches[:, :Species])
+species_niches = species_niches[order_indices, :]
+
+function int_Gr(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, bio5::AbstractFloat, bio6::AbstractFloat, bio12::AbstractFloat)
     return MyStructs256(self_regulation * (npp+0.1) .*
-    SVector{256}((1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec))) .*
-    SVector{256}((1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp))) .*
+    SVector{256}((1 ./ (1 .+ abs.(bio5 .- species_niches.mean_bio5) ./ species_niches.sd_bio5))) .*
+    SVector{256}((1 ./ (1 .+ abs.(bio6 .- species_niches.mean_bio6) ./ species_niches.sd_bio6))) .*
+    SVector{256}((1 ./ (1 .+ abs.(bio12 .- species_niches.mean_bio12) ./ species_niches.sd_bio12))) .*
     state.a .* (1.0 - (state.b / ((npp+0.1)))))
 end
-function int_Gr_with_range(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
-    return MyStructs256(self_regulation * (npp+0.1) .*
-    SVector{256}((1 ./ (1 .+ abs.(prec .- species_prec_range.mean_Prec) ./ species_prec_range.sd_Prec))) .*
-    SVector{256}((1 ./ (1 .+ abs.(temp .- species_temp_range.mean_Temp) ./ species_temp_range.sd_Temp))) .*
-    state.a .* (1.0 .- (state.a ./ ((npp+0.1)))))
-end
+# function int_Gr_with_range(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
+#     return MyStructs256(self_regulation * (npp+0.1) .*
+#     SVector{256}((1 ./ (1 .+ abs.(prec .- species_prec_range.mean_Prec) ./ species_prec_range.sd_Prec))) .*
+#     SVector{256}((1 ./ (1 .+ abs.(temp .- species_temp_range.mean_Temp) ./ species_temp_range.sd_Temp))) .*
+#     state.a .* (1.0 .- (state.a ./ ((npp+0.1)))))
+# end
 dimensions = (125, 76)
 idx_tupled = [(i, j) for i in 1:dimensions[1], j in 1:dimensions[2]]
-function random_dimarray(dimensions::Tuple{Int64, Int64}; prevalence = 0.2)
+function random_dimarray(dimensions::Tuple{Int64, Int64}; prevalence = 0.1)
     init_array = DimArray(zeros(dimensions, MyStructs256{Float64}), (Dim{:X}(1:dimensions[1]), Dim{:Y}(1:dimensions[2])))
     for i in idx
         init_array[i] = MyStructs256(100.0 .* SVector{256}(sample([1,0], Weights([prevalence, 1-prevalence]), 256)))
@@ -609,14 +625,14 @@ DA_random_with_abundances = random_dimarray(dimensions; prevalence = 0.1)
 #     (1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp)) .*
 #     state.a .* (1.0 .- (state.a ./ (npp))))
 # end
-climatic_niche_rule = Cell{Tuple{:state, :npp, :temp, :prec}, :state}() do data, (state, temp, prec, npp), I
+climatic_niche_rule = Cell{Tuple{:state, :npp, :bio5, :bio6, :bio12}, :state}() do data, (state, npp, bio5, bio6, bio12), I
     if any(isinf, state.a) || any(isnan, state.a)
         @error "state has NA values"
     end
     # prec_factor = (1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec))
     # temp_factor = (1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp))
     # println(MyStructs256(SVector{256}((self_regulation * 1000.0) .* state.a .* (1.0 .- (state.a ./ 1000.0)))))  
-    return state + int_Gr(state, self_regulation, npp, temp, prec) 
+    return state + int_Gr(state, self_regulation, npp, bio5, bio6, bio12) 
     # + MyStructs256(self_regulation * 100.0 .*
     #  SVector{256}(1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec)) .*
     #  SVector{256}(1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp)) .*
@@ -636,45 +652,51 @@ indisp = InwardsDispersal{:state, :state}(;
 outdisp = OutwardsDispersal{:state, :state}(;
     formulation=CustomKernel(0.1),
     distancemethod=AreaToArea(30),
-    mask_flag = Dispersal.Mask()
+    maskbehavior = Dispersal.CheckMaskEdges()
 );
 
-cucu = rand(10.0:100.0, 125, 76)
+npp_DA = deserialize("Objects\\npp_DA.jls")
+npp_DA = npp_DA./100000
+highest_npp = maximum(filter(!isnan, npp_DA[:]))
+highest_richness = maximum(filter(!iszero, DA_richness[:]))
 pepe = ( 
     state = Matrix(DA_random_with_abundances),
     npp = Matrix(npp_DA),
     richness = Matrix(DA_richness),
-    temp = temp_DA,
-    prec = prec_DA
+    bio5 = Matrix(bio5_DA),
+    bio6 = Matrix(bio6_DA),
+    bio12 = Matrix(bio12_DA)
 )
 
-# array_output = ArrayOutput(
-#     pepe; tspan = 1:100,
-#     mask = Matrix(DA_sum)
-# )
-# @time r = sim!(array_output, Ruleset(climatic_niche_rule, outdisp; boundary = Reflect()))
-# sum(r[200].state).b/sum(r[1].state).b
-# richness_evaluation(r[length(r)].state, DA_with_presences)
-# o = r[200].state
-makie_output = MakieOutput(pepe, tspan = 1:1000;
+array_output = ArrayOutput(
+    pepe; tspan = 1:500,
+    mask = Matrix(DA_sum)
+)
+@time r = sim!(array_output, Ruleset(climatic_niche_rule, outdisp; boundary = Reflect()))
+sum(r[100].state).b ≈ sum(r[1].state).b
+richness_evaluation(r[length(r)].state, DA_with_presences)
+
+makie_output = MakieOutput(pepe, tspan = 1:500;
     fps = 50, ruleset = Ruleset(climatic_niche_rule, outdisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
 
     # Setup the keys and titles for each plot
-    plot_keys = [:state_heatmap, :state_image, :npp, :richness, :temp, :prec]
-    titles = ["Abundance", "Simulated Richness", "Carrying capacity", "Real Richness", "Temperature", "Precipitation"]
+    plot_keys = [:state_heatmap, :state_image, :npp, :richness, :bio5, :bio6, :bio12]
+    titles = ["Abundance", "Simulated Richness", "Carrying capacity", "Real Richness", "bio5", "bio6", "bio12"]
 
     # Create axes for each plot and customize them
     axes = [Axis(layout[i, j]; title=titles[(i-1)*3 + j]) for i in 1:2, j in 1:3]
-
+        
     # Apply the same color map and limits to all plots, ensure axes are hidden, and set titles
     for (ax, key, title) in zip(axes, plot_keys, titles)
         if key == :state_heatmap
-            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=:inferno)
+            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=:seismic, colorrange=(0, 2000))
         elseif key == :state_image
-            Makie.image!(ax, frame[:state], colormap=:inferno)
+            Makie.image!(ax, frame[:state], colormap=:seismic, colorrange=(0, 256))
+        elseif key == :richness
+            Makie.heatmap!(ax, frame[key]; interpolate=false, colormap=:seismic, colorrange=(0, 168))
         else
-            Makie.heatmap!(ax, frame[key]; interpolate=false, colormap=:inferno)
+            Makie.heatmap!(ax, frame[key]; interpolate=false, colormap=:seismic)
         end
         hidexdecorations!(ax; grid=false)
         hideydecorations!(ax; grid=false)
@@ -682,3 +704,5 @@ makie_output = MakieOutput(pepe, tspan = 1:1000;
         ax.yreversed[] = true
     end
 end
+
+hello = 0
