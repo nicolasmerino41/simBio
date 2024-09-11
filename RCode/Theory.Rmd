@@ -1,0 +1,52 @@
+---
+title: "Theory"
+author: "Nicolas Merino"
+date: "2024-07-05"
+output:
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_depth: 5
+    number_sections: true
+    toc_float: 
+      collapsed: false
+    bookdown: yes
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Theory
+Given the equation:
+$$ \frac{1}{X_i}\frac{dX_i}{dt} = r_i - d_i X_i + \sum_{i\neq j}^{N} \alpha_{ij}X_j $$
+Or its equivalent:
+$$  \frac{dX_i}{dt} = \left(d_i \left( K_i - X_i + \sum_{i\neq j}^{N} \frac{\alpha_{ij}}{d_i}X_j \right)\right)X_i $$
+
+Where, growth is expressed as:
+$$ r_i = d_i·K_i $$
+Carrying capacity can be understood as the suitability/success of a species under some given conditions. This can be related to the niche of the species. Hence, we can express cc as the niche, where 1 would be optimum conditions (max K possible under this framework).
+
+This approach ensures unit comparability between cells. However, the difference in productivity across cells causes cc to be different across cells in terms of absolute values. Thus, we need to establish the following equality:
+$$ \hat{K}_i(z) = \text{niche of species i in cell z} $$
+$$  \sum_{i}^{N} \hat{K}_i(z) · \lambda(z) = \sum_{i}^{N}K_i(z) = npp $$
+By making this assumption, we ensure that species biomass translates into real biomass values driven by productivity of each area.
+
+As usual, interaction strength is defined as:
+
+Where:
+$$ \text{Predator: }\frac{\alpha_{ij}}{d_i}=A_{ij}\sim |N(0,\sigma)|\\ \text{Prey: } -A_{ij} \times \epsilon $$
+This allow us to express **interaction strengths as a proportion against self-regulation (intra- vs interspecific effects)**.
+
+*Notice this approach assumes that all species self-regulate with the same strength. We can try a relaxation of this assumption later on.*
+
+Then, in order for the community to be stable, we need:
+$$ \frac{dX_i}{dt} = 0$$
+Which can be accomplished by:
+$$d_i = 0$$ 
+or
+$$0= \left( K_i - X_i + \sum_{i\neq j}^{N} \frac{\alpha_{ij}}{d_i}X_j \right)$$
+Which means that equilibrium densities can be found through:
+$$0=K-X^*+A·X^*$$
+$$X^*=K(I-A)^{-1}$$

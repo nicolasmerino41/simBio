@@ -89,6 +89,15 @@ for i in 1:size(species_df, 1)
     end
 end
 DA_richness = DimArray(reshape(fill(0.0, 125*76), 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+DA_richness_herps = DimArray(reshape(fill(0.0, 125*76), 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+DA_richness_birmmals = DimArray(reshape(fill(0.0, 125*76), 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+
+species_df_herps = species_df[:, 5:53]
+species_df_herps.sum = [sum(row) for row in eachrow(species_df_herps)]
+
+species_df_birmmals = species_df[:, 54:260]
+species_df_birmmals.sum = [sum(row) for row in eachrow(species_df_birmmals)]
+
 for i in 1:size(species_df, 1)
     # println(perro_cropped.Value[i])
     for j in 1:125*76
@@ -96,13 +105,19 @@ for i in 1:size(species_df, 1)
         # println(utmraster_da[j])
         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
             DA_richness[j] =  species_df_matrix[i, 3]
+            DA_richness_herps[j] =  species_df_herps[i, 50]
+            DA_richness_birmmals[j] = species_df_birmmals[i, 208]
         # else
         #     DA_sum[j] = false
         end
     end
 end
 # serialize("DA_richness.jls", DA_richness)
+# serialize("Objects/DA_richness_herps.jls", DA_richness_herps)
+# serialize("Objects/DA_richness_birmmals.jls", DA_richness_birmmals)
 DA_richness = deserialize("DA_richness.jls")::DimArray{Float64,2}
+DA_richness_birmmals = deserialize("Objects/DA_richness_birmmals.jls")::DimArray{Float64,2}
+DA_richness_herps = deserialize("Objects/DA_richness_herps.jls")::DimArray{Float64,2}
 
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
@@ -160,6 +175,7 @@ merge_rule_m = Cell{Tuple{:state, :npp}, :state}() do data, (state, npp), I
         ))
     return MyStructs256(max.(0.0, merged_state.a))
 end
+
 function (kernel::CustomKernel)(distance)
     return exp(-(distance^2) / (2*(kernel.α^2)))
 end
@@ -283,3 +299,8 @@ out = ArrayOutput(DA_trial; tspan=1:100, mask = DA_mask)
 r = sim!(out, Ruleset(indisp; boundary=Wrap()))
 sum(r[1])
 sum(r[100])
+### New NPP raster
+bio_npp = Raster(joinpath(meta_path, "Rasters/CHELSA_npp_1981-2010_V.2.1.tif"))
+bio_npp_croppped = crop(bio_npp, to = prec_raster)
+# MK.plot(bio_npp_croppped, title = "")
+reproject(bio_npp_croppped, prec_raster)

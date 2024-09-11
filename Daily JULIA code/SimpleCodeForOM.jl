@@ -1,23 +1,22 @@
 using Pkg
-PC = "MM-1"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
-cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
+
+Pkg.activate(joinpath(pwd(), "/simBio"))
+cd(joinpath(pwd(), "/simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
-# Pkg.add(path = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Dispersal.jl")
+
 # Packages
-using NCDatasets, Shapefile, ArchGDAL
+using ArchGDAL
 using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
-using Rasters, RasterDataSources, DimensionalData
+using Rasters
 using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization, StatsBase
-using Plots
-using Colors, Crayons, ColorSchemes
-using ImageMagick, Makie, WGLMakie
-using Unitful: °C, K, cal, mol, mm
-const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
+using ColorSchemes 
+using Makie, WGLMakie
+
+const DG, MK, AG, RS, Disp, DF = DynamicGrids, Makie, ArchGDAL, Rasters, Dispersal, DataFrames
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
-#################################################################################################
+
 ####################### REAL SIMULATION ############################
 ####################################################################
 ####################################################################
@@ -28,9 +27,10 @@ function size_selection_kernel(predator_mass, prey_mass, sd, beta)
     intensity = exp(-((log(float(predator_mass)) / (beta * float(prey_mass)))^2.0) / (2.0 * float(sd)^2.0))
     return float(intensity)
 end
-beta = float(3)
+beta = 3.0
 
-gbif_sizes = CSV.read(joinpath(meta_path, "Lists\\gbif_sizes.csv"), DataFrame)[:, 2:end]
+gbif_sizes = CSV.read("DFs\\gbif_sizes.csv", DataFrame)[:, 2:end]
+
 ###################### ZERO DIAGONAL ##################################
 ######################################################################
 function zero_out_diagonal!(matrix)
@@ -65,7 +65,25 @@ function get_neighbors(matrix, row, col)
     end
     return neighbors
 end
-web = CSV.read(joinpath(meta_path, "Metaweb_data\\TetraEU_pairwise_interactions.csv"), DataFrame)
+#################### when_NA ###################################
+######################################################################
+function when_NA(array_output)
+    for time in 1:length(array_output)
+        value = 0.0
+        for index in idx
+            if any(isinf, array_output[time].state[index].a) || any(isnan, array_output[time].state[index].a)
+              println("Time:", time, " Index:", index)
+              value += 1
+            end
+        end
+        if value != 0
+            println("In time ", time,", ", value, " NA's where generated for the first time")
+            return
+        end
+    end
+end
+
+web = CSV.read("DFs\\TetraEU_pairwise_interactions.csv", DataFrame)
 
 web = DataFrame(predator = web.sourceTaxonName, prey = web.targetTaxonName)
 
@@ -80,14 +98,15 @@ x = vcat(unique_predators, unique_preys)
 unique_species = unique(x)
 
 # Read the CSV file
-diets = CSV.File(joinpath(meta_path, "Metaweb_data\\TetraEU_generic_diet.csv")) |> DataFrame
+diets = CSV.File("DFs\\TetraEU_generic_diet.csv") |> DataFrame
+
 diets = hcat(diets.sourceTaxonName, diets.targetGenericItemName)
 
-Amph = CSV.read(joinpath(meta_path, "Atlas_data/DB_Amphibians_IP.txt"), delim='\t', DataFrame)
-Bird = CSV.read(joinpath(meta_path, "Atlas_data/DB_Birds_IP.txt"), delim='\t', DataFrame)
-Mamm = CSV.read(joinpath(meta_path, "Atlas_data/DB_Mammals_IP.txt"), delim='\t', DataFrame)
-Rept = CSV.read(joinpath(meta_path, "Atlas_data/DB_Reptiles_IP.txt"), delim='\t', DataFrame)
-# data = load("Abundance lists ATLAS\\eq_dens_5928cells.RData")
+Amph = CSV.read("DFs/s", delim='\t', DataFrame)
+Bird = CSV.read("DFs/DB_Birds_IP.txt", delim='\t', DataFrame)
+Mamm = CSV.read("DFs/DB_Mammals_IP.txt", delim='\t', DataFrame)
+Rept = CSV.read("DFs/DB_Reptiles_IP.txt", delim='\t', DataFrame)
+
 amphibian_names = names(Amph)
 reptile_names = names(Rept)
 mammal_names = names(Mamm)
@@ -226,6 +245,13 @@ end
 function Base.maximum(a::AbstractFloat, b::MyStructs256)
     return MyStructs256(max.(a, b.a))
 end
+function Base.maximum(a::MyStructs256)
+    return max.(a.b)
+end
+function Base.maximum(a::Matrix{MyStructs256{Float64}})
+    # Extract all `b` values from each MyStructs256 element in the matrix and find the maximum
+    return maximum(map(x -> x.b, a))
+end
 function Base.zeros(dims::NTuple{2, Int}, type = nothing)
     if type == MyStructs256{Float64}
         return [MyStructs256(SVector{256, Float64}(fill(0.0, 256))) for _ in 1:dims[1], _ in 1:dims[2]]
@@ -288,103 +314,12 @@ function Dispersal.kernelproduct(hood::Window{2, 2, 25, MyStructs256{Float64}}, 
     # result_b = sum(result_a)
     return MyStructs256(SVector(result_a)) #, result_b)
 end
-############ DESERIALIZING DATA ############################
-############################################################
-A_matrix_list = deserialize(joinpath(meta_path, "A_matrix_list.jls"))::Vector{Matrix{Float64}}
-full_A_matrix = A_matrix_list[3]
-full_IM_list = deserialize(joinpath(meta_path, "fullIM_list.jls"))::Vector{Vector{Matrix{Float64}}}
-full_IM = full_IM_list[2][10]
-########### VISUAL OUTPUTS ################
-###########################################
-# Visualization settings
-DynamicGrids.to_rgb(scheme::ObjectScheme, obj::MyStructs256) = ARGB32(
-    clamp(obj.b/25600, 0.0, 1.0),
-    clamp(obj.b/25600, 0.0, 1.0),
-    clamp(obj.b/25600, 0.0, 1.0)
-)
-DynamicGrids.to_rgb(scheme, obj::MyStructs256) = get(scheme, clamp(obj.b, 0.0, 1.0))
-##################### MWE_TvdD ##################################
-####################################################################
-####################################################################
-####################################################################
-# For a heat map we just plot the scalars
-function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyStructs256, 2})
-    scalars = map(mystruct -> mystruct.b, A)
-    return Makie.convert_arguments(t, scalars)
-end
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2})
-    # Count presence based on the threshold
-    richness = map(mystruct -> count(x -> x > 1, mystruct.a), A)
-    return Makie.convert_arguments(t, richness)
-end
+
 ##################### UTMtoRASTER ##################################
 ####################################################################
 ####################################################################
-####################################################################
-utmraster = Raster(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio\\Rasters\\updated_utmraster.tif")) 
-
-species_df = CSV.File("DFs\\Species_spain_df.csv") |> DataFrame
-
-variables = species_df[!, 2:5]
-rename!(variables, [:ID, :Value, :sum, :UTMCODE])
-
-species = species_df[!, unique_species_in_web]
-
-species_df = hcat(variables, species, makeunique=true)
-species_df_matrix = Matrix(species_df)
-
-# Is this necessary?
-for i in axes(species_df_matrix, 1), j in axes(species_df_matrix, 2)
-    if species_df_matrix[i, j] == 0
-        species_df_matrix[i, j] = 0.0
-    elseif species_df_matrix[i, j] == 1
-        species_df_matrix[i, j] = 1.0
-    end
-end
-
-utmraster_DA = DimArray(utmraster)
-utmraster_da = map(x -> isnothing(x) || isnan(x) ? false : true, utmraster_DA)
-
-DA = DimArray(reshape([MyStructs256(SVector{256, Float64}(fill(0.0, 256))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
-for i in 1:size(species_df, 1)
-    # println(perro_cropped.Value[i])
-    for j in 1:125*76
-        # println(utmraster_da[j])
-        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-            DA[j] = MyStructs256(SVector{256, Float64}(species_df_matrix[i, 5:260]))
-        end
-    end
-end
-
-###### Let's do a small example of the simBio with the actual ATLAS data ######
-# DA_with_abundances = deepcopy(DA)
-# for row in axes(DA, 1), col in axes(DA, 2)
-#     if DA[row, col] != mMyStructs256(Vector{Float64}(fill(0.0, 256)))
-#         new_a = Vector{Float64}([DA[row, col].a[i] != 0.0 ? 100 : DA[row, col].a[i] for i in 1:256])
-#         DA_with_abundances[row, col] = mMyStructs256(new_a)
-#     end
-# end
-# serialize("Objects\\DA_with_abundances.jls", DA_with_abundances)
-# serialize("Objects\\DA_with_abundances_all100.jls", DA_with_abundances)
-# serialize("Objects\\DA_with_abundances_all100_mMyStructs256.jls", DA_with_abundances)
-# Load the serialized object from the file and cast to the specific type
 DA_with_abundances = deserialize("Objects\\DA_with_abundances_all100.jls")::DimArray{MyStructs256{Float64},2}
 
-# This is for visualising richness in the raster or for creating a boolmask
-# DA_sum = falses(dims(DA_with_abundances))
-# for i in 1:size(species_df, 1)
-#     # println(perro_cropped.Value[i])
-#     for j in 1:125*76
-        
-#         # println(utmraster_da[j])
-#         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-#             DA_sum[j] =  true #species_df_matrix[i, 3]
-#         # else
-#         #     DA_sum[j] = false
-#         end
-#     end
-# end
-# serialize("Objects\\DA_sum.jls", DA_sum)
 DA_sum = deserialize("Objects\\DA_sum.jls")
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
@@ -394,6 +329,7 @@ DA_with_abundances_p = permutedims(DA_with_abundances, (2, 1))
 DA_with_abundances_p_masked = deepcopy(DA_with_abundances_p)
 
 DA_richness = deserialize("Objects\\DA_richness.jls")::DimArray{Float64,2}
+
 ########################## IDX #####################################
 idx = findall(x -> x == 1.0, DA_sum)
 DA_with_presences = DimArray([fill(0.0, 256) for _ in 1:125, _ in 1:76], (Dim{:a}(1:125), Dim{:b}(1:76)))
@@ -405,13 +341,6 @@ for row in axes(DA_with_abundances, 1), col in axes(DA_with_abundances, 2)
         end
     end
 end
-
-# random_raster = [MyStructs256(SVector{256, Float64}(rand([0.0, 1.0], 256))) for i in 1:125, j in 1:76]
-# random_richness_raster = [rand([0.0, rand(10:100)], 256) for i in 1:125, j in 1:76]
-# idx = []
-# for i in 1:125, j in 1:76
-#     idx = push!(idx, CartesianIndex(i, j))
-# end
 
 function richness_evaluation(array_output, DA_with_presences)
     matches = 0
@@ -434,27 +363,6 @@ npp_absolute_in_kg = npp_absolute_in_kg[:, [2, 3]]
 species_df = leftjoin(species_df, npp_absolute_in_kg, on = :UTMCODE)
 species_df_matrix = Matrix(species_df)
 
-# npp_DA = DimArray(Raster("Rasters/npp_utmsize_kgC.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
-
-# highest_npp = maximum(filter(!isnan, npp_DA[:]))
-# lowest_npp = minimum(filter(!isnan, npp_DA[:]))
-# lowest_richness = minimum(filter(!iszero, DA_richness[:]))
-
-# npp_DA_r = reverse(npp_DA, dims=1)
-# npp_DA_p = permutedims(npp_DA, (2, 1))
-# MK.plot(npp_DA);
-# # fixing some NA's that should not be in npp_DA
-# for i in axes(npp_DA, 1), j in axes(npp_DA, 2)
-#     if isnan(npp_DA[i, j]) && !iszero(DA_random_with_abundances[i, j])
-#         println(i, j)
-#         neighbors = get_neighbors(npp_DA, i, j)
-#         neighbors = filter(!isnan, neighbors)
-#         npp_DA[i, j] = mean(neighbors)
-#     end 
-# end
-# serialize("Objects\\npp_DA.jls", npp_DA)
-npp_DA = deserialize("Objects\\npp_DA.jls")
-npp_DA = npp_DA./10000
 ################### EFFICIENT MATRIX FRAMEWORK #####################
 ####################################################################
 ####################################################################
@@ -484,7 +392,7 @@ end
 results = OrderedDict{Float64, OrderedDict{Float64, Matrix}}()
 self_regulation = 0.001
 # Iterate over epsilon values
-@time for epsilon in [0.1, 0.5, 1.0, 1.5, 3.0]
+@time for epsilon in [1.0]
     # Initialize an OrderedDict for the current epsilon
     epsilon_results = OrderedDict{Float64, Matrix}()
     
@@ -502,163 +410,101 @@ self_regulation = 0.001
     # Store the epsilon_results OrderedDict in the main results OrderedDict
     results[epsilon] = epsilon_results
 end
-##################### Temp&Prec DA #################################
-####################################################################
-####################################################################
-####################################################################
-temp_raster = RS.Raster("Rasters\\utm_raster_temp.tif")
-MK.plot(temp_raster);
-prec_raster = RS.Raster("Rasters\\utm_raster_prec.tif")
-MK.plot(prec_raster);
-
-temp_DA = DimArray(temp_raster, (Dim{:a}(1:125), Dim{:b}(1:76)))
-temp_DA = parent(temp_raster)
-prec_DA = DimArray(prec_raster, (Dim{:a}(1:125), Dim{:b}(1:76)))
-prec_DA = parent(prec_raster)
-
-matrix_abundances = Matrix(DA_with_abundances)
-x = 0
-y = 0
-for index in CartesianIndices(matrix_abundances)
-    if isnan(prec_DA[index]) && !iszero(matrix_abundances[index])
-        x += 1
-        neighbors = get_neighbors(prec_DA, index[1], index[2])
-        if !isempty(neighbors)
-            prec_DA[index] = mean(neighbors)
-        end
-    end
-
-    if isnan(temp_DA[index]) && !iszero(matrix_abundances[index])
-        y += 1
-        neighbors = get_neighbors(temp_DA, index[1], index[2])
-        if !isempty(neighbors)
-            temp_DA[index] = mean(neighbors)
-        end
-    end
-end
-
-println("Number of changes made: $x")
-println("Number of changes made: $y")
-
+full_IM = results[1][1]
 ##################### CLIMATE-ONLY MODEL ###########################
 ####################################################################
 ####################################################################
 ####################################################################
-######## TEMPERATURE ##############
-####### Species_temp
-species_temp = CSV.File("DFs\\species_temp.csv") |> DataFrame
-species_temp = species_temp[!, 2:4]
-# Find the sorting indices based on matching names_order to species column
-order_indices = indexin(names(iberian_interact_df), species_temp[:, :species])
-# Reorder rows based on these indices
-species_temp = species_temp[order_indices, :]
-####### Species_temp_range
-species_temp_range = CSV.File("DFs\\species_temp_range.csv") |> DataFrame
-species_temp_range = species_temp_range[!, 2:4]
-# Find the sorting indices based on matching names_order to species column
-order_indices = indexin(names(iberian_interact_df), species_temp_range[:, :species])
-# Reorder rows based on these indices
-species_temp_range = species_temp_range[order_indices, :]
-######## PRECIPITATION ##############
-####### Species_prec
-species_prec = CSV.File("DFs\\species_prec.csv") |> DataFrame
-species_prec = species_prec[!, 2:4]
-# Reorder rows based on these indices
-species_prec = species_prec[order_indices, :]
-####### Species_prec_range
-species_prec_range = CSV.File("DFs\\species_prec_range.csv") |> DataFrame
-species_prec_range = species_prec_range[!, 2:4]
-# Reorder rows based on these indices
-species_prec_range = species_prec_range[order_indices, :]
-
 ##################### NEW NICHES ###########################
 ######## bio rasters  ##############
-# bio5_DA = DimArray(Raster("Rasters/bio5.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
-# bio6_DA = DimArray(Raster("Rasters/bio6.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
-# bio12_DA = DimArray(Raster("Rasters/bio12.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
-
-# # fixing some NA's that should not be in bioDA (change number for each bioclim)
-# for i in axes(bio12_DA, 1), j in axes(bio12_DA, 2)
-#     if isnan(bio12_DA[i, j]) && !iszero(DA_random_with_abundances[i, j])
-#         println(i, j)
-#         neighbors = get_neighbors(bio12_DA, i, j)
-#         neighbors = filter(!isnan, neighbors)
-#         bio12_DA[i, j] = mean(neighbors)
-#     end 
-# end
-# serialize("Objects\\bio12.jls", bio12_DA)
 bio5_DA = deserialize("Objects\\bio5.jls")
 bio6_DA = deserialize("Objects\\bio6.jls")
 bio12_DA = deserialize("Objects\\bio12.jls")
+futurebio5_DA = bio5_DA .+ 1.0
+futurebio6_DA = bio6_DA .+ 1.0
+futurebio12_DA = bio12_DA .+ rand(Normal(0, 100), 125, 76)
 ######## niches_df  ##############
-species_niches = CSV.File("DFs\\iberian_species_niches.csv", decimal = ',') |> DataFrame
+species_niches = CSV.File("DFs\\iberian_species_niches_withbinned_TH.csv", decimal = ',') |> DataFrame
 order_indices = indexin(names(iberian_interact_df), species_niches[:, :Species])
 species_niches = species_niches[order_indices, :]
 
-function int_Gr(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, bio5::AbstractFloat, bio6::AbstractFloat, bio12::AbstractFloat)
+lax_species_niches = CSV.File("DFs\\iberian_species_niches_withLaxNiche.csv", decimal = ',') |> DataFrame
+order_indices = indexin(names(iberian_interact_df), lax_species_niches[:, :Species])
+lax_species_niches = lax_species_niches[order_indices, :]
+
+strict_species_niches = CSV.File("DFs\\iberian_species_niches_withVeryStrictNiche.csv", decimal = ',') |> DataFrame
+order_indices = indexin(names(iberian_interact_df), strict_species_niches[:, :Species])
+strict_species_niches = strict_species_niches[order_indices, :]
+
+herbivore_names = CSV.File(joinpath(meta_path, "herbivore_names.csv")) |> DataFrame
+herbivore_names = convert(Vector{String}, herbivore_names[:, 2])
+binary_vector = [name in herbivore_names ? 1 : 0 for name in names(iberian_interact_df)]
+opposite_binary_vector = [name in herbivore_names ? 0 : 1 for name in names(iberian_interact_df)]
+
+function lax_int_Gr(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, bio5::AbstractFloat, bio6::AbstractFloat, bio12::AbstractFloat)
     return MyStructs256(self_regulation * (npp+0.1) .*
-    SVector{256}((1 ./ (1 .+ abs.(bio5 .- species_niches.mean_bio5) ./ species_niches.sd_bio5))) .*
-    SVector{256}((1 ./ (1 .+ abs.(bio6 .- species_niches.mean_bio6) ./ species_niches.sd_bio6))) .*
-    SVector{256}((1 ./ (1 .+ abs.(bio12 .- species_niches.mean_bio12) ./ species_niches.sd_bio12))) .*
+    SVector{256}((1 ./ (1 .+ abs.(bio5 .- lax_species_niches.mean_bio5) ./ lax_species_niches.sd_bio5))) .*
+    SVector{256}((1 ./ (1 .+ abs.(bio6 .- lax_species_niches.mean_bio6) ./ lax_species_niches.sd_bio6))) .*
+    SVector{256}((1 ./ (1 .+ abs.(bio12 .- lax_species_niches.mean_bio12) ./ lax_species_niches.sd_bio12))) .*
     state.a .* (1.0 - (state.b / ((npp+0.1)))))
 end
-# function int_Gr_with_range(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
-#     return MyStructs256(self_regulation * (npp+0.1) .*
-#     SVector{256}((1 ./ (1 .+ abs.(prec .- species_prec_range.mean_Prec) ./ species_prec_range.sd_Prec))) .*
-#     SVector{256}((1 ./ (1 .+ abs.(temp .- species_temp_range.mean_Temp) ./ species_temp_range.sd_Temp))) .*
-#     state.a .* (1.0 .- (state.a ./ ((npp+0.1)))))
-# end
+function int_Gr_for_biotic(state::MyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, bio5::AbstractFloat, bio6::AbstractFloat, bio12::AbstractFloat)
+    return MyStructs256(SVector{256}(self_regulation * (npp .+ 0.1) .* 
+    SVector{256}(1 ./ (1 .+ abs.(bio5 .- species_niches.mean_bio5) ./ species_niches.sd_bio5)) .* 
+    SVector{256}(1 ./ (1 .+ abs.(bio6 .- species_niches.mean_bio6) ./ species_niches.sd_bio6)) .* 
+    SVector{256}(1 ./ (1 .+ abs.(bio12 .- species_niches.mean_bio12) ./ species_niches.sd_bio12)) .* 
+    state.a .* (1.0 .- (state.a ./ (npp .* binary_vector .+ npp .* opposite_binary_vector ./ 100.0)))))
+end
+function trophic_optimized(abundances, A_matrix)
+    # Calculate the weighted interaction directly
+    interaction = A_matrix * abundances.a
+    return MyStructs256(SVector(interaction .* abundances.a))
+end
+
 dimensions = (125, 76)
 idx_tupled = [(i, j) for i in 1:dimensions[1], j in 1:dimensions[2]]
-function random_dimarray(dimensions::Tuple{Int64, Int64}; prevalence = 0.1)
-    init_array = DimArray(zeros(dimensions, MyStructs256{Float64}), (Dim{:X}(1:dimensions[1]), Dim{:Y}(1:dimensions[2])))
-    for i in idx
-        init_array[i] = MyStructs256(100.0 .* SVector{256}(sample([1,0], Weights([prevalence, 1-prevalence]), 256)))
-    end
-    return init_array
-end
-DA_random_with_abundances = random_dimarray(dimensions; prevalence = 0.1)
-#TODO At prevalence 0.277 or higher you get instability
-# function int_Gr(state::mMyStructs256, self_regulation::AbstractFloat, npp::Union{AbstractFloat, AbstractArray}, temp::AbstractFloat, prec::AbstractFloat)
-#     return mMyStructs256(self_regulation * npp .*
-#     (1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec)) .*
-#     (1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp)) .*
-#     state.a .* (1.0 .- (state.a ./ (npp))))
-# end
-climatic_niche_rule = Cell{Tuple{:state, :npp, :bio5, :bio6, :bio12}, :state}() do data, (state, npp, bio5, bio6, bio12), I
+
+lax_climatic_niche_rule = Cell{Tuple{:state, :npp, :bio5, :bio6, :bio12}, :state}() do data, (state, npp, bio5, bio6, bio12), I
     if any(isinf, state.a) || any(isnan, state.a)
         @error "state has NA values"
+        println(I)
     end
-    # prec_factor = (1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec))
-    # temp_factor = (1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp))
-    # println(MyStructs256(SVector{256}((self_regulation * 1000.0) .* state.a .* (1.0 .- (state.a ./ 1000.0)))))  
-    return state + int_Gr(state, self_regulation, npp, bio5, bio6, bio12) 
-    # + MyStructs256(self_regulation * 100.0 .*
-    #  SVector{256}(1 ./ (1 .+ abs.(prec .- species_prec.mean_Prec) ./ species_prec.sd_Prec)) .*
-    #  SVector{256}(1 ./ (1 .+ abs.(temp .- species_temp.mean_Temp) ./ species_temp.sd_Temp)) .*
-    #  state.a .* (1.0 .- (state.a ./ (100.0))))
+    return state + lax_int_Gr(state, self_regulation, npp, bio5, bio6, bio12)
+end
+
+biotic_rule = Cell{Tuple{:state, :npp, :bio5, :bio6, :bio12}, :state}() do data, (state, npp, bio5, bio6, bio12), I
+    if any(isinf, state.a) || any(isnan, state.a)
+        @error "state has NA values"
+        println(I)
+    end
+    merged_state = state + 
+        int_Gr_for_biotic(state, self_regulation, npp, bio5, bio6, bio12)  +
+        trophic_optimized(state, full_IM_used)
+    return MyStructs256(max.(0.0, merged_state.a))
 end
 function (kernel::CustomKernel)(distance)
     return exp(-(distance^2) / (2*(kernel.α^2)))
 end
-# DA_with_abundances[18, 1] + MyStructs256(self_regulation * 100.0 .*
-# SVector{256}(1 ./ (1 .+ abs.(30.0 .- species_prec.mean_Prec) ./ species_prec.sd_Prec)) .*
-# SVector{256}(1 ./ (1 .+ abs.(20.0 .- species_temp.mean_Temp) ./ species_temp.sd_Temp)) .*
-# DA_with_abundances[18, 1].a .* (1.0 .- (DA_with_abundances[18, 1].a ./ (100.0))))
-indisp = InwardsDispersal{:state, :state}(;
-    formulation=CustomKernel(0.1),
-    distancemethod=AreaToArea(30)
-);
+
 outdisp = OutwardsDispersal{:state, :state}(;
-    formulation=CustomKernel(0.1),
+    formulation=CustomKernel(0.2),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
 
 npp_DA = deserialize("Objects\\npp_DA.jls")
-npp_DA = npp_DA./100000
-highest_npp = maximum(filter(!isnan, npp_DA[:]))
-highest_richness = maximum(filter(!iszero, DA_richness[:]))
+npp_DA = npp_DA./1000000
+
+function random_dimarray(dimensions::Tuple{Int64, Int64}; prevalence = 0.1)
+    init_array = DimArray(zeros(dimensions, MyStructs256{Float64}), (Dim{:X}(1:dimensions[1]), Dim{:Y}(1:dimensions[2])))
+    for i in idx
+        init_array[i] = MyStructs256(SVector{256}(10.0 .* binary_vector .+ 10.0 .* opposite_binary_vector) .* SVector{256}(sample([1,0], Weights([prevalence, 1-prevalence]), 256)))
+    end
+    return init_array
+end
+
+DA_random_with_abundances = random_dimarray(dimensions; prevalence = 0.1)
+#TODO At prevalence 0.277 or higher you get instability
 pepe = ( 
     state = Matrix(DA_random_with_abundances),
     npp = Matrix(npp_DA),
@@ -669,40 +515,8 @@ pepe = (
 )
 
 array_output = ArrayOutput(
-    pepe; tspan = 1:500,
+    pepe; tspan = 1:100,
     mask = Matrix(DA_sum)
 )
-@time r = sim!(array_output, Ruleset(climatic_niche_rule, outdisp; boundary = Reflect()))
-sum(r[100].state).b ≈ sum(r[1].state).b
-richness_evaluation(r[length(r)].state, DA_with_presences)
-
-makie_output = MakieOutput(pepe, tspan = 1:500;
-    fps = 50, ruleset = Ruleset(climatic_niche_rule, outdisp; boundary = Reflect()),
-    mask = Matrix(DA_sum)) do (; layout, frame)
-
-    # Setup the keys and titles for each plot
-    plot_keys = [:state_heatmap, :state_image, :npp, :richness, :bio5, :bio6, :bio12]
-    titles = ["Abundance", "Simulated Richness", "Carrying capacity", "Real Richness", "bio5", "bio6", "bio12"]
-
-    # Create axes for each plot and customize them
-    axes = [Axis(layout[i, j]; title=titles[(i-1)*3 + j]) for i in 1:2, j in 1:3]
-        
-    # Apply the same color map and limits to all plots, ensure axes are hidden, and set titles
-    for (ax, key, title) in zip(axes, plot_keys, titles)
-        if key == :state_heatmap
-            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=:seismic, colorrange=(0, 2000))
-        elseif key == :state_image
-            Makie.image!(ax, frame[:state], colormap=:seismic, colorrange=(0, 256))
-        elseif key == :richness
-            Makie.heatmap!(ax, frame[key]; interpolate=false, colormap=:seismic, colorrange=(0, 168))
-        else
-            Makie.heatmap!(ax, frame[key]; interpolate=false, colormap=:seismic)
-        end
-        hidexdecorations!(ax; grid=false)
-        hideydecorations!(ax; grid=false)
-        ax.title = title  # Set the title for each axis
-        ax.yreversed[] = true
-    end
-end
-
-hello = 0
+@time r = sim!(array_output, Ruleset(lax_climatic_niche_rule, outdisp; boundary = Wrap()))
+rich_eval = richness_evaluation(r[length(r)].state, DA_with_presences)

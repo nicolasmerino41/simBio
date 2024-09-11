@@ -33,7 +33,7 @@ output_without_mask = ArrayOutput(init; tspan=1:1000)
 # @profile sim!(output_without_mask, Ruleset(outdisp_without_mask; boundary=Reflect()))
 # ProfileView.view()
 r = sim!(output_without_mask, Ruleset(outdisp_without_mask; boundary=Reflect()))
-sum(r[1]) ≈ sum(r[1000])
+sum(r[1000]) ≈ sum(r[1])
 
 ## TESTING NEW IMPLEMENTATION
 # Create OutwardsDispersal with a mask
@@ -56,13 +56,10 @@ indisp = InwardsDispersal{}(;
     distancemethod=AreaToArea(30)
 )
 
-output_with_indisp = ArrayOutput(init; tspan=1:1000, mask=mask_data)
+output_with_indisp = ArrayOutput(init; tspan=1:1000)
 
-@btime sim!(output_with_indisp, Ruleset(indisp; boundary=Reflect()))
-
-
-
-
+r = sim!(output_with_indisp, Ruleset(indisp; boundary=Wrap()))
+sum(r[1]) ≈ sum(r[1000])
 ###################### TESTING FROM THE PACKAGE ####################
 # Define a mask
 mask_data = [i == 1 || i == 10 || j == 1 || j == 10 ? false : true for i in 1:10, j in 1:10]

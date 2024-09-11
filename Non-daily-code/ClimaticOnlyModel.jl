@@ -29,14 +29,14 @@ prec_DA = DimArray(prec_raster, (Dim{:a}(1:125), Dim{:b}(1:76)))
 prec_DA = parent(prec_raster)
 ######## TEMPERATURE ##############
 ####### Species_temp
-species_temp = CSV.File("species_temp.csv") |> DataFrame
+species_temp = CSV.File("DFs\\species_temp.csv") |> DataFrame
 species_temp = species_temp[!, 2:4]
 # Find the sorting indices based on matching names_order to species column
 order_indices = indexin(names(iberian_interact_df), species_temp[:, :species])
 # Reorder rows based on these indices
 species_temp = species_temp[order_indices, :]
 ####### Species_temp_range
-species_temp_range = CSV.File("species_temp_range.csv") |> DataFrame
+species_temp_range = CSV.File("DFs\\species_temp_range.csv") |> DataFrame
 species_temp_range = species_temp_range[!, 2:4]
 # Find the sorting indices based on matching names_order to species column
 order_indices = indexin(names(iberian_interact_df), species_temp_range[:, :species])
@@ -44,12 +44,12 @@ order_indices = indexin(names(iberian_interact_df), species_temp_range[:, :speci
 species_temp_range = species_temp_range[order_indices, :]
 ######## PRECIPITATION ##############
 ####### Species_prec
-species_prec = CSV.File("species_prec.csv") |> DataFrame
+species_prec = CSV.File("DFs\\species_prec.csv") |> DataFrame
 species_prec = species_prec[!, 2:4]
 # Reorder rows based on these indices
 species_prec = species_prec[order_indices, :]
 ####### Species_prec_range
-species_prec_range = CSV.File("species_prec_range.csv") |> DataFrame
+species_prec_range = CSV.File("DFs\\species_prec_range.csv") |> DataFrame
 species_prec_range = species_prec_range[!, 2:4]
 # Reorder rows based on these indices
 species_prec_range = species_prec_range[order_indices, :]

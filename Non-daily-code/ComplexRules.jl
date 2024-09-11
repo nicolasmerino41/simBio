@@ -125,23 +125,23 @@ end
 # Define kernel product for MyStructs256
 function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{Float64}}, kernel::SVector{9, Float64})
     
-    result_a = SVector{256, Float64}(fill(0.0, 256))
+    result_a = fill(0.0, 256)
     
     for (i, k) in enumerate(kernel)
         result_a += hood[i].a .* k
     end
-    return MyStructs256(SVector(result_a))
+    return MyStructs256(result_a)
 end
 function Dispersal.kernelproduct(hood::Window{2, 2, 25, MyStructs256{Float64}}, kernel::SVector{25, Float64})
     
-    result_a = SVector{256, Float64}(fill(0.0, 256))
+    result_a = fill(0.0, 256)
     
     for (i, k) in enumerate(kernel)
         result_a += hood[i].a .* k
     end
     # println(sum(result_a))
     # result_b = sum(result_a)
-    return MyStructs256(SVector(result_a)) #, result_b)
+    return MyStructs256(result_a) #, result_b)
 end
 #################### FUNCTIONS ############################
 ################################################################
