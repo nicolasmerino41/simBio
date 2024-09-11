@@ -24,6 +24,15 @@ include("HerpsVsBirmmals.jl")
 ####################################################################
 ####################################################################
 ####################################################################
+###################### remove_variables ############################
+function remove_variable(var_name::Symbol)
+    if isdefined(Main, var_name)
+        eval(:(global $var_name = nothing))
+        println("Variable $var_name removed from the environment.")
+    else
+        println("Variable $var_name is not defined.")
+    end
+end
 ######################## Size_selection kernel ########################
 #######################################################################
 function size_selection_kernel(predator_mass, prey_mass, sd, beta)
@@ -118,7 +127,7 @@ end
 
 ################### map_plot ######################
 ###################################################
-function map_plot(plot::AbstractArray; type = nothing, palette = nothing, legend = false, show_grid = true, flip = true, title = nothing, kw...)
+function map_plot(plot::AbstractArray; type = nothing, lambda_DA = nothing, palette = nothing, legend = false, show_grid = true, flip = true, title = nothing, kw...)
     
     if isa(plot, DimArray)
         @warn "The plot is a DimArray. Consider using a Matrix."
@@ -132,7 +141,10 @@ function map_plot(plot::AbstractArray; type = nothing, palette = nothing, legend
 
     # Plot according to the specified type
     if type == "image"
-        image!(ax, plot, colormap = pal; kw...)
+        if isnothing(lambda_DA)
+            @error("No lambda_DA being used, choose one.")
+        end
+        image!(ax, plot, lambda_DA; colormap = pal, kw...)
     elseif type == "plot"
         plot!(ax, plot; kw...)
     else
@@ -235,7 +247,7 @@ println("The number of 1s in the iberian_interact_matrix is $interaction_count")
 # Turn iberian_interact_matrix into a DataFrame
 # Convert the iberian_interact_matrix into a DataFrame with appropriate column and row names
 iberian_interact_df = DataFrame(iberian_interact_matrix, species_names)
-function turn_adj_into_inter(adjacencyy, sigma, epsilon)
+function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation = 0.01; beta = 1.0)
     adjacency = deepcopy(adjacencyy)
     epsilon = float(epsilon)
     u = adjacency
@@ -301,11 +313,11 @@ function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:My
     return Makie.convert_arguments(t, scalars)
 end
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyBirmmals, 2})
-    scalars = map(mystruct -> mystruct.b, A).*lambda_DA
+    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
     return Makie.convert_arguments(t, scalars)
 end
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyHerps, 2})
-    scalars = map(mystruct -> mystruct.b, A).*lambda_DA
+    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
     return Makie.convert_arguments(t, scalars)
 end
 function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2})
@@ -321,6 +333,22 @@ end
 function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2})
     # Count presence based on the threshold
     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_herps[i], 1:length(mystruct.a)), A)
+    return Makie.convert_arguments(t, richness)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
+    return Makie.convert_arguments(t, richness)
+end
+
+# For MyBirmmals
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_birds[i], 1:length(mystruct.a)), A, lambda_grid)
+    return Makie.convert_arguments(t, richness)
+end
+
+# For MyHerps
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_herps[i], 1:length(mystruct.a)), A, lambda_grid)
     return Makie.convert_arguments(t, richness)
 end
 ##################### UTMtoRASTER ##################################
@@ -953,10 +981,6 @@ end
 
 function (kernel::CustomKernel)(distance)
     return exp(-(distance^2) / (2*(kernel.α^2)))
-end
-
-function (kernel::CustomKernel)(distance)
-    return distance * kernel.α * 0.5
 end
 
 indisp = InwardsDispersal{:state, :state}(;

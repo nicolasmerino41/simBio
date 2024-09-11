@@ -20,13 +20,55 @@ pepe_state = (
 
 caca = deepcopy(iberian_interact_NA)
 self_regulation = 1.0
-sigma = 10.0
-epsilon = 0.1
-full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon))
-alpha = 1.0
+sigma = 0.00001
+epsilon = 1.0
+full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation))
+remove_variable(:alpha)
+alpha = 0.1
+exp(-(1^2) / (2*(alpha^2)))
 m = maximum(npp_DA[.!isnan.(npp_DA)])
 n = minimum(npp_DA[.!isnan.(npp_DA)])
 
+function trophic_optimized(abundances, full_IM)
+    # Calculate the weighted interaction directly
+    return MyStructs256(SVector{256, Float64}((full_IM * abundances.a) .* abundances.a))
+end
+function int_Gr_for_biotic_k(state::MyStructs256, self_regulation::AbstractFloat, k_DA::MyStructs256)
+    return MyStructs256(SVector{256, Float64}(self_regulation .* (k_DA.a .+ 0.00001) .*
+        state.a .* (1.0 .- (state.a ./ (k_DA.a .* binary_vector .+ k_DA.a .* opposite_binary_vector)))))
+end
+function GLV(state::MyStructs256, k_DA::MyStructs256)
+    return MyStructs256(
+        SVector{256, Float64}(
+            state.a + (state.a .* (k_DA.a - state.a) + ((full_IM * state.a) .* state.a)) 
+        )
+    )
+end
+
+biotic_GLV = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
+    # if any(isinf, state.a) || any(isnan, state.a)
+    #     @error "state has NA values"
+    #     println(I)
+    # end
+    return GLV(state, k_DA)
+end
+
+biotic_rule_k = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
+    if any(isinf, state.a) || any(isnan, state.a)
+        @error "state has NA values"
+        println(I)
+    end
+    return MyStructs256(
+        SVector{256, Float64}(
+            max.(
+                0.0,
+                (state +
+                int_Gr_for_biotic_k(state, self_regulation, k_DA)  +
+                trophic_optimized(state, full_IM)).a
+            )
+        )
+    )
+end
 neighbors_rule = Neighbors{:state, :state}(Moore(1)) do data, neighborhood, cell, I
     # Get the distances for this neighborhood
     dist = distances(neighborhood)
@@ -43,8 +85,9 @@ neighbors_rule = Neighbors{:state, :state}(Moore(1)) do data, neighborhood, cell
     # Return the weighted sum for this cell, encapsulated in a new MyStructs256
     return MyStructs256(weighted_sum)
 end
-# real_body_mass_vector = deepcopy(body_mass_vector)
-body_mass_vector = fill(1.0, 256)
+
+scaling_vector = fill(1.0, 49)
+scaling_vector = append!(scaling_vector, fill(1.0, 207))
 
 neighbors_rule_size_based = Neighbors{:state, :state}(Moore(1)) do data, neighborhood, cell, I
     # Get the distances for this neighborhood
@@ -79,48 +122,41 @@ neighbors_rule_size_based = Neighbors{:state, :state}(Moore(1)) do data, neighbo
 end
 
 # Example usage of OutwardsDispersalRemix in a simulation
-rule = OutwardsDispersalRemix{:state, :state}(
-    formulation=ExponentialKernel(1.0),
+remix_outdisp = OutwardsDispersalRemix{:state, :state}(
+    formulation=CustomKernel(alpha),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
-function (kernel::CustomKernel)(distance)
-    return distance * kernel.α * 0.5
-end
+
 outdisp = OutwardsDispersal{:state, :state}(;
-    formulation=ExponentialKernel(1.0),
+    formulation=CustomKernel(alpha),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
 
 indisp = InwardsDispersal{:state, :state}(;
-    formulation=ExponentialKernel(1.0),
+    formulation=ExponentialKernel(),
     distancemethod=AreaToArea(30)
 );
 
 ##### MAKIE STATE #####
-array_output = ResultOutput(
-    pepe_state; tspan = 1:2,
-    mask = Matrix(DA_sum)
-)
-array_output1 = ResultOutput(
-    pepe_state; tspan = 1:2,
-    mask = Matrix(DA_sum)
-)
-array_output2 = ResultOutput(
-    pepe_state; tspan = 1:2,
-    mask = Matrix(DA_sum)
-)
-@time s = sim!(array_output, Ruleset(outdisp; boundary = Reflect(), proc = ThreadedCPU()))
-@time t = sim!(array_output1, Ruleset(outdisp; boundary = Reflect(), proc = ThreadedCPU()))
-@time r = sim!(array_output2, Ruleset(rule; proc = ThreadedCPU()))
-s[end].state ≈ t[end].state
-s[end].state ≈ r[end].state
-Main.body_mass_vector
-map_plot(Matrix(s[end].state); type = "heatmap")
-map_plot(Matrix(r[end].state); type = "heatmap")
-makie_output = MakieOutput(pepe_state, tspan = 1:100;
-    fps = 10, ruleset = Ruleset(outdisp; boundary = Reflect()),
+# array_output = ResultOutput(
+#     pepe_state; tspan = 1:3,
+#     mask = Matrix(DA_sum)
+# )
+# array_output2 = ResultOutput(
+#     pepe_state; tspan = 1:3,
+#     mask = Matrix(DA_sum)
+# )
+# @time a = sim!(array_output, Ruleset(biotic_rule_k))[end].state
+# @time b = sim!(array_output2, Ruleset(biotic_GLV))[end].state
+# a ≈ b
+# MK.image(Matrix(DA_with_abundances), lambda_DA.multiplicative; colormap = :thermal, colorrange = (0, total_max))
+# map_plot(Matrix(r[end].state); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
+# map_plot(Matrix(DA_with_abundances); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
+
+MakieOutput(pepe_state, tspan = 1:100;
+    fps = 10, ruleset = Ruleset(biotic_GLV, remix_outdisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
 
     # Setup the keys and titles for each plot
@@ -135,7 +171,7 @@ makie_output = MakieOutput(pepe_state, tspan = 1:100;
         if key == :biomass
             Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
         elseif key == :simulated_richness
-            Makie.image!(ax, frame[:state]; colormap=custom_palette, colorrange = (0, 256))
+            Makie.image!(ax, frame[:state], lambda_DA.multiplicative; colormap=custom_palette, colorrange = (0, 256))
         elseif key == :npp
             Makie.heatmap!(ax, frame[:npp_DA]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
         elseif key == :real_richness
