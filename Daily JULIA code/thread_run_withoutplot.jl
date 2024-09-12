@@ -121,3 +121,60 @@ Threads.@threads for sigma in sigmas
         end
     end
 end
+sigmas = [0.0001, 0.001, 0.005, 0.008, 0.01, 0.05, 0.07, 0.09, 0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0]
+alpha_values = [0.01, 0.1, 0.3, 0.7, 0.9, 1.2, 1.5, 1.8]
+connectances = [0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]
+herbivore_proportions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+# sigmas = [0.001]
+# alpha_values = [0.01, 0.1]
+# connectances = [0.01, 0.1]
+# herbivore_proportions = [0.1, 0.5]
+
+include("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio\\Daily JULIA code\\Controlled GLV experiment.jl")
+Threads.@threads for sigma in sigmas
+    for herbivore_proportion in herbivore_proportions
+        for alpha in alpha_values
+            for connectance in connectances  
+                A_matrix = Adjacency_Matrix_Maker(num_species, connectance, herbivore_proportion)[1]
+                I_matrix = Interaction_Matrix_Maker(A_matrix, sigma)
+                I_matrix = fill_diagonal!(I_matrix, self_regulation)
+                function GLV(state::MyStructs256, k_DA::MyStructs256)
+                     return MyStructs256(
+                    SVector{num_species, Float64}(
+                   state.a + (state.a .* (k_DA.a - state.a) + ((I_matrix * state.a) .* state.a)) 
+                   )
+                 )
+                end
+
+biotic = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
+    # if any(isinf, state.a) || any(isnan, state.a)
+    #     @error "state has NA values"
+    #     println(I)
+    # end
+    return MyStructs256(SVector{num_species, Float64}(max.(0.0, GLV(state, k_DA).a)))
+end
+
+disp = OutwardsDispersal{:state, :state}(
+    formulation = CustomKernel(alpha),
+    distancemethod = AreaToArea(30),
+    maskbehavior = Dispersal.CheckMaskEdges(),
+)
+
+pepe = (
+    state = Matrix(raster_with_abundances),
+    k_DA = Matrix(raster_k_DA),
+)
+
+array_output = ResultOutput(
+    pepe, tspan = 1:100;
+    mask = Matrix(raster_sum),
+)
+
+@time a = sim!(array_output, Ruleset(biotic, disp; boundary = Reflect(), proc = ThreadedCPU()))
+                # Lock for thread safety when modifying shared resources
+                serialize("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio\\theoretical outputs\\matrix_hp_$(herbivore_proportion)_a$(alpha)_c$(connectance)_s$(sigma).jls", a[end].state)
+            end
+        end
+    end
+end

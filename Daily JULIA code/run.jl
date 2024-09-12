@@ -50,7 +50,7 @@ biotic_GLV = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
     #     @error "state has NA values"
     #     println(I)
     # end
-    return GLV(state, k_DA)
+    return MyStructs256(SVector{256, Float64}(max.(0.0, GLV(state, k_DA).a)))
 end
 
 biotic_rule_k = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
@@ -155,8 +155,8 @@ indisp = InwardsDispersal{:state, :state}(;
 # map_plot(Matrix(r[end].state); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
 # map_plot(Matrix(DA_with_abundances); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
 
-MakieOutput(pepe_state, tspan = 1:100;
-    fps = 10, ruleset = Ruleset(biotic_GLV, remix_outdisp; boundary = Reflect()),
+MakieOutput(pepe_state, tspan = 1:15;
+    fps = 10, ruleset = Ruleset(biotic_rule_k, remix_outdisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
 
     # Setup the keys and titles for each plot

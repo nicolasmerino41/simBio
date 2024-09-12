@@ -5,22 +5,22 @@
 ######################## DEFINING BASIC MYSTRUCTS256 METHODS ####################################
 #################################################################################################
 struct MyStructs256{T <: AbstractFloat} <: FieldVector{2, T}
-    a::SVector{256, T}
+    a::SVector{num_species, T}
     b::T
 
     # Custom constructor for automatic sum calculation
-    function MyStructs256(a::SVector{256, T}) where T <: AbstractFloat
+    function MyStructs256(a::SVector{num_species, T}) where T <: AbstractFloat
         new{T}(a, sum(a))
     end
 
     # Explicit constructor allowing manual setting of both `a` and `b`
-    MyStructs256(a::SVector{256, T}, b::T) where T <: AbstractFloat = new{T}(a, b)
+    MyStructs256(a::SVector{num_species, T}, b::T) where T <: AbstractFloat = new{T}(a, b)
 end
 
 # Define zero and oneunit for MyStructs256
-Base.zero(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructs256(SVector{256, T}(fill(zero(T), 256)), zero(T))
-Base.zero(x::MyStructs256{T}) where {T <: AbstractFloat} = MyStructs256(SVector{256, T}(fill(zero(T), 256)), zero(T))
-Base.oneunit(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructs256(fill(oneunit(T), 256), oneunit(T))
+Base.zero(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructs256(SVector{num_species, T}(fill(zero(T), num_species)), zero(T))
+Base.zero(x::MyStructs256{T}) where {T <: AbstractFloat} = MyStructs256(SVector{num_species, T}(fill(zero(T), num_species)), zero(T))
+Base.oneunit(::Type{MyStructs256{T}}) where {T <: AbstractFloat} = MyStructsnum_species(fill(oneunit(T), num_species), oneunit(T))
 
 # Comparison based on 'b' field
 Base.isless(x::MyStructs256, y::MyStructs256) = isless(x.b, y.b)
@@ -31,12 +31,12 @@ Base.:+(x::MyStructs256, y::MyStructs256) = MyStructs256(x.a .+ y.a, sum(x.a .+ 
 Base.:-(x::MyStructs256, y::MyStructs256) = MyStructs256(x.a .- y.a, sum(x.a .- y.a))
 Base.:*(x::MyStructs256, scalar::Real) = MyStructs256(x.a .* scalar, sum(x.a .* scalar))
 Base.:/(x::MyStructs256, scalar::Real) = MyStructs256(x.a ./ scalar, sum(x.a ./ scalar))
-Base.:-(x::MyStructs256, scalar::Real) = MyStructs256(x.a .- scalar, x.b - scalar * 256)
-Base.:+(x::MyStructs256, scalar::Real) = MyStructs256(x.a .+ scalar, x.b + scalar * 256)
-Base.:*(x::MyStructs256, y::AbstractVector) = MyStructs256(x.a .* SVector{256, Float64}(y), sum(x.a .* SVector{256, Float64}(y)))
-Base.:/(x::MyStructs256, y::AbstractVector) = MyStructs256(x.a ./ SVector{256, Float64}(y), sum(x.a ./ SVector{256, Float64}(y)))
-Base.:*(y::AbstractVector, x::MyStructs256) = MyStructs256(SVector{256, Float64}(y) .* x.a, sum(SVector{256, Float64}(y) .* x.a))
-Base.:/(y::AbstractVector, x::MyStructs256) = MyStructs256(SVector{256, Float64}(y) ./ x.a, sum(SVector{256, Float64}(y) ./ x.a))
+Base.:-(x::MyStructs256, scalar::Real) = MyStructs256(x.a .- scalar, x.b - scalar * num_species)
+Base.:+(x::MyStructs256, scalar::Real) = MyStructs256(x.a .+ scalar, x.b + scalar * num_species)
+Base.:*(x::MyStructs256, y::AbstractVector) = MyStructs256(x.a .* SVector{num_species, Float64}(y), sum(x.a .* SVector{num_species, Float64}(y)))
+Base.:/(x::MyStructs256, y::AbstractVector) = MyStructs256(x.a ./ SVector{num_species, Float64}(y), sum(x.a ./ SVector{num_species, Float64}(y)))
+Base.:*(y::AbstractVector, x::MyStructs256) = MyStructs256(SVector{num_species, Float64}(y) .* x.a, sum(SVector{num_species, Float64}(y) .* x.a))
+Base.:/(y::AbstractVector, x::MyStructs256) = MyStructs256(SVector{num_species, Float64}(y) ./ x.a, sum(SVector{num_species, Float64}(y) ./ x.a))
 
 
 # Define what a NaN is for MyStructs256
@@ -81,98 +81,6 @@ function Base.maximum(a::Matrix{MyStructs256{AbstractFloat}})
     return maximum(map(x -> x.b, a))
 end
 
-################# MYSTRUCTS256 KERNEL METHODS ################
-###############################################################
-###############################################################
-struct CustomKernel <: KernelFormulation
-    α::AbstractFloat
-end
-
-abstract type AbstractKernelNeighborhood end
-
-struct CustomDispersalKernel{N<:DynamicGrids.Neighborhood, F<:KernelFormulation} <: AbstractKernelNeighborhood
-    neighborhood::N
-    formulation::F
-end
-
-function CustomDispersalKernel(; 
-    neighborhood::DynamicGrids.Neighborhood=Moore(1), 
-    formulation::KernelFormulation=CustomKernel(1.0)
-)
-    CustomDispersalKernel{typeof(neighborhood), typeof(formulation)}(neighborhood, formulation)
-end
-
-# Define neighbors for custom kernel
-function DynamicGrids.neighbors(kernel::CustomDispersalKernel, hood, center::MyStructs256, I)
-    result_a = zero(center.a)
-    for i in 1:256
-        for (j, neighbor) in enumerate(hood)
-            if center.a[i] > 0.0
-                dist = distance(I, hood.coords[j])
-                result_a += kernel.formulation(dist) * neighbor.a[i]
-            end
-        end
-    end
-    return MyStructs256(result_a)
-end
-
-# Define kernel product for MyStructs256
-function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{AbstractFloat}}, kernel::SVector{9, AbstractFloat})
-    
-    result_a = SVector{256, AbstractFloat}(fill(0.0f0, 256))
-    
-    for (i, k) in enumerate(kernel)
-        result_a += hood[i].a .* k
-    end
-    return MyStructs256(result_a)
-end
-
-function Dispersal.kernelproduct(hood::Window{2, 2, 25, MyStructs256{AbstractFloat}}, kernel::SVector{25, AbstractFloat})
-    
-    result_a = SVector{256, AbstractFloat}(fill(0.0f0, 256))
-    
-    for (i, k) in enumerate(kernel)
-        result_a += hood[i].a .* k
-    end
-    return MyStructs256(result_a)
-end
-
-struct BodyMassKernel <: KernelFormulation
-    α::AbstractFloat
-end
-
-struct BodyMassDispersalKernel{N<:DynamicGrids.Neighborhood, F<:KernelFormulation} <: AbstractKernelNeighborhood
-    neighborhood::N
-    formulation::F
-end
-
-function BodyMassDispersalKernel(; 
-    neighborhood::DynamicGrids.Neighborhood=Moore(1), 
-    formulation::KernelFormulation=BodyMassKernel(1.0)
-)
-    BodyMassDispersalKernel{typeof(neighborhood), typeof(formulation)}(neighborhood, formulation)
-end
-
-# Define kernel product for MyStructs256
-function Dispersal.kernelproduct(hood::Window{1, 2, 9, MyStructs256{AbstractFloat}}, kernel::SVector{9, AbstractFloat})
-    
-    result_a = SVector{256, AbstractFloat}(fill(0.0f0, 256))
-    
-    for (i, k) in enumerate(kernel)
-        result_a += hood[i].a .* body_mass_vector .* k 
-    end
-    return MyStructs256(result_a)
-end
-
-function Dispersal.kernelproduct(hood::Window{2, 2, 25, MyStructs256{AbstractFloat}}, kernel::SVector{25, AbstractFloat})
-    
-    result_a = SVector{256, AbstractFloat}(fill(0.0f0, 256))
-    
-    for (i, k) in enumerate(kernel)
-        result_a += hood[i].a .* body_mass_vector .* k 
-    end
-    return MyStructs256(result_a)
-end
 ################################## MYHERPS METHODS ###########################################
 #################################################################################################
 #################################################################################################

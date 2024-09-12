@@ -19,6 +19,7 @@ const DG, MK, AG, RS, Disp, DF = DynamicGrids, Makie, ArchGDAL, Rasters, Dispers
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 
 include("HerpsVsBirmmals.jl")
+include("kernels.jl")
 #################################################################################################
 ####################### REAL SIMULATION ############################
 ####################################################################
@@ -54,7 +55,6 @@ function zero_out_diagonal!(matrix)
 end
 #################### FILL DIAGONAL ###################################
 ######################################################################
-# Assuming there exists a function with name `fill_diagonal!` to fill the diagonal of a matrix.
 # If not, it needs to be defined as follows:
 function fill_diagonal!(mat, val)
     for i in 1:min(size(mat)...)

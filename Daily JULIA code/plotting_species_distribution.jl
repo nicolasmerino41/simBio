@@ -187,3 +187,9 @@ output_directory = "results"  # Directory containing the serialized files
 
 # Call the function to generate the PDF with all the plots
 load_and_plot_results(sigmas, epsilons, alpha, output_directory)
+
+########## PLOTTING theoretical OUTPUTS ########
+sigmas = [0.0001, 0.001, 0.005, 0.008, 0.01, 0.05, 0.07, 0.09, 0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0]
+alpha_values = [0.01, 0.1, 0.3, 0.7, 0.9, 1.2, 1.5, 1.8]
+connectances = [0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]
+herbivore_proportions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
