@@ -189,7 +189,80 @@ output_directory = "results"  # Directory containing the serialized files
 load_and_plot_results(sigmas, epsilons, alpha, output_directory)
 
 ########## PLOTTING theoretical OUTPUTS ########
+using CairoMakie
+using Serialization
+using PDFmerger
+
+file_path = joinpath(output_dir, "matrix_hp_0.9_a0.7_c0.9_s0.8.jls")
+
+function load_and_plot_results(sigmas, alpha_values, connectances, herbivore_proportions, output_dir, sample_size=500)
+    # Define the path for the final merged PDF
+    output_pdf = joinpath(output_dir, "result_plots_subsample.pdf")
+
+    # Create a temporary directory to store the individual PDFs
+    temp_dir = mktempdir()
+
+    # Generate all combinations
+    combinations = [(sigma, alpha, connectance, hp) for sigma in sigmas for alpha in alpha_values for connectance in connectances for hp in herbivore_proportions]
+
+    # Randomly select a subsample of 500 combinations
+    sampled_combinations = sample(combinations, min(sample_size, length(combinations)))
+
+    # Counter for missing or corrupted files
+    skipped_files_count = 0
+
+    # Loop over the sampled combinations
+    for (sigma, alpha, connectance, herbivore_proportion) in sampled_combinations
+        # Construct the file path for the serialized data
+        file_path = joinpath(output_dir, "matrix_hp_$(herbivore_proportion)_a$(alpha)_c$(connectance)_s$(sigma).jls")
+
+        # Check if the file exists
+        if isfile(file_path)
+            try
+                # Attempt to load the serialized data
+                state_matrix = deserialize(file_path)
+
+                # Create the plot using a heatmap
+                fig = Figure()
+                ax = Axis(fig[1, 1], title = "Sigma = $(sigma), Alpha = $(alpha), Connectance = $(connectance), HP = $(herbivore_proportion)")
+                heatmap!(ax, state_matrix)
+
+                # Save each plot as a temporary PDF
+                temp_pdf_path = joinpath(temp_dir, "plot_s$(sigma)_a$(alpha)_c$(connectance)_hp$(herbivore_proportion).pdf")
+                save(temp_pdf_path, fig)
+
+                # Append the individual PDF to the final output PDF
+                append_pdf!(output_pdf, temp_pdf_path, cleanup=false)
+            catch e
+                # If there is an issue with the file, print a warning and skip it
+                println("Error loading or processing file $(file_path): $(e). Skipping...")
+                skipped_files_count += 1
+            end
+        else
+            skipped_files_count += 1
+            println("File not found: $(file_path). Skipping...")
+        end
+    end
+
+    # Cleanup the temporary directory
+    rm(temp_dir, recursive = true)
+
+    # Print a message confirming where the merged PDF was saved
+    println("Merged PDF saved as: $output_pdf")
+    println("Number of files skipped (missing/corrupted): $skipped_files_count")
+end
+
+# Define your variables
 sigmas = [0.0001, 0.001, 0.005, 0.008, 0.01, 0.05, 0.07, 0.09, 0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0]
 alpha_values = [0.01, 0.1, 0.3, 0.7, 0.9, 1.2, 1.5, 1.8]
 connectances = [0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]
 herbivore_proportions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+# Specify the output directory
+output_dir = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio\\theoretical outputs"
+
+# Run the function with a subsample of 500 combinations
+load_and_plot_results(sigmas, alpha_values, connectances, herbivore_proportions, output_dir, 500)
+
+
+

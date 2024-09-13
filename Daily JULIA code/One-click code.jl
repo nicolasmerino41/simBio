@@ -1,7 +1,7 @@
 using Pkg
 PC = "MM-1"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
-cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\JuliaSimulation\\simBio"))
+Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
+cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
 # Pkg.add(path = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Dispersal.jl")
 # Packages
@@ -983,23 +983,24 @@ function (kernel::CustomKernel)(distance)
     return exp(-(distance^2) / (2*(kernel.α^2)))
 end
 
+alfa = 0.1
 indisp = InwardsDispersal{:state, :state}(;
-    formulation=CustomKernel(0.1),
+    formulation=CustomKernel(alfa),
     distancemethod=AreaToArea(30)
 );
-alpha = 0.1
+
 outdisp = OutwardsDispersal{:state, :state}(;
-    formulation=CustomKernel(alpha),
+    formulation=CustomKernel(alfa),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
 outdisp_birmmals = OutwardsDispersal{:birmmals, :birmmals}(;
-    formulation=CustomKernel(alpha),
+    formulation=CustomKernel(alfa),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
 outdisp_herps = OutwardsDispersal{:herps, :herps}(;
-    formulation=CustomKernel(alpha/2),
+    formulation=CustomKernel(alfa/2),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
