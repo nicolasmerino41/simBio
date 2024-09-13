@@ -863,7 +863,6 @@ end
 
 ##########################################
 ##########################################
-
 prop = [28/256, 57/256, 103/256, 68/256]
 # Load and prepare the data
 belonging = CSV.File("DFs\\block_per_species.csv") |> DataFrame

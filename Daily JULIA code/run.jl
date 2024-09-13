@@ -1,3 +1,4 @@
+num_species = 256
 include("One-click code.jl")
 
 include("human_footprint.jl")
@@ -20,12 +21,12 @@ pepe_state = (
 
 caca = deepcopy(iberian_interact_NA)
 self_regulation = 1.0
-sigma = 0.00001
+sigma = 10.0
 epsilon = 1.0
 full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation))
-remove_variable(:alpha)
-alpha = 0.1
-exp(-(1^2) / (2*(alpha^2)))
+remove_variable(:alfa)
+alfa = 0.1
+exp(-(1^2) / (2*(alfa^2)))
 m = maximum(npp_DA[.!isnan.(npp_DA)])
 n = minimum(npp_DA[.!isnan.(npp_DA)])
 
@@ -123,13 +124,13 @@ end
 
 # Example usage of OutwardsDispersalRemix in a simulation
 remix_outdisp = OutwardsDispersalRemix{:state, :state}(
-    formulation=CustomKernel(alpha),
+    formulation=CustomKernel(alfa),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
 
 outdisp = OutwardsDispersal{:state, :state}(;
-    formulation=CustomKernel(alpha),
+    formulation=CustomKernel(alfa),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
@@ -155,8 +156,8 @@ indisp = InwardsDispersal{:state, :state}(;
 # map_plot(Matrix(r[end].state); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
 # map_plot(Matrix(DA_with_abundances); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
 
-MakieOutput(pepe_state, tspan = 1:15;
-    fps = 10, ruleset = Ruleset(biotic_rule_k, remix_outdisp; boundary = Reflect()),
+MakieOutput(pepe_state, tspan = 1:30;
+    fps = 10, ruleset = Ruleset(biotic_GLV, remix_outdisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
 
     # Setup the keys and titles for each plot

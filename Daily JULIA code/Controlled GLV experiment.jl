@@ -1,12 +1,12 @@
 ######## PARAMETERS ########
 num_species = 100
-# connectance = 0.11
-# sigma = 0.1
+connectance = 0.11
+sigma = 0.1
 self_regulation = -1.0
 carrying_capacity = 1.0
 presence_threshold = 0.1
-# alpha = 0.1
-# herbivore_proportion = 0.3
+alfa = 0.1
+herbivore_proportion = 0.3
 include("loading_pkg (remove if not needed).jl")
 include("kernels.jl")
 # Now run first 21 lines from One-click code.jl
@@ -114,73 +114,73 @@ function fill_diagonal!(mat, val)
 end
 # I_matrix = fill_diagonal!(I_matrix, self_regulation)
 # ##################### RULES ###################################
-# A_matrix = Adjacency_Matrix_Maker(num_species, connectance, herbivore_proportion)[1]
-# I_matrix = Interaction_Matrix_Maker(A_matrix, sigma)
-# I_matrix = fill_diagonal!(I_matrix, self_regulation)
-# function GLV(state::MyStructs256, k_DA::MyStructs256)
-#     return MyStructs256(
-#         SVector{num_species, Float64}(
-#             state.a + (state.a .* (k_DA.a - state.a) + ((I_matrix * state.a) .* state.a)) 
-#         )
-#     )
-# end
+A_matrix = Adjacency_Matrix_Maker(num_species, connectance, herbivore_proportion)[1]
+I_matrix = Interaction_Matrix_Maker(A_matrix, sigma)
+I_matrix = fill_diagonal!(I_matrix, self_regulation)
+function GLV(state::MyStructs256, k_DA::MyStructs256)
+    return MyStructs256(
+        SVector{num_species, Float64}(
+            state.a + (state.a .* (k_DA.a - state.a) + ((I_matrix * state.a) .* state.a)) 
+        )
+    )
+end
 
-# biotic = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
-#     # if any(isinf, state.a) || any(isnan, state.a)
-#     #     @error "state has NA values"
-#     #     println(I)
-#     # end
-#     return MyStructs256(SVector{num_species, Float64}(max.(0.0, GLV(state, k_DA).a)))
-# end
+biotic = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
+    # if any(isinf, state.a) || any(isnan, state.a)
+    #     @error "state has NA values"
+    #     println(I)
+    # end
+    return MyStructs256(SVector{num_species, Float64}(max.(0.0, GLV(state, k_DA).a)))
+end
 
-# disp = OutwardsDispersal{:state, :state}(
-#     formulation = CustomKernel(alpha),
-#     distancemethod = AreaToArea(30),
-#     maskbehavior = Dispersal.CheckMaskEdges(),
-# )
+disp = OutwardsDispersal{:state, :state}(
+    formulation = CustomKernel(alfa),
+    distancemethod = AreaToArea(30),
+    maskbehavior = Dispersal.CheckMaskEdges(),
+)
 
-# pepe = (
-#     state = Matrix(raster_with_abundances),
-#     k_DA = Matrix(raster_k_DA),
-# )
+pepe = (
+    state = Matrix(raster_with_abundances),
+    k_DA = Matrix(raster_k_DA),
+)
 
-# array_output = ResultOutput(
-#     pepe, tspan = 1:100;
-#     mask = Matrix(raster_sum),
-# )
+array_output = ResultOutput(
+    pepe, tspan = 1:100;
+    mask = Matrix(raster_sum),
+)
 
 # @time a = sim!(array_output, Ruleset(biotic, disp; boundary = Reflect(), proc = ThreadedCPU()))
 
 # Makie.heatmap(a[end].state)
 # Makie.image(a[end].state, colormap=custom_palette, colorrange = (0, num_species))
 
-# MakieOutput(pepe, tspan = 1:100;
-#     fps = 10, ruleset = Ruleset(biotic, disp; boundary = Reflect()),
-#     mask = Matrix(raster_sum)) do (; layout, frame)
+MakieOutput(pepe, tspan = 1:100;
+    fps = 10, ruleset = Ruleset(biotic, disp; boundary = Reflect()),
+    mask = Matrix(raster_sum)) do (; layout, frame)
 
-#     # Setup the keys and titles for each plot
-#     plot_keys = [:Biomass, :Richness]
-#     titles = ["Biomass", "Richness"]
+    # Setup the keys and titles for each plot
+    plot_keys = [:Biomass, :Richness]
+    titles = ["Biomass", "Richness"]
 
-#     # Create axes for each plot and customize them
-#     axes = [Axis(layout[i, j]; title=titles[(i-1)*2 + j]) for i in 1:1, j in 1:2]
+    # Create axes for each plot and customize them
+    axes = [Axis(layout[i, j]; title=titles[(i-1)*2 + j]) for i in 1:1, j in 1:2]
 
-#     # Apply the same color map and limits to all plots, ensure axes are hidden, and set titles
-#     for (ax, key, title) in zip(axes, plot_keys, titles)
-#         if key == :Biomass
-#             Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, sum(num_species)))
-#         elseif key == :Richness
-#             Makie.image!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, num_species))
-#         end
-#         hidexdecorations!(ax; grid=false)
-#         hideydecorations!(ax; grid=false)
-#         ax.title = title  # Set the title for each axis
-#         ax.titlegap[] = 5  # Adjust the title gap to make it smaller
-#         ax.titlesize[] = 12 # Set the title font size
-#         ax.titlecolor[] = RGBA(0, 0, 0, 1)  # Set the title color to black
-#         ax.yreversed[] = true
-#     end
-# end
+    # Apply the same color map and limits to all plots, ensure axes are hidden, and set titles
+    for (ax, key, title) in zip(axes, plot_keys, titles)
+        if key == :Biomass
+            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, sum(num_species)))
+        elseif key == :Richness
+            Makie.image!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, num_species))
+        end
+        hidexdecorations!(ax; grid=false)
+        hideydecorations!(ax; grid=false)
+        ax.title = title  # Set the title for each axis
+        ax.titlegap[] = 5  # Adjust the title gap to make it smaller
+        ax.titlesize[] = 12 # Set the title font size
+        ax.titlecolor[] = RGBA(0, 0, 0, 1)  # Set the title color to black
+        ax.yreversed[] = true
+    end
+end
 
 # ruleset = Ruleset(Life())
 # # And the time-span for it to run
