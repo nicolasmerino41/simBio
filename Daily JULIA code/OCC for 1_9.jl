@@ -373,64 +373,62 @@ utmraster_DA = DimArray(utmraster)
 utmraster_da = map(x -> isnothing(x) || isnan(x) ? false : true, utmraster_DA)
 
 # Initialize DA with MyStructs256 of zeroes
-# DA = DimArray(reshape([MyStructs256(SVector{256, Float64}(fill(0.0, 256))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
-# # Iterate over species_df and populate DA
-# for i in 1:size(species_df, 1)
-#     for j in 1:125*76
-#         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-#             if species_df.sum[i] == 54 
-#                println(utmraster_DA[3]) 
-#             end
-#             # Convert species_df_matrix[i, 5:260] to SVector{256, Float64} before creating MyStructs256
-#             DA[j] = MyStructs256(SVector{256, Float64}(species_df_matrix[i, 5:260]))
-#         end
-#     end
-# end
-# serialize("Objects\\DA.jls", DA)
+DA = DimArray(reshape([MyStructs256(SVector{256, Float64}(fill(0.0, 256))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+# Iterate over species_df and populate DA
+for i in 1:size(species_df, 1)
+    for j in 1:125*76
+        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
+            if species_df.sum[i] == 54 
+               println(utmraster_DA[3]) 
+            end
+            # Convert species_df_matrix[i, 5:260] to SVector{256, Float64} before creating MyStructs256
+            DA[j] = MyStructs256(SVector{256, Float64}(species_df_matrix[i, 5:260]))
+        end
+    end
+end
+serialize("Objects1_9\\DA.jls", DA)
 DA = deserialize("Objects\\DA.jls")
-# Save DA to a .jld2 file in the Objects1_9 folder
-@save "Objects1_9/DA.jld2" DA
-@load "Objects1_9/DA.jld2" DA
-# # Initialize DA_herps with MyHerps instances filled with zeros using SVector
-# DA_herps = DimArray(reshape([MyHerps(SVector{49, Float64}(fill(0.0, 49))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
-# # Iterate over species_df and populate DA_herps
-# for i in 1:size(species_df, 1)
-#     for j in 1:125*76
-#         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-#             # Assign the first 49 elements of DA[j].a to DA_herps[j] using SVector
-#             DA_herps[j] = MyHerps(SVector{49, Float64}(DA[j].a[1:49]))
-#         end
-#     end
-# end
-# # Serialize the updated DA_herps object
-# serialize("Objects\\DA_herps.jls", DA_herps)
+
+# Initialize DA_herps with MyHerps instances filled with zeros using SVector
+DA_herps = DimArray(reshape([MyHerps(SVector{49, Float64}(fill(0.0, 49))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+# Iterate over species_df and populate DA_herps
+for i in 1:size(species_df, 1)
+    for j in 1:125*76
+        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
+            # Assign the first 49 elements of DA[j].a to DA_herps[j] using SVector
+            DA_herps[j] = MyHerps(SVector{49, Float64}(DA[j].a[1:49]))
+        end
+    end
+end
+# Serialize the updated DA_herps object
+serialize("Objects1_9\\DA_herps.jls", DA_herps)
 DA_herps = deserialize("Objects\\DA_herps.jls")
-@load "Objects1_9/DA_herps.jld2" DA_herps
-# # Initialize DA_birmmals with MyBirmmals instances filled with zeros using SVector
-# DA_birmmals = DimArray(reshape([MyBirmmals(SVector{207, Float64}(fill(0.0, 207))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
-# # Iterate over species_df and populate DA_birmmals
-# for i in 1:size(species_df, 1)
-#     for j in 1:125*76
-#         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-#             # Assign the elements 50:256 of DA[j].a to DA_birmmals[j] using SVector
-#             DA_birmmals[j] = MyBirmmals(SVector{207, Float64}(DA[j].a[50:256]))
-#         end
-#     end
-# end
-# # Serialize the updated DA_birmmals object
-# serialize("Objects\\DA_birmmals.jls", DA_birmmals)
+
+# Initialize DA_birmmals with MyBirmmals instances filled with zeros using SVector
+DA_birmmals = DimArray(reshape([MyBirmmals(SVector{207, Float64}(fill(0.0, 207))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+# Iterate over species_df and populate DA_birmmals
+for i in 1:size(species_df, 1)
+    for j in 1:125*76
+        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
+            # Assign the elements 50:256 of DA[j].a to DA_birmmals[j] using SVector
+            DA_birmmals[j] = MyBirmmals(SVector{207, Float64}(DA[j].a[50:256]))
+        end
+    end
+end
+# Serialize the updated DA_birmmals object
+serialize("Objects1_9\\DA_birmmals.jls", DA_birmmals)
 DA_birmmals = deserialize("Objects\\DA_birmmals.jls")
-@load "Objects1_9/DA_birmmals.jld2" DA_birmmals
+
+initial_abundance = 0.41
 ##### Let's do a small example of the simBio with the actual ATLAS data ######
 DA_with_abundances = deepcopy(DA)
 for row in axes(DA, 1), col in axes(DA, 2)
     if DA[row, col] != MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
-        new_a = SVector{256, Float64}([DA[row, col].a[i] != 0.0 ? 10.0 : DA[row, col].a[i] for i in 1:256])
+        new_a = SVector{256, Float64}([DA[row, col].a[i] != 0.0 ? initial_abundance : DA[row, col].a[i] for i in 1:256])
         DA_with_abundances[row, col] = MyStructs256(new_a)
     end
 end
 
-initial_abundance = 0.41
 DA_birmmals_with_abundances = deepcopy(DA_birmmals)
 # Iterate over rows and columns
 for row in axes(DA_birmmals, 1), col in axes(DA_birmmals, 2)
@@ -461,22 +459,35 @@ end
 # DA_with_abundances = deserialize("Objects\\DA_with_abundances_all10.jls")::DimArray{MyStructs256{Float64},2}
 
 # This is for visualising richness in the raster or for creating a boolmask
-# DA_richness = zeros(dims(DA_with_abundances))
-# for i in 1:size(species_df, 1)
-#     # println(perro_cropped.Value[i])
-#     for j in 1:125*76
+DA_richness = zeros(dims(DA_with_abundances))
+for i in 1:size(species_df, 1)
+    # println(perro_cropped.Value[i])
+    for j in 1:125*76
         
-#         # println(utmraster_da[j])
-#         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
-#             DA_richness[j] =  species_df_matrix[i, 3] #true
-#         # else
-#         #     DA_sum[j] = false
-#         end
-#     end
-# end
-# serialize("Objects\\DA_sum.jls", DA_sum)
+        # println(utmraster_da[j])
+        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
+            DA_richness[j] =  species_df_matrix[i, 3] #true
+        # else
+        #     DA_sum[j] = false
+        end
+    end
+end
+DA_sum = zeros(dims(DA_with_abundances))
+for i in 1:size(species_df, 1)
+    # println(perro_cropped.Value[i])
+    for j in 1:125*76
+        
+        # println(utmraster_da[j])
+        if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
+            DA_richness[j] =  true
+        else
+            DA_sum[j] = false
+        end
+    end
+end
+serialize("Objects1_9\\DA_sum.jls", DA_sum)
 DA_sum = deserialize("Objects\\DA_sum.jls")
-@load "Objects1_9/DA_sum.jld2" DA_sum
+
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
 
@@ -484,21 +495,18 @@ DA_with_abundances_r = reverse(DA_with_abundances, dims=1)
 DA_with_abundances_p = permutedims(DA_with_abundances, (2, 1))
 DA_with_abundances_p_masked = deepcopy(DA_with_abundances_p)
 
-# DA_richness[34, 9] = Int(round(mean([105, 105, 114, 97, 73, 106, 84])))
-# DA_richness[34, 10] = Int(round(mean([73, 97, 106, 84, 69, 124])))
-# DA_richness[34, 11] = Int(round(mean([84, 69, 76, 106, 124, 86])))
-# DA_richness[34, 12] = Int(round(mean([88, 90, 86, 124, 69, 76])))
-# DA_richness[34, 13] = Int(round(mean([102, 94, 91, 90, 86, 88, 76])))
-# serialize("Objects\\DA_richness.jls", DA_richness)
+DA_richness[34, 9] = Int(round(mean([105, 105, 114, 97, 73, 106, 84])))
+DA_richness[34, 10] = Int(round(mean([73, 97, 106, 84, 69, 124])))
+DA_richness[34, 11] = Int(round(mean([84, 69, 76, 106, 124, 86])))
+DA_richness[34, 12] = Int(round(mean([88, 90, 86, 124, 69, 76])))
+DA_richness[34, 13] = Int(round(mean([102, 94, 91, 90, 86, 88, 76])))
+serialize("Objects1_9\\DA_richness.jls", DA_richness)
 
 DA_richness = deserialize("Objects\\DA_richness.jls")::DimArray{Float64,2}
-@load "Objects1_9/DA_richness.jld2" DA_richness
 DA_richness[DA_richness .== 0.0] .= NaN
 DA_richness_birmmals = deserialize("Objects/DA_richness_birmmals.jls")::DimArray{Float64,2}
-@load "Objects1_9/DA_richness_birmmals.jld2" DA_richness_birmmals
 DA_richness_birmmals[DA_richness_birmmals .== 0.0] .= NaN
 DA_richness_herps = deserialize("Objects/DA_richness_herps.jls")::DimArray{Float64,2}
-@load "Objects1_9/DA_richness_herps.jld2" DA_richness_herps
 DA_richness_herps[DA_richness_herps .== 0.0] .= NaN
 
 ######################## RASTERISING DAs ################################
@@ -572,27 +580,26 @@ npp_absolute_in_kg = npp_absolute_in_kg[:, [2, 3]]
 species_df = leftjoin(species_df, npp_absolute_in_kg, on = :UTMCODE, makeunique = true)
 species_df_matrix = Matrix(species_df)
 
-# npp_DA = DimArray(Raster("Rasters/npp_utmsize_kgC.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
+npp_DA = DimArray(Raster("Rasters/npp_utmsize_kgC.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
 
-# highest_npp = maximum(filter(!isnan, npp_DA[:]))
-# lowest_npp = minimum(filter(!isnan, npp_DA[:]))
-# lowest_richness = minimum(filter(!iszero, DA_richness[:]))
+highest_npp = maximum(filter(!isnan, npp_DA[:]))
+lowest_npp = minimum(filter(!isnan, npp_DA[:]))
+lowest_richness = minimum(filter(!iszero, DA_richness[:]))
 
-# npp_DA_r = reverse(npp_DA, dims=1)
-# npp_DA_p = permutedims(npp_DA, (2, 1))
-# MK.plot(npp_DA);
-# # fixing some NA's that should not be in npp_DA
-# for i in axes(npp_DA, 1), j in axes(npp_DA, 2)
-#     if isnan(npp_DA[i, j]) && !iszero(DA_random_with_abundances[i, j])
-#         println(i, j)
-#         neighbors = get_neighbors(npp_DA, i, j)
-#         neighbors = filter(!isnan, neighbors)
-#         npp_DA[i, j] = mean(neighbors)
-#     end 
-# end
-# serialize("Objects\\npp_DA.jls", npp_DA)
+npp_DA_r = reverse(npp_DA, dims=1)
+npp_DA_p = permutedims(npp_DA, (2, 1))
+MK.plot(npp_DA);
+# fixing some NA's that should not be in npp_DA
+for i in axes(npp_DA, 1), j in axes(npp_DA, 2)
+    if isnan(npp_DA[i, j]) && !iszero(DA_with_abundances[i, j])
+        println(i, j)
+        neighbors = get_neighbors(npp_DA, i, j)
+        neighbors = filter(!isnan, neighbors)
+        npp_DA[i, j] = mean(neighbors)
+    end 
+end
+serialize("Objects1_9\\npp_DA.jls", npp_DA)
 npp_DA = deserialize("Objects\\npp_DA.jls")
-@load "Objects1_9/npp_DA.jld2" npp_DA
 ################### EFFICIENT MATRIX FRAMEWORK #####################
 ####################################################################
 ####################################################################
@@ -690,26 +697,25 @@ end
 ####################################################################
 ##################### NEW NICHES ###########################
 ######## bio rasters  ##############
-# bio5_DA = DimArray(Raster("Rasters/bio5.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
-# bio6_DA = DimArray(Raster("Rasters/bio6.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
-# bio12_DA = DimArray(Raster("Rasters/bio12.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
+bio5_DA = DimArray(Raster("Rasters/bio5.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
+bio6_DA = DimArray(Raster("Rasters/bio6.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
+bio12_DA = DimArray(Raster("Rasters/bio12.tif"), (Dim{:a}(1:125), Dim{:b}(1:76)))
 
-# # fixing some NA's that should not be in bioDA (change number for each bioclim)
-# for i in axes(bio12_DA, 1), j in axes(bio12_DA, 2)
-#     if isnan(bio12_DA[i, j]) && !iszero(DA_random_with_abundances[i, j])
-#         println(i, j)
-#         neighbors = get_neighbors(bio12_DA, i, j)
-#         neighbors = filter(!isnan, neighbors)
-#         bio12_DA[i, j] = mean(neighbors)
-#     end 
-# end
-# serialize("Objects\\bio12.jls", bio12_DA)
+# fixing some NA's that should not be in bioDA (change number for each bioclim)
+for i in axes(bio5_DA, 1), j in axes(bio5_DA, 2)
+    if isnan(bio5_DA[i, j]) && !iszero(DA_with_abundances[i, j])
+        println(i, j)
+        neighbors = get_neighbors(bio5_DA, i, j)
+        neighbors = filter(!isnan, neighbors)
+        bio5_DA[i, j] = mean(neighbors)
+    end 
+end
+serialize("Objects1_9\\bio12.jls", bio12_DA)
+serialize("Objects1_9\\bio5.jls", bio5_DA)
+serialize("Objects1_9\\bio6.jls", bio6_DA)
 bio5_DA = deserialize("Objects\\bio5.jls")
 bio6_DA = deserialize("Objects\\bio6.jls")
 bio12_DA = deserialize("Objects\\bio12.jls")
-@load "Objects1_9/bio5_DA.jld2" bio5_DA
-@load "Objects1_9/bio6_DA.jld2" bio6_DA
-@load "Objects1_9/bio12_DA.jld2" bio12_DA
 futurebio5_DA = bio5_DA .+ 1.0
 futurebio6_DA = bio6_DA .+ 1.0
 futurebio12_DA = bio12_DA .+ rand(Normal(0, 100), 125, 76)
