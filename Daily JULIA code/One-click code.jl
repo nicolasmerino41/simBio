@@ -1,6 +1,6 @@
 num_species = 256
 using Pkg
-PC = "MM-1"
+PC = "nicol"
 Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
 cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
@@ -389,8 +389,8 @@ utmraster_da = map(x -> isnothing(x) || isnan(x) ? false : true, utmraster_DA)
 # serialize("Objects\\DA.jls", DA)
 DA = deserialize("Objects\\DA.jls")
 # Save DA to a .jld2 file in the Objects1_9 folder
-@save "Objects1_9/DA.jld2" DA
-@load "Objects1_9/DA.jld2" DA
+# @save "Objects1_9/DA.jld2" DA
+# @load "Objects1_9/DA.jld2" DA
 # # Initialize DA_herps with MyHerps instances filled with zeros using SVector
 # DA_herps = DimArray(reshape([MyHerps(SVector{49, Float64}(fill(0.0, 49))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 # # Iterate over species_df and populate DA_herps
@@ -405,7 +405,7 @@ DA = deserialize("Objects\\DA.jls")
 # # Serialize the updated DA_herps object
 # serialize("Objects\\DA_herps.jls", DA_herps)
 DA_herps = deserialize("Objects\\DA_herps.jls")
-@load "Objects1_9/DA_herps.jld2" DA_herps
+# @load "Objects1_9/DA_herps.jld2" DA_herps
 # # Initialize DA_birmmals with MyBirmmals instances filled with zeros using SVector
 # DA_birmmals = DimArray(reshape([MyBirmmals(SVector{207, Float64}(fill(0.0, 207))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 # # Iterate over species_df and populate DA_birmmals
@@ -420,7 +420,7 @@ DA_herps = deserialize("Objects\\DA_herps.jls")
 # # Serialize the updated DA_birmmals object
 # serialize("Objects\\DA_birmmals.jls", DA_birmmals)
 DA_birmmals = deserialize("Objects\\DA_birmmals.jls")
-@load "Objects1_9/DA_birmmals.jld2" DA_birmmals
+# @load "Objects1_9/DA_birmmals.jld2" DA_birmmals
 ##### Let's do a small example of the simBio with the actual ATLAS data ######
 DA_with_abundances = deepcopy(DA)
 for row in axes(DA, 1), col in axes(DA, 2)
@@ -476,7 +476,7 @@ end
 # end
 # serialize("Objects\\DA_sum.jls", DA_sum)
 DA_sum = deserialize("Objects\\DA_sum.jls")
-@load "Objects1_9/DA_sum.jld2" DA_sum
+# @load "Objects1_9/DA_sum.jld2" DA_sum
 DA_sum_r = reverse(DA_sum, dims=1)
 DA_sum_p = permutedims(DA_sum, (2, 1))
 
