@@ -1,11 +1,11 @@
-packages = ["NCDatasets", "Shapefile", "ArchGDAL",
-            "CSV", "DataFrames",
-            "NamedArrays", "StaticArrays", "OrderedCollections",
-            "Rasters", "RasterDataSources", "DimensionalData",
-            "Dates", "Distributions", "Serialization",
-            "Plots", "Colors", "Crayons", "ColorSchemes",
-            "ImageMagick", "Makie", "WGLMakie",
-            "Unitful", "StatsFuns"
+packages = [
+    "ArchGDAL", "BenchmarkTools", "CSV", "CairoMakie", "ColorSchemes", 
+    "Colors", "Crayons", "DataFrames", "Dates", "DimensionalData",
+    "Distributions", "ImageMagick", "JLD2", 
+    "Makie", "NCDatasets", "NamedArrays", "OrderedCollections", "PDFmerger", 
+    "Plots", "ProfileView", "RasterDataSources", "Rasters", "Serialization", 
+    "Shapefile", "StaticArrays", "StatsBase", "StatsFuns", "Stencils", 
+    "Unitful", "WGLMakie"
 ]
 ##############################################################
 # Retrieve a list of installed packages and their versions
@@ -19,10 +19,10 @@ installed_pkg_names = [pkg for (pkg, ver) in pkg_list]
 for pkg_name in installed_pkg_names
     Pkg.rm(pkg_name)
 end
-new_vector = append!(installed_pkg_names[1:3], installed_pkg_names[5:7])
-new_vector = append!(new_vector, installed_pkg_names[9:end])
+new_vector = append!(installed_pkg_names[1:2], installed_pkg_names[4:5])
+new_vector = append!(new_vector, installed_pkg_names[7:end])
 # Re-install all the packages from the list
-for pkg_name in new_vector
+for pkg_name in packages
     Pkg.add(pkg_name)
 end
 Pkg.add(PackageSpec(url="https://github.com/cesaraustralia/DynamicGrids.jl", rev="dev"))
@@ -38,4 +38,3 @@ end
 for pkg_name in installed_pkg_names
     Pkg.free()
 end
-

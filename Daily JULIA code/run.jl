@@ -21,11 +21,11 @@ pepe_state = (
 
 caca = deepcopy(iberian_interact_NA)
 self_regulation = 1.0
-sigma = 10.0
+sigma = 1.0
 epsilon = 1.0
 full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation))
 remove_variable(:alfa)
-alfa = 0.1
+alfa = 0.2
 exp(-(1^2) / (2*(alfa^2)))
 m = maximum(npp_DA[.!isnan.(npp_DA)])
 n = minimum(npp_DA[.!isnan.(npp_DA)])
@@ -141,23 +141,23 @@ indisp = InwardsDispersal{:state, :state}(;
 );
 
 ##### MAKIE STATE #####
-# array_output = ResultOutput(
-#     pepe_state; tspan = 1:3,
-#     mask = Matrix(DA_sum)
-# )
+array_output = ResultOutput(
+    pepe_state; tspan = 1:500,
+    mask = Matrix(DA_sum)
+)
 # array_output2 = ResultOutput(
 #     pepe_state; tspan = 1:3,
 #     mask = Matrix(DA_sum)
 # )
-# @time a = sim!(array_output, Ruleset(biotic_rule_k))[end].state
+@time a = sim!(array_output, Ruleset(biotic_GLV, outdisp; boundary = Reflect(), proc = ThreadedCPU()))
 # @time b = sim!(array_output2, Ruleset(biotic_GLV))[end].state
 # a ≈ b
 # MK.image(Matrix(DA_with_abundances), lambda_DA.multiplicative; colormap = :thermal, colorrange = (0, total_max))
 # map_plot(Matrix(r[end].state); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
 # map_plot(Matrix(DA_with_abundances); lambda_DA = lambda_DA.multiplicative, type = "image", palette = :thermal, colorrange = (0, total_max))
 
-MakieOutput(pepe_state, tspan = 1:30;
-    fps = 10, ruleset = Ruleset(biotic_GLV, remix_outdisp; boundary = Reflect()),
+makie_output = MakieOutput(pepe_state, tspan = 1:30;
+    fps = 10, ruleset = Ruleset(biotic_GLV, outdisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
 
     # Setup the keys and titles for each plot

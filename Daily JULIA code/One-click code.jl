@@ -1,6 +1,6 @@
 num_species = 256
 using Pkg
-PC = "nicol"
+PC = "MM-1"
 Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
 cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
@@ -1253,6 +1253,5 @@ function total_biomass(array_output, position; modified = false, caca = false)
     if caca
         combined_abundances = array_output.*lambda_DA[position]
     end
+    return sum(combined_abundances).b
 end
-
-

@@ -11,24 +11,26 @@ function shannon_index(abundance_vector)
 end
 
 # Function to compute the average Shannon index over specified indices
-function average_shannon_index(array_output; modified = false)
-    if !modified
+function average_shannon_index(array_output, position; modified = false, caca = false)
+    if !modified && !caca
         # Merge birmmals and herps
-        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA
-    else
-        combined_abundances = array_output[end].state
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state.*lambda_DA[position]
+    end
+    if caca
+        combined_abundances = array_output.*lambda_DA[position]
     end
     
     # Initialize a list to store Shannon indices
-    shannon_indices = []
+    shannon_indices = Float64[]
 
     # Iterate over the specified indices
     for index in idx
         cell_abundance_vector = combined_abundances[index].a
-        if any(isnan, cell_abundance_vector)
-            continue  # Skip cells with NaNs
+        if !any(isnan, cell_abundance_vector)
+            push!(shannon_indices, shannon_index(cell_abundance_vector))
         end
-        push!(shannon_indices, shannon_index(cell_abundance_vector))
     end
 
     # Compute and return the average Shannon index
@@ -124,20 +126,25 @@ println("Average Inverse Simpson Index: ", average_inverse_simpson)
 ####################################################
 TrophInd = CSV.File("DFs/TLs.csv") |> DataFrame
 TrophInd = TrophInd[1:256, 1:2]
-TrophInd[:, 2] = TrophInd[:, 2].-1
-TrophInd[256, 2] = 1.0 # For some reason last line had floating point error
+TrophInd[findall(x -> x < 1.05, TrophInd[:, 2]), 2] .= 1.0
+# TrophInd[:, 2] = TrophInd[:, 2].-1
+# TrophInd[256, 2] = 1.0 # For some reason last line had floating point error
 rename!(TrophInd, Symbol("Column1") => :Species, Symbol("TL") => :TL)
+TrophInd[findall(x -> 1.98 < x < 2.05, TrophInd[:, 2]), 2] .= 2.0
 order_indices = indexin(spain_names, TrophInd[:, :Species])
 TrophInd = TrophInd[order_indices, :]
 TrophInd_vector = TrophInd[:, :TL]
 
 # Function to calculate mean trophic level
-function calculate_mean_tl(array_output; modified = false)
-    if !modified
+function calculate_mean_tl(array_output, position; modified = false, caca = false)
+    if !modified && !caca
         # Merge birmmals and herps
-        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA
-    else
-        combined_abundances = array_output[end].state
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state.*lambda_DA[position]
+    end
+    if caca
+        combined_abundances = array_output.*lambda_DA[position]
     end
     
     meanTL_matrix = DimArray(reshape([NaN32 for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
@@ -146,13 +153,14 @@ function calculate_mean_tl(array_output; modified = false)
         abundances = combined_abundances[cell].a
         presence = abundances .> body_mass_vector
         # Calculate mean trophic level for the present species
-        if sum(presence) > 0
+        if sum(presence) > 0 && !any(isnan, abundances)
             meanTL_matrix[cell] = mean(TrophInd_vector[presence])
         else
-            meanTL_matrix[cell] = 0.0
+            meanTL_matrix[cell] = NaN
         end
     end
-    return meanTL_matrix
+    # Exclude NaN values from the mean
+    return mean(filter(!isnan, meanTL_matrix))
 end
 meanTL_matrix = calculate_mean_tl(p)
 
@@ -161,28 +169,33 @@ map_plot(meanTL_matrix; type = "heatmap", palette = :inferno, legend = true)
 
 ############## BIOMASS DISTRIBUTION ################
 ####################################################
-function average_bbp(array_output; modified = false)
-    if !modified
+function average_bbp(array_output, position; modified = false, caca = false)
+    if !modified && !caca
         # Merge birmmals and herps
-        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA
-    else
-        combined_abundances = array_output[end].state
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state.*lambda_DA[position]
     end
-    bbp_vector = []
+    if caca
+        combined_abundances = array_output.*lambda_DA[position]
+    end
+    bbp_vector = Float64[]
     
     for cell in idx
         abundances = combined_abundances[cell].a
         presence = abundances .> body_mass_vector
         
-        if sum(presence) > 0
+        if sum(presence) > 0 && !any(isnan, abundances)
             present_abundances = abundances[presence]
             present_trophic_levels = TrophInd_vector[presence]
             total_biomass = sum(present_abundances)
             weighted_trophic_sum = sum(present_abundances .* present_trophic_levels)
             bbp_vector = push!(bbp_vector, weighted_trophic_sum / total_biomass)
+        else
+            bbp_vector = push!(bbp_vector, NaN)
         end
     end
-    return mean(bbp_vector)
+    return mean(filter(!isnan, bbp_vector))
 end
 function generate_bbp_matrix(array_output)
     combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA
@@ -211,29 +224,48 @@ bbp_vector = average_bbp(p)
 map_plot(bbp_matrix; palette = :inferno, legend = true)
 
 ######### RICHNESS SIMILARITY ################
-function richness_similarity(array_output; modified = false)
-    if !modified
+function richness_similarity(array_output, position; modified = false, caca = false)
+    if !modified && !caca
         # Merge birmmals and herps
-        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA
-    else
-        combined_abundances = array_output[end].state
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state.*lambda_DA[position]
+    end
+    if caca
+        combined_abundances = array_output.*lambda_DA[position]
     end
 
     # Create a matrix to store simulated species richness
     simulated_richness = DimArray(reshape([0.0 for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+    indices_to_remove = [
+    CartesianIndex(34, 9), CartesianIndex(34, 10),
+    CartesianIndex(34, 11), CartesianIndex(34, 12), 
+    CartesianIndex(34, 13)
+    ]
+
+    # Use filter! to remove unwanted indices from idx
+    idx_removed = filter!(x -> !(x in indices_to_remove), idx)
 
     # Calculate presence/absence and simulated richness
-    for cell in idx
-        abundances = combined_abundances[cell].a
-        presence = abundances .> body_mass_vector
-        simulated_richness[cell] = sum(presence)
+    for cell in idx_removed
+        if !any(isnan, combined_abundances[cell].a)
+            abundances = combined_abundances[cell].a
+            presence = abundances .> body_mass_vector
+            simulated_richness[cell] = sum(presence)
+            # if simulated_richness[cell] != DA_richness[cell]
+            #     print("cell is: ", cell, "\n")
+            # end
+            # println(simulated_richness[cell])
+            # println(DA_richness[cell])
+        elseif any(isnan, combined_abundances[cell].a)
+            simulated_richness[cell] = 0.0
+        end
     end
 
     # Calculate Mean Absolute Error (MAE) between real and simulated richness
-    differences = [abs(DA_richness[cell] - simulated_richness[cell]) for cell in idx]
-    mae = mean(differences)
+    differences = [abs(DA_richness[cell] - simulated_richness[cell]) for cell in idx_removed]
 
-    return mae
+    return mean(differences)
 end
 
 # Example usage
@@ -244,24 +276,28 @@ println("Mean Absolute Error (MAE) between real and simulated richness: ", mae)
 carnivores_vector = deepcopy(herb_carv_vector)
 carnivores_vector[carnivores_vector .== 1.0] .= 0.0
 carnivores_vector[carnivores_vector .== 0.00000001] .= 1.0
-function alive_predators(array_output; modified = false)
-    # Merge herps and birmmals, and multiply by lambda_DA
-    if !modified
+
+function alive_predators(array_output, position; modified = false, caca = false)
+    if !modified && !caca
         # Merge birmmals and herps
-        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA
-    else
-        combined_abundances = array_output[end].state
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)).*lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state.*lambda_DA[position]
+    end
+    if caca
+        combined_abundances = array_output.*lambda_DA[position]
     end
 
-    # Create a matrix to store simulated species richness
-    simulated_richness = DimArray(reshape([0.0 for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
-    carn_alive = []
+    carn_alive = Float64[]
     # Calculate presence/absence and simulated richness
     for cell in idx
-        abundances = combined_abundances[cell].a
-        presence = abundances .> body_mass_vector
-        simulated_richness = sum(presence.*carnivores_vector)/106
-        carn_alive = push!(carn_alive, simulated_richness)
+        if !any(isnan, combined_abundances[cell].a)
+            abundances = combined_abundances[cell].a
+            presence = abundances .> body_mass_vector
+            
+            simulated_predator_richness = sum(presence.*carnivores_vector)/106
+            carn_alive = push!(carn_alive, simulated_predator_richness)
+        end
     end
 
     return mean(carn_alive)
