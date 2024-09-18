@@ -308,48 +308,76 @@ DynamicGrids.to_rgb(scheme, obj::MyStructs256) = get(scheme, clamp(obj.b, 0.0, 1
 ####################################################################
 ####################################################################
 ####################################################################
-# For a heat map we just plot the scalars
-function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyStructs256, 2})
-    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+# # For a heatmap we just plot the scalars
+# function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyStructs256, 2})
+#     scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+#     return Makie.convert_arguments(t, scalars)
+# end
+# function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyBirmmals, 2})
+#     scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+#     return Makie.convert_arguments(t, scalars)
+# end
+# function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyHerps, 2})
+#     scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+#     return Makie.convert_arguments(t, scalars)
+# end
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2})
+#     # Count presence based on the threshold
+#     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector[i], 1:length(mystruct.a)), A)
+#     return Makie.convert_arguments(t, richness)
+# end
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2})
+#     # Count presence based on the threshold
+#     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_birds[i], 1:length(mystruct.a)), A)
+#     return Makie.convert_arguments(t, richness)
+# end
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2})
+#     # Count presence based on the threshold
+#     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_herps[i], 1:length(mystruct.a)), A)
+#     return Makie.convert_arguments(t, richness)
+# end
+# # WITH LAMBDA
+# # For MyStructs
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+#     richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
+#     return Makie.convert_arguments(t, richness)
+# end
+# # For MyBirmmals
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+#     richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_birds[i], 1:length(mystruct.a)), A, lambda_grid)
+#     return Makie.convert_arguments(t, richness)
+# end
+# # For MyHerps
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+#     richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_herps[i], 1:length(mystruct.a)), A, lambda_grid)
+#     return Makie.convert_arguments(t, richness)
+# end
+# FOR RASTER
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyStructs256, 2})
+    scalars = map(mystruct -> mystruct.b, A)
     return Makie.convert_arguments(t, scalars)
 end
-function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyBirmmals, 2})
-    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyBirmmals, 2})
+    scalars = map(mystruct -> mystruct.b, A)
     return Makie.convert_arguments(t, scalars)
 end
-function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyHerps, 2})
-    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyHerps, 2})
+    scalars = map(mystruct -> mystruct.b, A).*lambda_raster.multiplicative
     return Makie.convert_arguments(t, scalars)
 end
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2})
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyStructs256, 2})
     # Count presence based on the threshold
     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector[i], 1:length(mystruct.a)), A)
     return Makie.convert_arguments(t, richness)
 end
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2})
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyBirmmals, 2})
     # Count presence based on the threshold
     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_birds[i], 1:length(mystruct.a)), A)
     return Makie.convert_arguments(t, richness)
 end
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2})
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyHerps, 2})
     # Count presence based on the threshold
     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_herps[i], 1:length(mystruct.a)), A)
-    return Makie.convert_arguments(t, richness)
-end
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
-    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
-    return Makie.convert_arguments(t, richness)
-end
-
-# For MyBirmmals
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
-    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_birds[i], 1:length(mystruct.a)), A, lambda_grid)
-    return Makie.convert_arguments(t, richness)
-end
-
-# For MyHerps
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
-    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_herps[i], 1:length(mystruct.a)), A, lambda_grid)
     return Makie.convert_arguments(t, richness)
 end
 ##################### UTMtoRASTER ##################################
@@ -483,7 +511,8 @@ DA_sum_p = permutedims(DA_sum, (2, 1))
 DA_with_abundances_r = reverse(DA_with_abundances, dims=1)
 DA_with_abundances_p = permutedims(DA_with_abundances, (2, 1))
 DA_with_abundances_p_masked = deepcopy(DA_with_abundances_p)
-
+# raster_with_abundances_r = reverse(raster_with_abundances, dims=1)
+# raster_with_abundances_p = permutedims(raster_with_abundances, (2, 1))
 # DA_richness[34, 9] = Int(round(mean([105, 105, 114, 97, 73, 106, 84])))
 # DA_richness[34, 10] = Int(round(mean([73, 97, 106, 84, 69, 124])))
 # DA_richness[34, 11] = Int(round(mean([84, 69, 76, 106, 124, 86])))
@@ -591,8 +620,12 @@ species_df_matrix = Matrix(species_df)
 #     end 
 # end
 # serialize("Objects\\npp_DA.jls", npp_DA)
+# @load "Objects1_9/npp_DA.jld2" npp_DA
 npp_DA = deserialize("Objects\\npp_DA.jls")
-@load "Objects1_9/npp_DA.jld2" npp_DA
+npp_raster = deepcopy(raster_richness)
+# [npp_raster[i, j] = npp_DA[i, j] for i in axes(npp_raster, 1), j in axes(npp_raster, 2)]
+# serialize("Objects\\npp_raster.jls", npp_raster)
+npp_raster = deserialize("Objects\\npp_raster.jls")
 ################### EFFICIENT MATRIX FRAMEWORK #####################
 ####################################################################
 ####################################################################
@@ -832,7 +865,25 @@ c = maximum(k_DA.DA_geometric)
 d = maximum(k_DA.DA_min)
 e = maximum(k_DA.DA_harmonic)
 total_max = maximum([a, b, c, d, e]).b
-
+serialize("Objects/k_DA.jls", k_DA)
+k_DA = deserialize("Objects/k_DA.jls")
+# k_raster = AbstractRaster[]
+# for name in 1:length(k_DA)
+#     prova = deepcopy(raster_with_abundances)
+#     for row in axes(prova, 1), col in axes(prova, 2)
+#     prova[row, col] = k_DA[name][row, col]
+#     end
+#     push!(k_raster, prova)
+# end
+# k_raster = (
+#     raster_multiplicative = k_raster[1],
+#     raster_additive = k_raster[2],
+#     raster_geometric = k_raster[3],
+#     raster_min = k_raster[4],
+#     raster_harmonic = k_raster[5]
+# )
+# k_raster = serialize("Objects/k_raster.jls", k_raster)
+k_raster = deserialize("Objects/k_raster.jls")
 # map_plot(Matrix(k_DA.DA_multiplicative); type = "heatmap", palette = :thermal, title = "Geometric Suitability", colorrange = (0, total_max))
 # map_plot(Matrix(k_DA.DA_additive); type = "heatmap", palette = :thermal, title = "Additive Suitability", colorrange = (0, total_max))
 # map_plot(Matrix(k_DA.DA_geometric); type = "heatmap", palette = :thermal, title = "Geometric Suitability", colorrange = (0, total_max))
@@ -873,6 +924,23 @@ for row in axes(lambda_DA.multiplicative, 1), col in axes(lambda_DA.multiplicati
     end
 end
 
+# lambda_raster = AbstractRaster[]
+# for name in keys(lambda_DA)
+#     prova = deepcopy(raster_richness)
+#     for row in axes(lambda_DA[name], 1), col in axes(lambda_DA[name], 2)
+#         prova[row, col] = lambda_DA[name][row, col]
+#     end
+#     push!(lambda_raster, prova)
+# end
+# lambda_raster = (
+#     multiplicative = lambda_raster[1],
+#     additive = lambda_raster[2],
+#     geometric = lambda_raster[3],
+#     min = lambda_raster[4],
+#     harmonic = lambda_raster[5]
+# )
+# lambda_raster = serialize("Objects/lambda_raster.jls", lambda_raster)
+lambda_raster = deserialize("Objects/lambda_raster.jls")
 ##########################################
 ##########################################
 prop = [28/256, 57/256, 103/256, 68/256]

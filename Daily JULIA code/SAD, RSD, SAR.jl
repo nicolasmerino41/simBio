@@ -240,7 +240,211 @@ end
 
 plot_RSD(rsd)
 ############# Species Area Relationship ################
+####### RANDOM SAMPLING ########
+function random_SAR(array_output, position; max_cells=100, step_size=5, modified=false, caca=false)
+    # Initialize combined_abundances depending on the conditions provided
+    if !modified && !caca
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)) .* lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state .* lambda_DA[position]
+    elseif caca
+        combined_abundances = array_output .* lambda_DA[position]
+    end
 
+    valid_cells = idx  # Or use `valid_cells = findall(DA_sum .== 1)` for valid cells from DA_sum
+    num_valid_cells = length(valid_cells)
+    max_cells = min(max_cells, num_valid_cells)
+
+    # Store species richness for each area (i.e., number of cells sampled)
+    species_area = Dict{Int, Float64}()
+
+    # Loop over increasing numbers of sampled cells
+    for area in 1:step_size:max_cells
+        sampled_cells = sample(valid_cells, area, replace=false)
+
+        # Set to track which species are present across the sampled cells
+        present_species = Set{Int}()
+
+        # Loop over the sampled cells and check species presence
+        for cell in sampled_cells
+            cell_abundances = combined_abundances[cell].a
+            for species in 1:size(cell_abundances, 1)
+                if cell_abundances[species] > body_mass_vector[species]
+                    push!(present_species, species)
+                end
+            end
+        end
+
+        # Store the species richness (number of unique species) for the sampled area
+        species_area[area] = length(present_species)
+    end
+
+    return species_area
+end
+
+sar = calculate_SAR(a, 1; max_cells=100, step_size=5, threshold=0.0, modified=true, caca=false)
+println("Species Area Relationship: ", sar)
+######## CONTIGUOUS SAMPLING ########
+# Function for contiguous sampling SAR
+function contiguous_sar(array_output, position; max_cells=100, threshold=0.0, grid_size=(10, 10), num_origins=1, modified=false, caca=false)
+    # Initialize combined_abundances depending on the conditions provided
+    if !modified && !caca
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)) .* lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state .* lambda_DA[position]
+    elseif caca
+        combined_abundances = array_output .* lambda_DA[position]
+    end
+
+    valid_cells = idx  # Assuming `idx` contains valid CartesianIndex{2} cells.
+    num_valid_cells = length(valid_cells)
+    max_cells = min(max_cells, num_valid_cells)
+
+    # For multiple origin points, store species richness at each area in parallel sequences
+    all_richness = []
+
+    # Define possible neighbor offsets (up, down, left, right, diagonals)
+    neighbor_offsets = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+
+    # Repeat for multiple origins
+    for _ in 1:num_origins
+        # Start from a random valid CartesianIndex{2}
+        origin_cell = sample(valid_cells, 1)[1]
+        sampled_cells = Set([origin_cell])
+        present_species = Set{Int}()
+
+        # Track species richness at each step for this origin
+        species_area = []
+
+        # Add species from the origin cell
+        origin_abundances = combined_abundances[origin_cell].a
+        for species in 1:length(origin_abundances)
+            if origin_abundances[species] > body_mass_vector[species]
+                push!(present_species, species)
+            end
+        end
+
+        # Record richness after the first cell
+        push!(species_area, length(present_species))
+
+        # Progressively add adjacent cells one by one
+        while length(sampled_cells) < max_cells
+            # Pick a random already sampled cell to expand from
+            current_cell = sample(collect(sampled_cells), 1)[1]
+            
+            # Pick a random direction (up, down, left, right, diagonal)
+            dr, dc = sample(neighbor_offsets, 1)[1]
+            neighbor_cell = CartesianIndex(Tuple(current_cell) .+ (dr, dc))
+
+            # Only add neighbor if it's valid and hasn't been sampled yet
+            if neighbor_cell in valid_cells && neighbor_cell ∉ sampled_cells
+                push!(sampled_cells, neighbor_cell)
+
+                # Add species from the new cell
+                cell_abundances = combined_abundances[neighbor_cell].a
+                for species in 1:length(cell_abundances)
+                    if cell_abundances[species] > body_mass_vector[species]
+                        push!(present_species, species)
+                    end
+                end
+
+                # Record the species richness after adding the new cell
+                push!(species_area, length(present_species))
+            end
+        end
+
+        # Add the species richness sequence for this origin to the overall list
+        push!(all_richness, species_area)
+    end
+
+    return all_richness
+end
+
+sar_contiguous = contiguous_sar(a, 1; modified = true, caca = false, num_origins = 10, max_cells = 1000)
+
+function plot_SAR(all_richness)
+    fig = Figure(resolution=(800, 400))
+    ax = Axis(fig[1, 1], title="Species-Area Relationship", xlabel="Number of Cells", ylabel="Species Richness")
+    
+    # Plot each origin's species richness progression as a separate line
+    for richness in all_richness
+        x_vals = 1:length(richness)
+        lines!(ax, x_vals, richness, linewidth=2)
+    end
+
+    fig
+end
+
+# Plot the SAR
+plot_SAR(sar_contiguous)
+############# CALCULATE SAR ################
+using Statistics
+
+function calculate_sar(all_richness)
+    slopes = []
+    p_values = []
+    constants = []
+
+    # Loop over each origin's SAR progression
+    for richness in all_richness
+        # Number of cells sampled (x-values)
+        x_vals = 1:length(richness)
+
+        # Log-transform both species richness and number of cells (to fit the power law model)
+        log_x_vals = log.(x_vals)
+        log_richness = log.(richness)
+
+        # Perform linear regression on the log-transformed values using least squares
+        n = length(log_x_vals)
+        x_mean = mean(log_x_vals)
+        y_mean = mean(log_richness)
+        
+        # Calculate slope (z) using covariance/variance
+        numerator = sum((log_x_vals .- x_mean) .* (log_richness .- y_mean))
+        denominator = sum((log_x_vals .- x_mean) .^ 2)
+        z = numerator / denominator  # This is the exponent in the power law (slope)
+
+        # Calculate intercept (log(c))
+        log_c = y_mean - z * x_mean
+        
+        # Recover the constant c from log(c)
+        c = exp(log_c)
+        
+        # Estimate the residuals
+        residuals = log_richness .- (log_c .+ z .* log_x_vals)
+        
+        # Calculate the standard error of the slope
+        s_squared = sum(residuals.^2) / (n - 2)
+        standard_error = sqrt(s_squared / denominator)
+
+        # Calculate t-statistic for the slope
+        t_statistic = z / standard_error
+
+        # Calculate p-value from the t-statistic
+        p_value = 2 * (1 - cdf(TDist(n - 2), abs(t_statistic)))
+
+        # Append slope, p-value, and constant to the results
+        push!(slopes, z)
+        push!(p_values, p_value)
+        push!(constants, c)
+    end
+
+    # Calculate the average slope (z), p-value, and constant (c) across all origins
+    avg_z = mean(slopes)
+    avg_p_value = mean(p_values)
+    avg_c = mean(constants)
+
+    return avg_z, avg_p_value, avg_c
+end
+
+# Calculate the average slope and p-value for the SAR
+avg_slope, avg_p_value, avg_c = calculate_sar(sar_contiguous)
+
+# Print the results
+println("Average Slope: ", avg_slope)
+println("Average p-value: ", avg_p_value)
+
+########################################################
 # Create a figure
 fig = Figure(resolution = (800, 400))
 

@@ -87,7 +87,7 @@ neighbors_rule = Neighbors{:state, :state}(Moore(1)) do data, neighborhood, cell
     return MyStructs256(weighted_sum)
 end
 
-scaling_vector = fill(1.0, 49)
+scaling_vector = fill(0.1, 49)
 scaling_vector = append!(scaling_vector, fill(1.0, 207))
 
 neighbors_rule_size_based = Neighbors{:state, :state}(Moore(1)) do data, neighborhood, cell, I
@@ -149,7 +149,7 @@ array_output = ResultOutput(
 #     pepe_state; tspan = 1:3,
 #     mask = Matrix(DA_sum)
 # )
-@time a = sim!(array_output, Ruleset(biotic_GLV, outdisp; boundary = Reflect(), proc = ThreadedCPU()))
+@time a = sim!(array_output, Ruleset(biotic_GLV, remix_outdisp; boundary = Reflect(), proc = ThreadedCPU()))
 # @time b = sim!(array_output2, Ruleset(biotic_GLV))[end].state
 # a ≈ b
 # MK.image(Matrix(DA_with_abundances), lambda_DA.multiplicative; colormap = :thermal, colorrange = (0, total_max))
@@ -237,7 +237,7 @@ makie_output = MakieOutput(pepe, tspan = 1:1000;
 end
 
 ######## TRYING TIME SERIES AND MWE FOR RAF #########
-using StaticArrays, Serialization, DynamicGrids, Dispersal, Rasters, Dates
+using StaticArrays, DynamicGrids, Dispersal, Rasters, Dates, Makie, WGLMakie
 
 struct MyStructs256{T <: AbstractFloat} <: FieldVector{2, T}
     a::SVector{256, T}
@@ -269,47 +269,47 @@ Base.:/(x::MyStructs256, scalar::Real) = MyStructs256(x.a ./ scalar, sum(x.a ./ 
 Base.:-(x::MyStructs256, scalar::Real) = MyStructs256(x.a .- scalar, x.b - scalar * 256)
 Base.:+(x::MyStructs256, scalar::Real) = MyStructs256(x.a .+ scalar, x.b + scalar * 256)
 
-# Define what a NaN is for MyStructs256
-Base.isnan(x::MyStructs256) = isnan(x.b) || any(isnan, x.a)
+# # Define what a NaN is for MyStructs256
+# Base.isnan(x::MyStructs256) = isnan(x.b) || any(isnan, x.a)
 
-# Adding a method in the sum function for MyStructs256
-function Base.sum(structs::MyStructs256...)
-    # Sum the 'a' vectors
-    summed_a = sum([s.a for s in structs])
+# # Adding a method in the sum function for MyStructs256
+# function Base.sum(structs::MyStructs256...)
+#     # Sum the 'a' vectors
+#     summed_a = sum([s.a for s in structs])
 
-    # Sum the 'b' values
-    summed_b = sum([s.b for s in structs])
+#     # Sum the 'b' values
+#     summed_b = sum([s.b for s in structs])
 
-    # Create a new MyStructs256 instance with the summed results
-    return MyStructs256(summed_a, summed_b)
-end
+#     # Create a new MyStructs256 instance with the summed results
+#     return MyStructs256(summed_a, summed_b)
+# end
 
-# Adding a method to maximum
-# Define maximum for MyStructs256
-function Base.maximum(a::MyStructs256, b::MyStructs256)
-    return MyStructs256(max.(a.a, b.a))
-end
+# # Adding a method to maximum
+# # Define maximum for MyStructs256
+# function Base.maximum(a::MyStructs256, b::MyStructs256)
+#     return MyStructs256(max.(a.a, b.a))
+# end
 
-# Define maximum for MyStructs256 with a scalar
-function Base.maximum(a::MyStructs256, b::AbstractFloat)
-    return MyStructs256(max.(a.a, b))
-end
+# # Define maximum for MyStructs256 with a scalar
+# function Base.maximum(a::MyStructs256, b::AbstractFloat)
+#     return MyStructs256(max.(a.a, b))
+# end
 
-# Define maximum for a scalar with MyStructs256
-function Base.maximum(a::AbstractFloat, b::MyStructs256)
-    return MyStructs256(max.(a, b.a))
-end
+# # Define maximum for a scalar with MyStructs256
+# function Base.maximum(a::AbstractFloat, b::MyStructs256)
+#     return MyStructs256(max.(a, b.a))
+# end
 
-# Define maximum for MyStructs256
-function Base.maximum(a::MyStructs256)
-    return maximum(a.a)
-end
+# # Define maximum for MyStructs256
+# function Base.maximum(a::MyStructs256)
+#     return maximum(a.a)
+# end
 
-# Define maximum for a matrix of MyStructs256
-function Base.maximum(a::Matrix{MyStructs256{AbstractFloat}})
-    # Extract all `b` values from each MyStructs256 element in the matrix and find the maximum
-    return maximum(map(x -> x.b, a))
-end
+# # Define maximum for a matrix of MyStructs256
+# function Base.maximum(a::Matrix{MyStructs256{AbstractFloat}})
+#     # Extract all `b` values from each MyStructs256 element in the matrix and find the maximum
+#     return maximum(map(x -> x.b, a))
+# end
 
 ########### CREATING DATA ##########
 ######### raster_with_abundances ########
@@ -340,7 +340,7 @@ end
 # Combine the rasters into a 3D raster
 combined_raster = Raster(cat(raster_layers..., dims=3), dims=(x_dim, y_dim, time_dim))
 
-######### HERE STARTS THE RELEVANT PART #############
+####################################
 aux = (; combined_raster=combined_raster)
 tspan = Date(2023, 1):Month(1):Date(2023, 8)
 
@@ -361,9 +361,47 @@ timeseries_rule = let combined_raster_aux=Aux{:combined_raster}()
     end
 end
 
-array_output = ResultOutput(
-    init_for_timeseries; tspan = tspan,
-    aux = aux,
-    mask = raster_sum
-)
-@time s = sim!(array_output, Ruleset(timeseries_rule))
+# array_output = ResultOutput(
+#     init_for_timeseries; tspan = tspan,
+#     aux = aux,
+#     mask = raster_sum
+# )
+# @time s = sim!(array_output, Ruleset(timeseries_rule))
+
+###### HERE THE RELEVANT PART Makie convert_arguments #############
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyStructs256, 2})
+    # Count presence based on the threshold
+    richness = map(mystruct -> count(i -> mystruct.a[i] > 0.1, 1:length(mystruct.a)), A)
+    return Makie.convert_arguments(t, richness)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyStructs256, 2})
+    scalars = map(mystruct -> mystruct.b, A)
+    return Makie.convert_arguments(t, scalars)
+end
+Makie.heatmap(raster_with_abundances) # This works fine
+Makie.image(raster_with_abundances) # And this too
+
+makie_output = MakieOutput(init_for_timeseries, tspan = tspan;
+    fps = 10, ruleset = Ruleset(timeseries_rule),
+    aux = aux, mask = raster_sum) do (; layout, frame)
+
+    plot_keys = [:biomass, :richness]
+    titles = ["Biomass", "Simulated Richness"]
+
+    axes = [Axis(layout[i, j]; title=titles[(i-1)*2 + j]) for i in 1:1, j in 1:2]
+    
+    for (ax, key, title) in zip(axes, plot_keys, titles)
+        if key == :biomass
+            # Makie.heatmap!(ax, frame[:state]; interpolate=false)
+        elseif key == :simulated_richness
+            Makie.image!(ax, frame[:state]; interpolate=false)
+        end
+        hidexdecorations!(ax; grid=false)
+        hideydecorations!(ax; grid=false)
+        ax.title = title
+        ax.titlegap[] = 5
+        ax.titlesize[] = 12
+        # ax.titlecolor[] = RGBA(0, 0, 0, 1)
+        ax.yreversed[] = false
+    end
+end
