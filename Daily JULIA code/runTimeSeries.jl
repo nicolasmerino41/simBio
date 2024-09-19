@@ -70,13 +70,18 @@ dynamic_biotic = let combined_raster_aux=Aux{:combined_raster}()
         )
     end
 end
-
+# Example usage of OutwardsDispersalRemix in a simulation
+remix_outdisp = OutwardsDispersalRemix{:state, :state}(
+    formulation=CustomKernel(alfa),
+    distancemethod=AreaToArea(30),
+    maskbehavior = Dispersal.CheckMaskEdges()
+);
 array_output = ArrayOutput(
     pepe_rasterTS; tspan = tspan,
     aux = aux,
     mask = raster_sum
 )
-@time s = sim!(array_output, Ruleset(k_rule, dynamic_biotic))
+@time s = sim!(array_output, Ruleset(k_rule, dynamic_biotic, remix_outdisp); boundary = Reflect())
 MK.heatmap(combined_raster[Ti(2)])
 f = Figure(resolution = (600, 400))
 ax1 = Axis(f[1, 1])
@@ -87,7 +92,7 @@ f
 s[1].state == s[end].state
 
 makie_output = MakieOutput(pepe_rasterTS, tspan = tspan;
-    fps = 10, ruleset = Ruleset(k_rule, dynamic_biotic),
+    fps = 10, ruleset = Ruleset(k_rule, dynamic_biotic, remix_outdisp),
     aux = aux, mask = raster_sum) do (; layout, frame)
 
     plot_keys = [:biomass, :simulated_richness, :npp, :real_richness]
@@ -98,9 +103,9 @@ makie_output = MakieOutput(pepe_rasterTS, tspan = tspan;
 
     for (ax, key, title) in zip(axes, plot_keys, titles)
         if key == :biomass
-            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
+            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette)
         elseif key == :simulated_richness
-            Makie.image!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, 256))
+            Makie.image!(ax, frame[:state]; interpolate=false, colormap=custom_palette)
         elseif key == :npp
             Makie.heatmap!(ax, frame[:npp_raster]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
         elseif key == :real_richness
