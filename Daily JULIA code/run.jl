@@ -142,14 +142,16 @@ indisp = InwardsDispersal{:state, :state}(;
 
 ##### MAKIE STATE #####
 array_output = ResultOutput(
-    pepe_state; tspan = 1:500,
+    pepe_state; tspan = 1:10,
     mask = Matrix(DA_sum)
 )
 # array_output2 = ResultOutput(
 #     pepe_state; tspan = 1:3,
 #     mask = Matrix(DA_sum)
 # )
-@time a = sim!(array_output, Ruleset(biotic_GLV, remix_outdisp; boundary = Reflect(), proc = ThreadedCPU()))
+# Threads.@threads for i in 1:8
+@time a = sim!(array_output, Ruleset(biotic_GLV, outdisp; boundary = Reflect()))
+
 # @time b = sim!(array_output2, Ruleset(biotic_GLV))[end].state
 # a ≈ b
 # MK.image(Matrix(DA_with_abundances), lambda_DA.multiplicative; colormap = :thermal, colorrange = (0, total_max))

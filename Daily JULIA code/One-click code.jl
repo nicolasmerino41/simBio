@@ -1,6 +1,6 @@
 num_species = 256
 using Pkg
-PC = "MM-1"
+PC = "nicol"
 Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
 cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
 meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")

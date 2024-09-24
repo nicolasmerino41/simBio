@@ -1,6 +1,7 @@
 library(ggplot2)
 library(magrittr)
-file = read.csv("simulation_results_biode_new - Copy.csv")
+library(ggcorrplot)
+file = read.csv("DirectSamplingResults.csv")
 file1 = subset(file, complete.cases(file))
 # file1$richness_similarity = 100 - file1$richness_similarity
 
@@ -32,7 +33,7 @@ ggplot(file1, aes(x = epsilon, y = avg_shannon)) +
 # Box plot of 'avg_bbp' by 'sigma'
 ggplot(file1, aes(x = as.character(sigma), y = avg_bbp)) +
   geom_boxplot() +
-  labs(title = "Box Plot of Avg BBP by sigma",
+  labs(title = "Avg BBP by sigma",
        x = "Sigma", y = "Avg BBP") +
   theme_minimal()
 
@@ -47,7 +48,7 @@ ggplot(file1, aes(x = as.factor(sigma), y = richness_similarity)) +
 
 
 # CORRELATION
-numeric_cols <- file1[, c("sigma", "epsilon", "alpha", "avg_shannon", "avg_bbp", "richness_similarity", "alive_predators", "mean_tl")]
+numeric_cols <- file1[, c("sigma", "epsilon", "alfa", "avg_shannon", "avg_bbp", "richness_similarity", "alive_predators", "mean_tl")]
 corr_matrix <- cor(numeric_cols, use = "complete.obs")
 
 # Plot the lower triangle of the correlation matrix
