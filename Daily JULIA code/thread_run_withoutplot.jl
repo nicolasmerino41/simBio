@@ -38,31 +38,31 @@ function run_simulation(sigma, epsilon, alfa, position)
     caca = deepcopy(iberian_interact_NA)
     full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon))
 
-    function trophic_optimized(abundances, full_IM)
-        # Calculate the weighted interaction directly
-        interaction = full_IM * abundances.a
-        return MyStructs256(SVector{256, Float64}(interaction .* abundances.a))
+    function GLV(state::MyStructs256, k_DA::MyStructs256)
+        return MyStructs256(
+            SVector{256, Float64}(
+                state.a + (state.a .* (k_DA.a - state.a) + ((full_IM * state.a) .* state.a)) 
+            )
+        )
     end
-    biotic_rule_k = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
+    
+    biotic_GLV = Cell{Tuple{:state, :k_DA}, :state}() do data, (state, k_DA), I
         # if any(isinf, state.a) || any(isnan, state.a)
         #     @error "state has NA values"
         #     println(I)
         # end
-        merged_state = state + 
-            int_Gr_for_biotic_k(state, self_regulation, k_DA)  +
-            trophic_optimized(state, full_IM)
-        return MyStructs256(SVector{256, Float64}(max.(0.0, merged_state.a)))
+        return MyStructs256(SVector{256, Float64}(max.(0.0, GLV(state, k_DA).a)))
     end
 
     println("sigma  = ", sigma, " epsilon = ", epsilon, " alfa = ", alfa, " k_DA = ", k_DA_name)
 
     # Run the simulation
-    array_output = ResultOutput(
-        pepe_state; tspan = 1:1000,
+    array_output = ArrayOutput(
+        pepe_state; tspan = 1:100,
         mask = Matrix(DA_sum)
     )
     # println("output done")
-    p = sim!(array_output, Ruleset(biotic_rule_k, outdisp; boundary = Reflect()))
+    p = sim!(array_output, Ruleset(biotic_GLV, outdisp; boundary = Reflect()))
     # println("simulation done")
     # Step 1: Compute metrics from the last timestep of the simulation (p[end])
     avg_shannon = average_shannon_index(p, position; modified = true)

@@ -142,7 +142,7 @@ indisp = InwardsDispersal{:state, :state}(;
 
 ##### MAKIE STATE #####
 array_output = ResultOutput(
-    pepe_state; tspan = 1:10,
+    pepe_state; tspan = 1:1000,
     mask = Matrix(DA_sum)
 )
 # array_output2 = ResultOutput(
@@ -150,7 +150,7 @@ array_output = ResultOutput(
 #     mask = Matrix(DA_sum)
 # )
 # Threads.@threads for i in 1:8
-@time a = sim!(array_output, Ruleset(biotic_GLV, outdisp; boundary = Reflect()))
+@time a = sim!(array_output, Ruleset(biotic_GLV, outdisp; boundary = Reflect(), proc = ThreadedCPU()))
 
 # @time b = sim!(array_output2, Ruleset(biotic_GLV))[end].state
 # a ≈ b
@@ -192,9 +192,10 @@ end
 
 ##### LAX NICHE #####
 array_output = ArrayOutput(
-    pepe; tspan = 1:100,
+    pepe; tspan = 1:10,
     mask = Matrix(DA_sum)
 )
+
 @time p = sim!(array_output, Ruleset(biotic_rule_k_herps, biotic_rule_k_birmmals, outdisp_birmmals, outdisp_herps; proc = ThreadedCPU(), boundary = Reflect()))
 
 # include("../Non-daily-code/MetricsExploration.jl")

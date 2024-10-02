@@ -140,25 +140,34 @@ function map_plot(plot::AbstractArray; type = nothing, lambda_DA = nothing, pale
     # Set the colormap
     pal = isnothing(palette) ? :thermal : palette
 
+    # Initialize the variable for the plotting object
+    plt_obj = nothing
+
     # Plot according to the specified type
     if type == "image"
         if isnothing(lambda_DA)
             @error("No lambda_DA being used, choose one.")
         end
-        image!(ax, plot, lambda_DA; colormap = pal, kw...)
+        plt_obj = image!(ax, plot, lambda_DA; colormap = pal, kw...)
     elseif type == "plot"
-        plot!(ax, plot; kw...)
+        plt_obj = plot!(ax, plot; kw...)
     else
-        heatmap!(ax, plot, colormap = pal; kw...)
+        plt_obj = heatmap!(ax, plot; colormap = pal, kw...)
     end
 
-    # Reverse the y-axis
+    # Reverse the y-axis if needed
     ax.yreversed = flip
 
     # Add legend if requested
     if legend
         non_na_values = filter(!isnan, plot)
-        Colorbar(fig[1, 2], ax, colormap = pal, limits = (minimum(non_na_values), maximum(non_na_values)))
+        # Ensure that non_na_values is not empty to prevent errors
+        if !isempty(non_na_values)
+            # Remove colormap and limits from the Colorbar call
+            Colorbar(fig[1, 2], plt_obj)
+        else
+            @warn "No valid data for Colorbar."
+        end
     end
 
     # Add title if provided
@@ -166,8 +175,8 @@ function map_plot(plot::AbstractArray; type = nothing, lambda_DA = nothing, pale
         ax.title = title
     end
 
-    hidexdecorations!(ax; grid=show_grid)
-    hideydecorations!(ax; grid=show_grid)
+    hidexdecorations!(ax; grid = show_grid)
+    hideydecorations!(ax; grid = show_grid)
 
     fig
 end
