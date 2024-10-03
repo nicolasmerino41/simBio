@@ -1,0 +1,82 @@
+# Function to get combined abundances
+function get_combined_abundances(array_output, position; modified = false, caca = false)
+    if !modified && !caca
+        # Merge birmmals and herps
+        combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)) .* lambda_DA[position]
+    elseif modified && !caca
+        combined_abundances = array_output[end].state .* lambda_DA[position]
+    elseif caca
+        combined_abundances = array_output .* lambda_DA[position]
+    else
+        error("Invalid combination of parameters")
+    end
+    return combined_abundances
+end
+
+combined_abundances = get_combined_abundances(a, 1; modified = true, caca = false)
+
+# Initialize a dictionary to store species presence/absence per cell
+species_presence = Dict{CartesianIndex{2}, BitVector}()
+
+for cell in idx
+    abundances = combined_abundances[cell].a
+    if !any(isnan, abundances)
+        presence = abundances .> body_mass_vector  # Threshold for presence
+        species_presence[cell] = presence
+    else
+        # Handle missing data by excluding the cell
+        # Alternatively, you can assign an empty BitVector or skip the cell
+        # For this example, we'll exclude the cell
+        continue
+    end
+end
+
+using Distances
+
+num_cells = length(valid_cells)
+jaccard_similarity_matrix = Array{Float64}(undef, num_cells, num_cells)
+
+for i in 1:num_cells
+    presence_i = species_presence_list[i]
+    for j in i:num_cells
+        presence_j = species_presence_list[j]
+        similarity = jaccard_similarity(presence_i, presence_j)
+        jaccard_similarity_matrix[i, j] = similarity
+        jaccard_similarity_matrix[j, i] = similarity  # Symmetric matrix
+    end
+end
+
+# Function to get coordinates from cell indices
+function cell_to_coordinates(cell::CartesianIndex{2})
+    # Replace these with your actual grid origin and cell size values
+    origin_x = 0  # e.g., longitude of the grid's origin
+    origin_y = 0  # e.g., latitude of the grid's origin
+    cell_size_x = 10  # e.g., width of a cell in degrees or meters
+    cell_size_y = 10  # e.g., height of a cell in degrees or meters
+
+    # Calculate the coordinates of the cell's center
+    x = origin_x + (cell[2] - 0.5) * cell_size_x  # Longitude
+    y = origin_y + (cell[1] - 0.5) * cell_size_y  # Latitude
+    return (x, y)
+end
+
+# Get coordinates for valid cells
+coordinates = [cell_to_coordinates(cell) for cell in valid_cells]
+
+using Distances
+
+# Convert coordinates to a matrix
+coord_matrix = hcat([collect(coord) for coord in coordinates]...)'
+
+# Use Haversine distance if coordinates are in latitude and longitude (degrees)
+geo_distance_matrix = pairwise(Haversine(), coord_matrix, dims=1)
+
+# Extract upper triangle indices
+upper_indices = [(i, j) for i in 1:num_cells-1 for j in i+1:num_cells]
+
+# Get similarities and distances
+similarities = [jaccard_similarity_matrix[i, j] for (i, j) in upper_indices]
+distances = [geo_distance_matrix[i, j] for (i, j) in upper_indices]
+
+Plots.scatter(distances, similarities, xlabel = "Geographical Distance (km)", ylabel = "Jaccard Similarity",
+        title = "Species Composition Similarity vs. Geographical Distance", markersize = 2, alpha = 0.5)

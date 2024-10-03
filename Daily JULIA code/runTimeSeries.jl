@@ -28,7 +28,7 @@ pepe_rasterTS = (
     state_richness = raster_richness
 )
 
-self_regulation = 0.01
+self_regulation = 1.0
 function int_Gr_for_timeseries(state::MyStructs256, self_regulation::AbstractFloat, combined_raster)
     return MyStructs256(SVector{256, Float64}(state.a .* self_regulation .+ combined_raster.*0.0))
 end
@@ -71,7 +71,7 @@ dynamic_biotic = let combined_raster_aux=Aux{:combined_raster}()
     end
 end
 # Example usage of OutwardsDispersalRemix in a simulation
-remix_outdisp = OutwardsDispersalRemix{:state, :state}(
+remix_outdisp = OutwardsDispersal{:state, :state}(
     formulation=CustomKernel(alfa),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
@@ -117,7 +117,7 @@ makie_output = MakieOutput(pepe_rasterTS, tspan = tspan;
         ax.titlegap[] = 5
         ax.titlesize[] = 12
         ax.titlecolor[] = RGBA(0, 0, 0, 1)
-        ax.yreversed[] = false
+        ax.yreversed[] = true
     end
 end
 
