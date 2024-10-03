@@ -1,6 +1,6 @@
-hf = Rasters.Raster("Rasters/wildareas-v3-2009-human-footprint.tif")
+hf = Rasters.Raster("Rasters/wildareas-v3-2009-human-footprint.tif", lazy = true)
 
-hf_float = Rasters.map(x -> Float32(x), hf)
+hf_float = map(x -> Float32(x), hf)
 
 hf_reprojected = resample(hf_float; to=utmraster)
 

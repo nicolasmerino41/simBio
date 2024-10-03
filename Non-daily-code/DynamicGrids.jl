@@ -385,7 +385,8 @@ ruleset = DG.Ruleset(growth_rule)
 init = zeros(200, 400)
 output = ArrayOutput(init; tspan=1:200);
 sim!(output, growth_rule)
-output = 0 MakieOutput(init; tspan=1:200, ruleset, fps=30)
+output = 0 
+MakieOutput(init; tspan=1:200, ruleset, fps=30)
 
 
 x = Raster(rand(X(1:10), Y(1:10)))
