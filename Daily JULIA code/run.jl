@@ -1,8 +1,11 @@
 PC = "nicol"
 num_species = 256
+include("HerpsVsBirmmals.jl")
+include("kernels.jl")
 include("One-click code.jl")
-
 include("human_footprint.jl")
+include("Implicit competition for herbivores.jl")
+# include("2010-2100 RasterSeries.jl")
 
 # pepe = (
 #     birmmals = Matrix(DA_birmmals_with_abundances),
@@ -20,14 +23,29 @@ pepe_state = (
 )
 
 ##### Parameters #####
-caca = deepcopy(iberian_interact_NA)
 self_regulation = 1.0
-sigma = 1.0
+sigma = 0.2
+sigma_comp = 0.5
 epsilon = 1.0
-full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation))
+beta = 1.0  
+assymetry = 0.0
 remove_variable(:alfa)
 alfa = 0.1
-exp(-(1^2) / (2*(alfa^2)))
+##### Matrices #####
+# Trophic
+caca = deepcopy(iberian_interact_NA)
+full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation, beta))
+# Competition
+competition_NA = deepcopy(iberian_interact_NA)
+competition_NA .= 0.0
+for i in names(competition_NA, 1), j in names(competition_NA, 2)
+    if i in herbivore_names && j in herbivore_names
+        competition_NA[i, j] = 1.0
+    end
+end
+full_comp = turn_comp_into_inter(competition_NA, sigma_comp, assymetry)
+##########################################################################
+# exp(-(1^2) / (2*(alfa^2)))
 m = maximum(npp_DA[.!isnan.(npp_DA)])
 n = minimum(npp_DA[.!isnan.(npp_DA)])
 
@@ -35,7 +53,7 @@ n = minimum(npp_DA[.!isnan.(npp_DA)])
 function GLV(state::MyStructs256, k_DA::MyStructs256)
     return MyStructs256(
         SVector{256, Float64}(
-            state.a + (state.a .* (k_DA.a - state.a) + ((full_IM * state.a) .* state.a)) 
+            state.a + (state.a .* (k_DA.a - state.a) + ((full_IM * state.a) .* state.a) + ((full_comp * state.a) .* state.a)) 
         )
     )
 end
@@ -102,10 +120,10 @@ array_output = ResultOutput(
     mask = Matrix(DA_sum)
 )
 
-@time a = sim!(array_output, Ruleset(biotic_GLV, outdisp, neighbors_rule; boundary = Reflect()))
+# @time a = sim!(array_output, Ruleset(biotic_GLV, outdisp, neighbors_rule; boundary = Reflect()))
 
-makie_output = MakieOutput(pepe_state, tspan = 1:30;
-    fps = 10, ruleset = Ruleset(biotic_GLV, outdisp, neighbors_rule; boundary = Reflect()),
+makie_output = MakieOutput(pepe_state, tspan = 1:200;
+    fps = 10, ruleset = Ruleset(biotic_GLV, outdisp; boundary = Reflect()),
     mask = Matrix(DA_sum)) do (; layout, frame)
 
     # Setup the keys and titles for each plot

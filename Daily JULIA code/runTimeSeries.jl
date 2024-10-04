@@ -1,26 +1,48 @@
-num_species = 256
+PC = "nicol"
+num_species = 256 
+include("HerpsVsBirmmals.jl")
+include("kernels.jl")
 include("One-click code.jl")
-
 include("human_footprint.jl")
+include("Implicit competition for herbivores.jl")
+tspan_intervals = Year(1)
+static = false
+include("2010-2100 RasterSeries.jl")
 
-include("Time Series.jl")
-
-#TODO At prevalence 0.277 or higher you get instability
-
-caca = deepcopy(iberian_interact_NA)
+##### Parameters #####
 self_regulation = 1.0
-sigma = 1.0
+sigma = 0.5
+sigma_comp = 0.1
 epsilon = 1.0
-full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation))
+beta = 1.0  
+assymetry = 0.0
 remove_variable(:alfa)
-alfa = 0.2
-exp(-(1^2) / (2*(alfa^2)))
+alfa = 0.1
+##### Matrices #####
+# Trophic
+caca = deepcopy(iberian_interact_NA)
+full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation, beta))
+# Competition
+competition_NA = deepcopy(iberian_interact_NA)
+competition_NA .= 0.0
+for i in names(competition_NA, 1), j in names(competition_NA, 2)
+    if i in herbivore_names && j in herbivore_names
+        competition_NA[i, j] = 1.0
+    end
+end
+full_comp = turn_comp_into_inter(competition_NA, sigma_comp, assymetry)
+##########################################################################
+# exp(-(1^2) / (2*(alfa^2)))
 m = maximum(npp_DA[.!isnan.(npp_DA)])
 n = minimum(npp_DA[.!isnan.(npp_DA)])
 
-######### HERE STARTS THE TIME SERIES PART #############
-aux = (; combined_raster=combined_raster)
-tspan = Date(2023,1):Month(1):Date(2025, 6)
+######### PREPARING THE MODEL ############
+aux = (
+    bio5_raster_series=bio5_raster_series,
+    bio6_raster_series=bio6_raster_series,
+    bio12_raster_series=bio12_raster_series
+)
+
 pepe_rasterTS = (
     state = raster_with_abundances,
     k_raster = k_raster_hf_multiplicative,
@@ -28,71 +50,51 @@ pepe_rasterTS = (
     state_richness = raster_richness
 )
 
-self_regulation = 1.0
-function int_Gr_for_timeseries(state::MyStructs256, self_regulation::AbstractFloat, combined_raster)
-    return MyStructs256(SVector{256, Float64}(state.a .* self_regulation .+ combined_raster.*0.0))
-end
-
-timeseries_rule = let combined_raster_aux=Aux{:combined_raster}()
-    Cell{:state, :state}() do data, state, I
-        combined_raster = get(data, combined_raster_aux, I) # Important bit here!!
-        merged_state = state + int_Gr_for_timeseries(state, self_regulation, combined_raster)
-        return MyStructs256(SVector{256, Float64}(merged_state.a))
-    end
-end
-k_rule = let combined_raster_aux=Aux{:combined_raster}()
+k_rule = let bio5_aux=Aux{:bio5_raster_series}(), bio6_aux=Aux{:bio6_raster_series}(), bio12_aux=Aux{:bio12_raster_series}()
     Cell{:k_raster, :k_raster}() do data, k_raster, I
-        climate = get(data, combined_raster_aux, I) # Important bit here!!
-        S_bio5 = 1 ./ (1 .+ abs.(climate .- lax_species_niches.mean_bio5) ./ lax_species_niches.sd_bio5)
+        # bio5, bio6, bio12 = get(data, bio5_aux, I), get(data, bio6_aux, I), get(data, bio12_aux, I) # Important bit here!!
+        bio5, bio6, bio12 = get(data, bio5_aux, I)[I[1], I[2]], get(data, bio6_aux, I)[I[1], I[2]], get(data, bio12_aux, I)[I[1], I[2]] 
+        S_bio5 = 1 ./ (1 .+ abs.(bio5 .- lax_species_niches.mean_bio5) ./ lax_species_niches.sd_bio5)
+        S_bio6 = 1 ./ (1 .+ abs.(bio6 .- lax_species_niches.mean_bio6) ./ lax_species_niches.sd_bio6)
+        S_bio12 = 1 ./ (1 .+ abs.(bio12 .- lax_species_niches.mean_bio12) ./ lax_species_niches.sd_bio12)
         return MyStructs256(
             SVector{256, Float64}(
+                # S_bio5 .* S_bio6 .* S_bio12 .* herb_carv_svector
                 S_bio5 .* herb_carv_svector
             )
         )   
     end
 end
-
-dynamic_biotic = let combined_raster_aux=Aux{:combined_raster}()
-    Cell{Tuple{:state, :k_raster}, :state}() do data, (state, k_raster), I
-        if any(isinf, state.a) || any(isnan, state.a)
-            @error "state has NA values"
-            println(I)
-        end
-        return MyStructs256(
-            SVector{256, Float64}(
-                max.(
-                    0.0,
-                    (state +
-                    int_Gr_for_biotic_k(state, self_regulation, k_raster)  +
-                    trophic_optimized(state, full_IM)).a
-                )
-            )
+function GLV_raster(state::MyStructs256, k_DA::MyStructs256)
+    return MyStructs256(
+        SVector{256, Float64}(
+            state.a + (state.a .* (k_DA.a - state.a) + ((full_IM * state.a) .* state.a) + ((full_comp * state.a) .* state.a)) 
         )
-    end
+    )
 end
-# Example usage of OutwardsDispersalRemix in a simulation
-remix_outdisp = OutwardsDispersal{:state, :state}(
+biotic_GLV_raster = Cell{Tuple{:state, :k_raster}, :state}() do data, (state, k_raster), I
+    # if any(isinf, state.a) || any(isnan, state.a)
+    #     @error "state has NA values"
+    #     println(I)
+    # end
+    return MyStructs256(SVector{256, Float64}(max.(0.0, GLV_raster(state, k_raster).a)))
+end
+outdisp = OutwardsDispersal{:state, :state}(
     formulation=CustomKernel(alfa),
     distancemethod=AreaToArea(30),
     maskbehavior = Dispersal.CheckMaskEdges()
 );
-array_output = ArrayOutput(
+######## RUNNNING THE MODEL ############
+array_output = ResultOutput(
     pepe_rasterTS; tspan = tspan,
     aux = aux,
     mask = raster_sum
 )
-@time s = sim!(array_output, Ruleset(k_rule, dynamic_biotic, remix_outdisp); boundary = Reflect())
-MK.heatmap(combined_raster[Ti(2)])
-f = Figure(resolution = (600, 400))
-ax1 = Axis(f[1, 1])
-ax2 = Axis(f[1, 2])
-MK.heatmap!(ax1, s[1].state; colormap=custom_palette)
-MK.heatmap!(ax2, s[end].state; colormap=custom_palette)
-f
-s[1].state == s[end].state
+@time s = sim!(array_output, Ruleset(k_rule, biotic_GLV_raster, outdisp); boundary = Reflect())
 
+########### MAKIE ############
 makie_output = MakieOutput(pepe_rasterTS, tspan = tspan;
-    fps = 10, ruleset = Ruleset(k_rule, dynamic_biotic, remix_outdisp),
+    fps = 10, ruleset = Ruleset(k_rule, biotic_GLV_raster, outdisp),
     aux = aux, mask = raster_sum) do (; layout, frame)
 
     plot_keys = [:biomass, :simulated_richness, :npp, :real_richness]
@@ -103,9 +105,11 @@ makie_output = MakieOutput(pepe_rasterTS, tspan = tspan;
 
     for (ax, key, title) in zip(axes, plot_keys, titles)
         if key == :biomass
-            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette)
+            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
+            ax.yreversed[] = true
         elseif key == :simulated_richness
-            Makie.image!(ax, frame[:state]; interpolate=false, colormap=custom_palette)
+            Makie.image!(ax, frame[:state], lambda_raster.multiplicative; colormap=custom_palette, colorrange = (0, 256))
+            ax.yreversed[] = true
         elseif key == :npp
             Makie.heatmap!(ax, frame[:npp_raster]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
         elseif key == :real_richness
@@ -116,9 +120,6 @@ makie_output = MakieOutput(pepe_rasterTS, tspan = tspan;
         ax.title = title
         ax.titlegap[] = 5
         ax.titlesize[] = 12
-        ax.titlecolor[] = RGBA(0, 0, 0, 1)
-        ax.yreversed[] = true
+        ax.titlecolor[] = RGBA(0, 0, 0, 1)    
     end
 end
-
-Makie.heatmap(raster_with_abundances)

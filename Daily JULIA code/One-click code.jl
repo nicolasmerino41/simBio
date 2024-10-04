@@ -1,28 +1,5 @@
-num_species = 256
-using Pkg
-# PC = "MM-1"
-Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
-cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
-meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
-# Pkg.add(path = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Dispersal.jl")
-# Packages
-using ArchGDAL #, Shapefile, NCDatasets
-using CSV, DataFrames
-using NamedArrays, StaticArrays, OrderedCollections
-using Rasters, RasterDataSources #, DimensionalData
-using DynamicGrids, Dispersal
-using Dates, Distributions, Serialization, StatsBase, JLD2
-using ColorSchemes, Colors #Crayons, 
-using Makie, WGLMakie # ImageMagick, 
-#using Unitful: °C, K, cal, mol, mm
-# const DG, MK, PL, AG, RS, Disp, DF, NCD, SH = DynamicGrids, Makie, Plots, ArchGDAL, Rasters, Dispersal, DataFrames, NCDatasets, Shapefile
-const DG, MK, AG, RS, Disp, DF = DynamicGrids, Makie, ArchGDAL, Rasters, Dispersal, DataFrames
-const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
-
-include("HerpsVsBirmmals.jl")
-include("kernels.jl")
 #################################################################################################
-####################### REAL SIMULATION ############################
+########################### LET'S GO ###############################
 ####################################################################
 ####################################################################
 ####################################################################
@@ -131,7 +108,7 @@ end
 function map_plot(plot::AbstractArray; type = nothing, lambda_DA = nothing, palette = nothing, legend = false, show_grid = true, flip = true, title = nothing, kw...)
     
     if isa(plot, DimArray)
-        @warn "The plot is a DimArray. Consider using a Matrix."
+        plot = Matrix(plot)
     end
     
     fig = Figure()
@@ -257,7 +234,7 @@ println("The number of 1s in the iberian_interact_matrix is $interaction_count")
 # Turn iberian_interact_matrix into a DataFrame
 # Convert the iberian_interact_matrix into a DataFrame with appropriate column and row names
 iberian_interact_df = DataFrame(iberian_interact_matrix, species_names)
-function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation = 0.01; beta = 1.0)
+function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation, beta)
     adjacency = deepcopy(adjacencyy)
     epsilon = float(epsilon)
     u = adjacency
@@ -363,28 +340,28 @@ function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHe
 end
 # FOR RASTER
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyStructs256, 2})
-    scalars = map(mystruct -> mystruct.b, A)
+    scalars = map(mystruct -> mystruct.b, A).*lambda_raster.multiplicative
     return Makie.convert_arguments(t, scalars)
 end
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyBirmmals, 2})
-    scalars = map(mystruct -> mystruct.b, A)
+    scalars = map(mystruct -> mystruct.b, A).*lambda_raster.multiplicative
     return Makie.convert_arguments(t, scalars)
 end
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyHerps, 2})
     scalars = map(mystruct -> mystruct.b, A).*lambda_raster.multiplicative
     return Makie.convert_arguments(t, scalars)
 end
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyStructs256, 2})
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyStructs256, 2}, lambda_grid::AbstractRaster{<:AbstractFloat, 2})
     # Count presence based on the threshold
-    richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector[i], 1:length(mystruct.a)), A)
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
     return Makie.convert_arguments(t, richness)
 end                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyBirmmals, 2})
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyBirmmals, 2}, lambda_grid::AbstractRaster{<:AbstractFloat, 2})
     # Count presence based on the threshold
     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_birds[i], 1:length(mystruct.a)), A)
     return Makie.convert_arguments(t, richness)
 end
-function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyHerps, 2})
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyHerps, 2}, lambda_grid::AbstractRaster{<:AbstractFloat, 2})
     # Count presence based on the threshold
     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_herps[i], 1:length(mystruct.a)), A)
     return Makie.convert_arguments(t, richness)
