@@ -1,11 +1,8 @@
 hf = Rasters.Raster("Rasters/wildareas-v3-2009-human-footprint.tif", lazy = true)
 
-hf_float = map(x -> Float32(x), hf)
+hf_reprojected = resample(hf; to=utmraster)
 
-hf_reprojected = resample(hf_float; to=utmraster)
-
-hf_spain = hf_reprojected[X(-10 .. 3), Y(35 .. 44)]
-hf_spain = resample(hf_spain; to = utmraster)
+hf_spain = map(x -> Float32(x), hf_reprojected)
 hf_spain = map(x -> x == 128.0 ? 0.0 : x, hf_spain)
 
 inverted_hf = 1 ./ deepcopy(hf_spain)

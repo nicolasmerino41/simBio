@@ -1,5 +1,5 @@
 ############# Species Abundance Distribution ################
-function SAD_plotting(array_output, position; num_samples=10, modified = false, caca = false, log_scale = false)
+function SAD_plotting(array_output, position; num_samples=10, modified=false, caca=false, log_scale=false)
     # Initialize combined_abundances depending on the conditions provided
     if !modified && !caca
         # Merge birmmals and herps
@@ -10,22 +10,22 @@ function SAD_plotting(array_output, position; num_samples=10, modified = false, 
         combined_abundances = array_output .* lambda_DA[position]
     end
 
-    # Sample 10 random cells
-    random_cells = sample(idx, num_samples, replace=false)
-
-    # Prepare the figure to hold all subplots; adjust the figure size based on the number of valid cells
+    # Sample random cells
+    random_cells = sample(idx, num_samples; replace=false)
+    # Prepare the figure to hold all subplots
     fig = Figure(resolution=(800, max(800, length(random_cells) * 200)))
-
     # Process each cell
     for (i, cell) in enumerate(random_cells)
         if !any(isnan, combined_abundances[cell].a)
-            # Order the species by abundance in descending order
+            # Get abundances
+            abundances = combined_abundances[cell].a
+            # Filter out zero or negative abundances if log_scale is true
             if log_scale
-                ordered_abundances = sort(log.(combined_abundances[cell].a), rev=true)
-            else
-                ordered_abundances = sort(combined_abundances[cell].a, rev=true)
+                positive_indices = findall(>0, abundances)
+                abundances = abundances[positive_indices]
             end
-            
+            # Order the species by abundance in descending order
+            ordered_abundances = sort(abundances; rev=true)
             # Generate species ranks (x-values)
             species_ranks = 1:length(ordered_abundances)
 
@@ -33,18 +33,23 @@ function SAD_plotting(array_output, position; num_samples=10, modified = false, 
             ax = Axis(fig[i, 1], title="Cell $cell", xlabel="Species Rank", ylabel="Abundance")
             barplot!(ax, species_ranks, ordered_abundances)
 
-            # Dynamically set the x-axis limits based on the number of species
-            xlims!(ax, 0, length(ordered_abundances) + 1)  # +1 to ensure the last bar is fully visible
+            # Set y-axis to logarithmic scale if requested
+            if log_scale
+                yaxis!(ax, scale=log10)
+            end
+
+            # Adjust axis limits
+            xlims!(ax, 0, length(ordered_abundances) + 1)
             ylims!(ax, 0, maximum(ordered_abundances) * 1.1)
         else
-            # Create a placeholder axis if data is not valid
+            # Placeholder axis if data is not valid
             ax = Axis(fig[i, 1], title="Cell $cell - Data Not Available")
         end
     end
-    
     # Display the figure
     fig
 end
+
 SAD_plotting(a, 1; modified = true, caca = false, log_scale = true)
 
 # Helper function to calculate AIC
