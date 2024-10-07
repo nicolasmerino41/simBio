@@ -70,18 +70,18 @@ bio6_raster_series = RasterSeries(bio6_raster_list, Ti(tspan))
 bio12_raster_series = RasterSeries(bio12_raster_list, Ti(tspan))
 
 ########## PLOTTING THE DATA ############
-q = min(minimum(bio5_raster_series[Ti(1)]), minimum(bio5_raster_series[Ti(end)]))
-w = max(maximum(bio5_raster_series[Ti(1)]), maximum(bio5_raster_series[Ti(end)]))
-e = min(minimum(bio12_raster_series[Ti(1)]), minimum(bio12_raster_series[Ti(end)]))
-r = max(maximum(bio12_raster_series[Ti(1)]), maximum(bio12_raster_series[Ti(end)]))
-# Create a figure with 2 axes
-fig = Figure(resolution = (800, 400))
+# q = min(minimum(bio5_raster_series[Ti(1)]), minimum(bio5_raster_series[Ti(end)]))
+# w = max(maximum(bio5_raster_series[Ti(1)]), maximum(bio5_raster_series[Ti(end)]))
+# e = min(minimum(bio12_raster_series[Ti(1)]), minimum(bio12_raster_series[Ti(end)]))
+# r = max(maximum(bio12_raster_series[Ti(1)]), maximum(bio12_raster_series[Ti(end)]))
+# # Create a figure with 2 axes
+# fig = Figure(resolution = (800, 400))
 
-# Plot the first raster in the bio5 series
-ax1 = Axis(fig[1, 1])
-ax2 = Axis(fig[1, 2])
-heatmap!(ax1, bio5_raster_series[Ti(25)], colorrange = (q, w), colormap = :thermal)
-heatmap!(ax2, bio5_raster_series[Ti(75)], colorrange = (q, w), colormap = :thermal)
+# # Plot the first raster in the bio5 series
+# ax1 = Axis(fig[1, 1])
+# ax2 = Axis(fig[1, 2])
+# heatmap!(ax1, bio5_raster_series[Ti(25)], colorrange = (q, w), colormap = :thermal)
+# heatmap!(ax2, bio5_raster_series[Ti(75)], colorrange = (q, w), colormap = :thermal)
 
-# Display the figure
-fig
+# # Display the figure
+# fig

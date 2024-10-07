@@ -14,7 +14,7 @@ self_regulation = 1.0
 sigma = 0.5
 sigma_comp = 0.1
 epsilon = 1.0
-beta = 1.0  
+beta = 3.0  
 assymetry = 0.0
 remove_variable(:alfa)
 alfa = 0.1
