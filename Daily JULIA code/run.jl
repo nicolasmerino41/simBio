@@ -1,4 +1,4 @@
-PC = "nicol"
+PC = "MM-1"
 num_species = 256
 include("HerpsVsBirmmals.jl")
 include("kernels.jl")
@@ -24,13 +24,13 @@ pepe_state = (
 
 ##### Parameters #####
 self_regulation = 1.0
-sigma = 0.2
-sigma_comp = 0.5
-epsilon = 1.0
+sigma = 0.0001
+sigma_comp = 0.0
+epsilon = 0.1
 beta = 1.0  
-assymetry = 0.0
+assymetry = 1.0
 remove_variable(:alfa)
-alfa = 0.1
+alfa = 0.9
 ##### Matrices #####
 # Trophic
 caca = deepcopy(iberian_interact_NA)
@@ -116,11 +116,11 @@ indisp = InwardsDispersal{:state, :state}(;
 
 ##### MAKIE STATE #####
 array_output = ResultOutput(
-    pepe_state; tspan = 1:10,
+    pepe_state; tspan = 1:100,
     mask = Matrix(DA_sum)
 )
 
-# @time a = sim!(array_output, Ruleset(biotic_GLV, outdisp, neighbors_rule; boundary = Reflect()))
+@time c = sim!(array_output, Ruleset(biotic_GLV, outdisp; boundary = Reflect(), proc = ThreadedCPU()))
 
 makie_output = MakieOutput(pepe_state, tspan = 1:200;
     fps = 10, ruleset = Ruleset(biotic_GLV, outdisp; boundary = Reflect()),

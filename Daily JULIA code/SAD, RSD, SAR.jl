@@ -1,31 +1,38 @@
 ############# Species Abundance Distribution ################
-function SAD_plotting(array_output, position; num_samples=10, modified=false, caca=false, log_scale=false)
+function SAD_plotting(array_output, position, type = nothing; num_samples=10, modified = false, caca = false, log_scale = false)
+        
     # Initialize combined_abundances depending on the conditions provided
     if !modified && !caca
         # Merge birmmals and herps
         combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)) .* lambda_DA[position]
     elseif modified && !caca
         combined_abundances = array_output[end].state .* lambda_DA[position]
+        if type == "abundance"
+            # Ensure element-wise division by body_mass_vector for each cell
+            for i in idx
+                combined_abundances[i] = MyStructs256(SVector{256, Float64}(combined_abundances[i].a ./ body_mass_vector))
+            end
+        end
     elseif caca
         combined_abundances = array_output .* lambda_DA[position]
     end
 
-    # Sample random cells
-    random_cells = sample(idx, num_samples; replace=false)
-    # Prepare the figure to hold all subplots
+    # Sample 10 random cells
+    random_cells = sample(idx, num_samples, replace=false)
+
+    # Prepare the figure to hold all subplots; adjust the figure size based on the number of valid cells
     fig = Figure(resolution=(800, max(800, length(random_cells) * 200)))
+
     # Process each cell
     for (i, cell) in enumerate(random_cells)
         if !any(isnan, combined_abundances[cell].a)
-            # Get abundances
-            abundances = combined_abundances[cell].a
-            # Filter out zero or negative abundances if log_scale is true
-            if log_scale
-                positive_indices = findall(>0, abundances)
-                abundances = abundances[positive_indices]
-            end
             # Order the species by abundance in descending order
-            ordered_abundances = sort(abundances; rev=true)
+            if log_scale
+                ordered_abundances = sort(log.(combined_abundances[cell].a), rev=true)
+            else
+                ordered_abundances = sort(combined_abundances[cell].a, rev=true)
+            end
+            
             # Generate species ranks (x-values)
             species_ranks = 1:length(ordered_abundances)
 
@@ -33,24 +40,20 @@ function SAD_plotting(array_output, position; num_samples=10, modified=false, ca
             ax = Axis(fig[i, 1], title="Cell $cell", xlabel="Species Rank", ylabel="Abundance")
             barplot!(ax, species_ranks, ordered_abundances)
 
-            # Set y-axis to logarithmic scale if requested
-            if log_scale
-                yaxis!(ax, scale=log10)
-            end
-
-            # Adjust axis limits
-            xlims!(ax, 0, length(ordered_abundances) + 1)
+            # Dynamically set the x-axis limits based on the number of species
+            xlims!(ax, 0, length(ordered_abundances) + 1)  # +1 to ensure the last bar is fully visible
             ylims!(ax, 0, maximum(ordered_abundances) * 1.1)
         else
-            # Placeholder axis if data is not valid
+            # Create a placeholder axis if data is not valid
             ax = Axis(fig[i, 1], title="Cell $cell - Data Not Available")
         end
     end
+    
     # Display the figure
     fig
 end
 
-SAD_plotting(a, 1; modified = true, caca = false, log_scale = true)
+SAD_plotting(a, 1, "abundance"; modified = true, caca = false, log_scale = false)
 
 # Helper function to calculate AIC
 function aic_loglikelihood(data, distribution)
@@ -61,12 +64,19 @@ function aic_loglikelihood(data, distribution)
 end
 
 # Main analysis function with Log-Normal, Gamma, and Normal distributions
-function analyze_SAD(array_output, position; num_samples=10, modified = false, caca = false)
+function analyze_SAD(array_output, position, type = nothing; num_samples=10, modified = false, caca = false)
     # Initialize combined_abundances depending on the conditions provided
     if !modified && !caca
+        # Merge birmmals and herps
         combined_abundances = (deepcopy(array_output[end].herps) + deepcopy(array_output[end].birmmals)) .* lambda_DA[position]
     elseif modified && !caca
         combined_abundances = array_output[end].state .* lambda_DA[position]
+        if type == "abundance"
+            # Ensure element-wise division by body_mass_vector for each cell
+            for i in idx
+                combined_abundances[i] = MyStructs256(SVector{256, Float64}(combined_abundances[i].a ./ body_mass_vector))
+            end
+        end
     elseif caca
         combined_abundances = array_output .* lambda_DA[position]
     end
@@ -187,7 +197,7 @@ function analyze_SAD(array_output, position; num_samples=10, modified = false, c
 end
 
 # Call the function to analyze SAD
-analyze_SAD(a, 1; num_samples = 100, modified = true, caca = false)
+analyze_SAD(a, 1, "abundance"; num_samples = 100, modified = true, caca = false)
 ############# Range Size Distribution ################
 function calculate_RSD(array_output, position; modified = false, caca = false)
     # Initialize combined_abundances depending on the conditions provided
@@ -227,7 +237,7 @@ function calculate_RSD(array_output, position; modified = false, caca = false)
     
     return range_size_distribution
 end
-rsd = calculate_RSD(a, 1; modified = true, caca = false)
+rsd = calculate_RSD(b, 1; modified = true, caca = false)
 println("Range Size Distribution: ", rsd)
 
 function plot_RSD(rsd)
@@ -365,23 +375,29 @@ function contiguous_sar(array_output, position; max_cells=100, threshold=0.0, gr
     return all_richness
 end
 
-sar_contiguous = contiguous_sar(a, 1; modified = true, caca = false, num_origins = 10, max_cells = 1000)
+sar_contiguous = contiguous_sar(c, 1; modified = true, caca = false, num_origins = 10, max_cells = 1000)
 
 function plot_SAR(all_richness)
     fig = Figure(resolution=(800, 400))
     ax = Axis(fig[1, 1], title="Species-Area Relationship", xlabel="Number of Cells", ylabel="Species Richness")
-    
-    # Plot each origin's species richness progression as a separate line
+
+    # Ensure all values in all_richness are numeric (convert to Float64 if needed)
     for richness in all_richness
         x_vals = 1:length(richness)
-        lines!(ax, x_vals, richness, linewidth=2)
+        
+        # Ensure that richness is a vector of numeric types
+        numeric_richness = Float64.(richness)  # Convert all elements to Float64
+
+        # Plot each origin's species richness progression as a separate line
+        lines!(ax, x_vals, numeric_richness, linewidth=2)
     end
 
     fig
 end
 
-# Plot the SAR
+# Assuming sar_contiguous is defined and contains numeric data
 plot_SAR(sar_contiguous)
+
 ############# CALCULATE SAR ################
 using Statistics
 
@@ -460,3 +476,188 @@ lognormal_dist = LogNormal(2.69, 0.24)
 lines!(ax, x_vals, pdf(lognormal_dist, x_vals), color=:red)
 
 fig
+
+#########################################################
+######### BIOMASS PYRAMID PLOTTING ######################
+# List all .jls files in the 'outputs' folder
+jls_files = sort(glob("outputs/*.jls"))
+function biomass_distribution_plotting(array_output, position, type = "region"; cell = nothing, bin_size = 0.2, caca = false, ax = nothing)
+    if type == "region"
+        # Combine abundances for the entire region
+        if caca
+            combined_abundances = array_output .* lambda_DA[position]
+        else
+            combined_abundances = array_output[end].state .* lambda_DA[position]
+        end
+        biomass = MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
+        for i in idx
+            biomass = biomass + combined_abundances[i]
+        end
+        biomass = biomass.a
+    elseif type == "cell"
+        if isnothing(cell)
+            error("Please provide a valid position for cell mode.")
+        end
+        if caca
+            combined_abundances = array_output[cell[1], cell[2]] * lambda_DA[position][cell[1], cell[2]]
+        else
+            combined_abundances = deepcopy(array_output[end].state[cell[1], cell[2]]) * lambda_DA[position][cell[1], cell[2]]
+        end
+        biomass = combined_abundances.a
+    else
+        error("Invalid type provided. Use 'region' for the whole region or 'cell' for a single cell.")
+    end
+
+    # Define the range of trophic levels
+    min_trophic_level = floor(minimum(TrophInd_vector) / bin_size) * bin_size
+    max_trophic_level = ceil(maximum(TrophInd_vector) / bin_size) * bin_size
+
+    # Create bins for trophic levels
+    bins = min_trophic_level:bin_size:max_trophic_level
+
+    # Calculate total biomass per bin
+    biomass_per_bin = zeros(length(bins) - 1)
+    for i in 1:(length(bins) - 1)
+        bin_indices = (TrophInd_vector .>= bins[i]) .& (TrophInd_vector .< bins[i + 1])
+        biomass_per_bin[i] = sum(biomass[bin_indices])
+    end
+
+    # If no axis is provided, create one
+    if ax === nothing
+        # Create the figure and axis
+        fig = Figure(resolution = (600, 400))
+        ax = Axis(fig[1, 1],
+            title = "Biomass Distribution by Trophic Level",
+            xlabel = "Total Biomass",
+            ylabel = "Trophic Level"
+        )
+        # Plot horizontal bars
+        barplot!(ax, bins[1:end-1], biomass_per_bin; color = :blue, direction = :x)
+        # Display the figure
+        fig
+    else
+        # Plot on the provided axis
+        # Adjust axis labels if necessary
+        ax.xlabel = "Total Biomass"
+        ax.ylabel = "Trophic Level"
+        # Plot horizontal bars
+        barplot!(ax, bins[1:end-1], biomass_per_bin; color = :blue, direction = :x)
+        # Adjust axis limits if needed
+        # xlims!(ax, 0, maximum(biomass_per_bin) * 1.1)
+        # ylims!(ax, minimum(bins), maximum(bins))
+    end
+end
+
+# Number of rows and columns
+num_rows = 4
+num_columns = 5
+# Create a figure with a 4x5 grid layout
+fig = Figure(resolution = (1000, 800))
+saxes = [Axis(fig[i, j]) for i in 1:num_rows, j in 1:num_columns]
+for (idx_file, file) in enumerate(jls_files)
+    # Load the data
+    array_output = deserialize(file)
+    
+    # Extract parameters from the filename
+    # Filename format: "3.0-5.0-0.1-1.0-0.33.jls"
+    filename = basename(file)
+    filename_without_ext = splitext(filename)[1]
+    params_str = split(filename_without_ext, "-")
+    params = parse.(Float64, params_str)
+    sigma, epsilon, alfa, sigma_comp, assymetry = params
+    
+    # Determine the grid position
+    row = div((idx_file - 1), num_columns) + 1
+    col = mod(idx_file - 1, num_columns) + 1
+
+    # Check that row and col are within the grid dimensions
+    if row > num_rows
+        println("Warning: More files than grid positions. Skipping file: ", file)
+        continue
+    end
+    
+    ax = saxes[row, col]
+    
+    # Plot on the axis using your function
+    biomass_distribution_plotting(array_output, position; caca = true, ax = ax)
+    
+    # Set the axis title with parameter values
+    ax.title = "σ=$(sigma), ε=$(epsilon)\nα=$(alfa), σc=$(sigma_comp), asy=$(assymetry)"
+    
+    # Adjust axis labels (optional, since labels might overlap in a grid)
+    if row == num_rows
+        ax.xlabel = "Total Biomass"
+    else
+        hidespines!(ax, :b)
+        ax.xlabelvisible = false
+    end
+    if col == 1
+        ax.ylabel = "Trophic Level"
+    else
+        hidespines!(ax, :l)
+        ax.ylabelvisible = false
+    end
+end
+
+# Display the figure
+fig
+
+function old_biomass_distribution_plotting(array_output, position, type = "region"; cell = nothing, bin_size = 0.2, caca = false)
+    if type == "region"
+        # Combine abundances for the entire region
+        combined_abundances = array_output[end].state .* lambda_DA[position]
+        if caca
+            combined_abundances = array_output .* lambda_DA[position]
+        end
+        biomass = MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
+        for i in idx
+            biomass = biomass + combined_abundances[i]
+        end
+        biomass = biomass.a
+    elseif type == "cell"
+        if isnothing(cell)
+            error("Please provide a valid position for cell mode.")
+        end
+        # Use the abundances from a specific cell
+        combined_abundances = deepcopy(array_output[end].state[cell[1], cell[2]]) * lambda_DA[position][cell[1], cell[2]]
+        if caca
+            combined_abundances = array_output[cell[1], cell[2]] * lambda_DA[position][cell[1], cell[2]]
+        end
+        biomass = combined_abundances.a
+    else
+        error("Invalid type provided. Use 'region' for the whole region or 'cell' for a single cell.")
+    end
+
+    # Define the range of trophic levels
+    min_trophic_level = floor(minimum(TrophInd_vector) / bin_size) * bin_size
+    max_trophic_level = ceil(maximum(TrophInd_vector) / bin_size) * bin_size
+
+    # Create bins for trophic levels
+    bins = min_trophic_level:bin_size:max_trophic_level
+
+    # Calculate total biomass per bin
+    biomass_per_bin = zeros(length(bins) - 1)
+    for i in 1:(length(bins) - 1)
+        bin_indices = (TrophInd_vector .>= bins[i]) .& (TrophInd_vector .< bins[i + 1])
+        biomass_per_bin[i] = sum(biomass[bin_indices])
+    end
+
+    # Create the figure and axis
+    fig = Figure(resolution = (600, 400))
+    ax = Axis(fig[1, 1],
+        title = "Biomass Distribution by Trophic Level",
+        xlabel = "Total Biomass",
+        ylabel = "Trophic Level"
+    )
+
+    # Plot horizontal bars
+    barplot!(ax, bins[1:end-1], biomass_per_bin; color = :blue, direction = :x)
+
+    # Adjust axis limits
+    # xlims!(ax, 0, maximum(biomass_per_bin) * 1.1)
+    # ylims!(ax, minimum(bins), maximum(bins))
+
+    # Display the figure
+    fig
+end
+old_biomass_distribution_plotting(c, 1, "region"; cell = (35, 35), bin_size = 0.5)

@@ -1,36 +1,27 @@
 library(ggplot2)
 library(magrittr)
 library(ggcorrplot)
-arch = read.csv("drago_results_with_herbivory_new.csv")
+arch = read.csv("drago_result_with_herbivory_new.csv")
 arch1 = subset(arch, complete.cases(arch))
 # arch1$richness_similarity = 100 - arch1$richness_similarity
 
 # Assuming the data is stored in 'arch1'
 # Scatter plot of 'sigma' vs 'avg_shannon'
 arch1 %>%
-  dplyr::filter(alfa != 0.001 & alfa != 0.01) %>%
-  ggplot(aes(x = as.factor(sigma), y = avg_shannon, color = as.factor(epsilon))) +
+  # dplyr::filter(alfa != 0.001 & alfa != 0.01) %>%
+  ggplot(aes(x = as.factor(sigma_comp), y = avg_shannon, color = as.factor(alfa))) +
   geom_point() +
   facet_wrap(~as.factor(epsilon)) +
   labs(
-    title = "Sigma vs Avg Shannon Index",
+    title = "Avg Shannon Index vs Sigma by Epsilon",
     x = "Sigma", 
     y = "Avg Shannon Index"
   ) +
   rcartocolor::scale_color_carto_d(palette = "Earth") +
   theme_minimal()
 
-# Scatter plot of 'sigma' vs 'avg_shannon', colored by 'Suitability Type'
-ggplot(arch1, aes(x = sigma, y = avg_shannon, color = sigma_comp)) +
-  geom_point() +
-  facet_wrap(~sigma_comp) +
-  labs(title = "Average Shannon Vs Sigma by Sigma Comp",
-       x = "Sigma", y = "Average Shannon",
-       color = "Sigma comp") +  # This changes the legend title
-  theme_minimal()
-
-# Scatter plot of 'epsilon' vs 'Average Shannon' faceted by 'Suitability Type'
-ggplot(arch1, aes(x = epsilon, y = avg_shannon)) +
+# Scatter plot of 'Average Shannon' VS 'epsilon' Faceted by 'Sigma'
+ggplot(arch1, aes(x = as.factor(epsilon), y = avg_shannon)) +
   geom_point() +
   facet_wrap(~sigma) +
   labs(title = "Average Shannon Vs Epsilon by Interaction Strength",
@@ -65,7 +56,6 @@ arch1 %>%
   scale_color_carto_c(palette = "Earth") +
   theme_classic()
 
-
 # CORRELATION
 numeric_cols <- arch1[, c("sigma", "epsilon", "alfa", "avg_shannon", "avg_bbp", "richness_similarity", "alive_predators", "mean_tl")]
 corr_matrix <- cor(numeric_cols, use = "complete.obs")
@@ -74,13 +64,32 @@ corr_matrix <- cor(numeric_cols, use = "complete.obs")
 ggcorrplot(corr_matrix, lab = TRUE, type = "upper", title = "Correlation Matrix")
 
 
+model = lm(avg_shannon ~ sigma + epsilon + alfa + sigma_comp + assymetry, data = arch1)
+model_with_interaction = lm(avg_shannon ~ (sigma + epsilon + alfa + sigma_comp + assymetry)^2, data = arch1)
 
+summary(model)
+summary(model_with_interaction)
 
+# Plot residuals vs fitted values
+plot(model_with_interaction, which = 1)
 
+# Normal Q-Q plot
+plot(model_with_interaction, which = 2)
 
+# Scale-Location plot
+plot(model_with_interaction, which = 3)
 
+# Residuals vs Leverage
+plot(model_with_interaction, which = 5)
 
+# Check multicollinearity using Variance Inflation Factor (VIF)
+library(car)
+vif(model)
 
+# Backward elimination based on AIC
+model_step <- step(model_with_interaction, direction = "backward")
+
+model_step
 
 
 
