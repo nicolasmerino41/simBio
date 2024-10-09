@@ -24,3 +24,7 @@ DirectSamplingResults.csv
 *.csv
 *.docx
 outputs/
+Europe/
+Mediterranean/
+NUTS/
+*.tif

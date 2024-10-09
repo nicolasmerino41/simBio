@@ -38,7 +38,7 @@ ggplot(arch1, aes(x = as.character(sigma), y = avg_bbp)) +
 # Boxplot of 'richness_similarity' vs 'sigma' faceted by 'Suitability Type' (k_DA_name)
 ggplot(arch1, aes(x = as.factor(sigma), y = richness_similarity)) +
   geom_boxplot() +
-  facet_wrap(~ epsilon) +  # Facet by Suitability Type
+  facet_wrap(~ sigma_comp) +  # Facet by Suitability Type
   labs(title = "Richness Similarity vs Sigma by Epsilon",
        x = "Sigma", y = "Richness Similarity", 
        facet = "Epsilon") +
