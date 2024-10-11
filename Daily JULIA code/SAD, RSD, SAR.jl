@@ -479,9 +479,22 @@ fig
 
 #########################################################
 ######### BIOMASS PYRAMID PLOTTING ######################
+#########################################################
+#########################################################
 # List all .jls files in the 'outputs' folder
+using Glob
 jls_files = sort(glob("outputs/*.jls"))
-function biomass_distribution_plotting(array_output, position, type = "region"; cell = nothing, bin_size = 0.2, caca = false, ax = nothing)
+jls_filess = sample(jls_files, 20, replace = false)
+function biomass_distribution_plotting(
+    array_output,
+    position,
+    type = "region";
+    cell = nothing,
+    bin_size = 0.2,
+    caca = false,
+    ax = nothing,
+    logscale = false
+)
     if type == "region"
         # Combine abundances for the entire region
         if caca
@@ -522,13 +535,21 @@ function biomass_distribution_plotting(array_output, position, type = "region"; 
         biomass_per_bin[i] = sum(biomass[bin_indices])
     end
 
+    # Apply log scale to biomass if requested
+    if logscale
+        # Add a small epsilon to avoid log(0)
+        epsilon = 1e-70
+        biomass_per_bin = log10.(biomass_per_bin .+ epsilon)
+    end
+
     # If no axis is provided, create one
     if ax === nothing
         # Create the figure and axis
         fig = Figure(resolution = (600, 400))
-        ax = Axis(fig[1, 1],
+        ax = Axis(
+            fig[1, 1],
             title = "Biomass Distribution by Trophic Level",
-            xlabel = "Total Biomass",
+            xlabel = logscale ? "Log10(Total Biomass)" : "Total Biomass",
             ylabel = "Trophic Level"
         )
         # Plot horizontal bars
@@ -538,7 +559,7 @@ function biomass_distribution_plotting(array_output, position, type = "region"; 
     else
         # Plot on the provided axis
         # Adjust axis labels if necessary
-        ax.xlabel = "Total Biomass"
+        ax.xlabel = logscale ? "Log10(Total Biomass)" : "Total Biomass"
         ax.ylabel = "Trophic Level"
         # Plot horizontal bars
         barplot!(ax, bins[1:end-1], biomass_per_bin; color = :blue, direction = :x)
@@ -554,7 +575,7 @@ num_columns = 5
 # Create a figure with a 4x5 grid layout
 fig = Figure(resolution = (1000, 800))
 saxes = [Axis(fig[i, j]) for i in 1:num_rows, j in 1:num_columns]
-for (idx_file, file) in enumerate(jls_files)
+for (idx_file, file) in enumerate(jls_filess)
     # Load the data
     array_output = deserialize(file)
     
@@ -579,11 +600,11 @@ for (idx_file, file) in enumerate(jls_files)
     ax = saxes[row, col]
     
     # Plot on the axis using your function
-    biomass_distribution_plotting(array_output, position; caca = true, ax = ax)
+    biomass_distribution_plotting(array_output, 1, "cell"; cell = (35, 35), caca = true, ax = ax, logscale = true)
     
     # Set the axis title with parameter values
     ax.title = "σ=$(sigma), ε=$(epsilon)\nα=$(alfa), σc=$(sigma_comp), asy=$(assymetry)"
-    
+    xlims!(ax, 0, nothing)
     # Adjust axis labels (optional, since labels might overlap in a grid)
     if row == num_rows
         ax.xlabel = "Total Biomass"
@@ -599,65 +620,55 @@ for (idx_file, file) in enumerate(jls_files)
     end
 end
 
-# Display the figure
-fig
+######## PLOTTING RICHNESS/BIOMASS MAP FOR n OUTPUTS ########
+######################################################
+######################################################
+function richness_biomass_map_plotting()
+type = "richness"
+jls_filess = sample(jls_files, 20, replace = false)
+# Number of rows and columns
+num_rows = 4
+num_columns = 5
+# Create a figure with a 4x5 grid layout
+fig = Figure(resolution = (1000, 800))
+saxes = [Axis(fig[i, j]) for i in 1:num_rows, j in 1:num_columns]
+for (idx_file, file) in enumerate(jls_filess)
+    # Load the data
+    array_output = deserialize(file)
+    
+    # Extract parameters from the filename
+    # Filename format: "3.0-5.0-0.1-1.0-0.33.jls"
+    filename = basename(file)
+    filename_without_ext = splitext(filename)[1]
+    params_str = split(filename_without_ext, "-")
+    params = parse.(Float64, params_str)
+    sigma, epsilon, alfa, sigma_comp, assymetry = params
+    
+    # Determine the grid position
+    row = div((idx_file - 1), num_columns) + 1
+    col = mod(idx_file - 1, num_columns) + 1
 
-function old_biomass_distribution_plotting(array_output, position, type = "region"; cell = nothing, bin_size = 0.2, caca = false)
-    if type == "region"
-        # Combine abundances for the entire region
-        combined_abundances = array_output[end].state .* lambda_DA[position]
-        if caca
-            combined_abundances = array_output .* lambda_DA[position]
-        end
-        biomass = MyStructs256(SVector{256, Float64}(fill(0.0, 256)))
-        for i in idx
-            biomass = biomass + combined_abundances[i]
-        end
-        biomass = biomass.a
-    elseif type == "cell"
-        if isnothing(cell)
-            error("Please provide a valid position for cell mode.")
-        end
-        # Use the abundances from a specific cell
-        combined_abundances = deepcopy(array_output[end].state[cell[1], cell[2]]) * lambda_DA[position][cell[1], cell[2]]
-        if caca
-            combined_abundances = array_output[cell[1], cell[2]] * lambda_DA[position][cell[1], cell[2]]
-        end
-        biomass = combined_abundances.a
-    else
-        error("Invalid type provided. Use 'region' for the whole region or 'cell' for a single cell.")
+    # Check that row and col are within the grid dimensions
+    if row > num_rows
+        println("Warning: More files than grid positions. Skipping file: ", file)
+        continue
     end
-
-    # Define the range of trophic levels
-    min_trophic_level = floor(minimum(TrophInd_vector) / bin_size) * bin_size
-    max_trophic_level = ceil(maximum(TrophInd_vector) / bin_size) * bin_size
-
-    # Create bins for trophic levels
-    bins = min_trophic_level:bin_size:max_trophic_level
-
-    # Calculate total biomass per bin
-    biomass_per_bin = zeros(length(bins) - 1)
-    for i in 1:(length(bins) - 1)
-        bin_indices = (TrophInd_vector .>= bins[i]) .& (TrophInd_vector .< bins[i + 1])
-        biomass_per_bin[i] = sum(biomass[bin_indices])
+    
+    ax = saxes[row, col]
+    
+    # Plot on the axis using your function
+    if type == "richness"
+        MK.image!(ax, array_output; colormap = custom_palette, colorrange = (0, 256))
+    elseif type == "biomass"
+        Makie.heatmap!(ax, array_output; interpolate=false, colormap=custom_palette, colorrange = (0, m))
     end
-
-    # Create the figure and axis
-    fig = Figure(resolution = (600, 400))
-    ax = Axis(fig[1, 1],
-        title = "Biomass Distribution by Trophic Level",
-        xlabel = "Total Biomass",
-        ylabel = "Trophic Level"
-    )
-
-    # Plot horizontal bars
-    barplot!(ax, bins[1:end-1], biomass_per_bin; color = :blue, direction = :x)
-
-    # Adjust axis limits
-    # xlims!(ax, 0, maximum(biomass_per_bin) * 1.1)
-    # ylims!(ax, minimum(bins), maximum(bins))
-
-    # Display the figure
-    fig
+    
+    # Set the axis title with parameter values
+    ax.title = "σ=$(sigma), ε=$(epsilon)\nα=$(alfa), σc=$(sigma_comp), asy=$(assymetry)"
+    
+    ax.yreversed[] = true
+    return fig
 end
-old_biomass_distribution_plotting(c, 1, "region"; cell = (35, 35), bin_size = 0.5)
+end
+richness_biomass_map_plotting()
+########## LOG-BIOMASS VS TROPHIC LEVEL LINEAR REGRESSION ##########
