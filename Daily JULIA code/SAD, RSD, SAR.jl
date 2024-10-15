@@ -483,7 +483,7 @@ fig
 #########################################################
 # List all .jls files in the 'outputs' folder
 using Glob
-jls_files = sort(glob("outputs/*.jls"))
+jls_files = sort(glob("D:/Results from Direct Sampling with herbivory drago 14-10-2024/*.jls"))
 jls_filess = sample(jls_files, 20, replace = false)
 function biomass_distribution_plotting(
     array_output,
@@ -600,7 +600,8 @@ for (idx_file, file) in enumerate(jls_filess)
     ax = saxes[row, col]
     
     # Plot on the axis using your function
-    biomass_distribution_plotting(array_output, 1, "cell"; cell = (35, 35), caca = true, ax = ax, logscale = true)
+    # biomass_distribution_plotting(array_output, 1, "cell"; cell = (35, 35), caca = true, ax = ax, logscale = true)
+    biomass_distribution_plotting(array_output, 1; bin_size = 0.3, caca = true, ax = ax, logscale = false)
     
     # Set the axis title with parameter values
     ax.title = "σ=$(sigma), ε=$(epsilon)\nα=$(alfa), σc=$(sigma_comp), asy=$(assymetry)"
@@ -623,9 +624,9 @@ end
 ######## PLOTTING RICHNESS/BIOMASS MAP FOR n OUTPUTS ########
 ######################################################
 ######################################################
-function richness_biomass_map_plotting()
-type = "richness"
-jls_filess = sample(jls_files, 20, replace = false)
+type = "biomass"
+# jls_filess = sample(jls_files, 20, replace = false)
+jls_filesss = fill(jls_filess[3], 20)
 # Number of rows and columns
 num_rows = 4
 num_columns = 5
@@ -658,17 +659,22 @@ for (idx_file, file) in enumerate(jls_filess)
     
     # Plot on the axis using your function
     if type == "richness"
-        MK.image!(ax, array_output; colormap = custom_palette, colorrange = (0, 256))
+        MK.image!(ax, array_output, lambda_DA.multiplicative; colormap = custom_palette, colorrange = (0, 256))
     elseif type == "biomass"
-        Makie.heatmap!(ax, array_output; interpolate=false, colormap=custom_palette, colorrange = (0, m))
+        MK.heatmap!(ax, array_output; interpolate=false, colormap=custom_palette, colorrange = (0, m))
+    elseif type == "carnivores"
+        Makie.image!(ax, array_output, lambda_DA.multiplicative; colormap=custom_palette, colorrange = (0, 101))
     end
     
     # Set the axis title with parameter values
     ax.title = "σ=$(sigma), ε=$(epsilon)\nα=$(alfa), σc=$(sigma_comp), asy=$(assymetry)"
     
     ax.yreversed[] = true
-    return fig
+    
 end
-end
-richness_biomass_map_plotting()
+
 ########## LOG-BIOMASS VS TROPHIC LEVEL LINEAR REGRESSION ##########
+file_to_try = jls_filess[1]
+des_file_to_try = deserialize(file_to_try) 
+lambda_file = des_file_to_try .* lambda_DA.multiplicative
+MK.image(Matrix(lambda_file); colormap = custom_palette, colorrange = (0, 256))

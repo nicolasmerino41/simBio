@@ -308,7 +308,7 @@ DynamicGrids.to_rgb(scheme, obj::MyStructs256) = get(scheme, clamp(obj.b, 0.0, 1
 ####################################################################
 ####################################################################
 ####################################################################
-# # For a heatmap we just plot the scalars
+# For a heatmap we just plot the scalars
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyStructs256, 2})
     scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
     return Makie.convert_arguments(t, scalars)

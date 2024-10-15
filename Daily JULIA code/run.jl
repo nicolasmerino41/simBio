@@ -116,7 +116,7 @@ indisp = InwardsDispersal{:state, :state}(;
 
 ##### MAKIE STATE #####
 array_output = ResultOutput(
-    pepe_state; tspan = 1:100,
+    pepe_state; tspan = 1:12,
     mask = Matrix(DA_sum)
 )
 
