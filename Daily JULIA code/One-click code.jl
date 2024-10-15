@@ -336,12 +336,19 @@ function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHe
     richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_herps[i], 1:length(mystruct.a)), A)
     return Makie.convert_arguments(t, richness)
 end
-# # WITH LAMBDA
+# WITH LAMBDA
 # For MyStructs
 function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
     richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
     return Makie.convert_arguments(t, richness)
 end
+# PLOT
+# For MyStructs
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2})
+#     richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_DA.multiplicative)
+#     return Makie.convert_arguments(t, richness)
+# end
+# MK.image(Matrix(des_file_to_try); colomap = custom_palette)
 # For MyBirmmals
 function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
     richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_birds[i], 1:length(mystruct.a)), A, lambda_grid)
