@@ -1,0 +1,331 @@
+---
+title: "Exploratory Analysis of DirectSampling"
+author: "Nicolàs Merino"
+date: "2024-10-16"
+output:
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_depth: 5
+    number_sections: true
+    toc_float: 
+      collapsed: false
+    bookdown: yes
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+library(here)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = here())
+```
+
+# Libraries
+```{r, warning=FALSE, message=FALSE}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(GGally)
+library(readr)
+library(here)
+```
+# Data
+```{r, warning=FALSE, message=FALSE}
+# Load the data
+df <- read_csv("drago_result_with_herbivory_new.csv")
+```
+```{r, warning=FALSE}
+# Remove simulations with NaNs
+df <- subset(df, complete.cases(df))
+str(df)
+```
+
+# Descriptive Statistics
+## For parameters
+```{r}
+param_stats <- df %>%
+  select(sigma, epsilon, alfa, sigma_comp, assymetry) %>%
+  summary()
+print(param_stats)
+```
+
+## For metrics
+```{r}
+metric_stats <- df %>%
+  select(avg_shannon, avg_bbp, alive_predators, mean_tl, mean_n_of_species) %>%
+  summary()
+print(metric_stats)
+```
+
+# Distribution Analysis
+## Histograms for parameters
+```{r}
+param_names <- c("sigma", "epsilon", "alfa", "sigma_comp", "assymetry")
+for (param in param_names) {
+  p <- ggplot(df, aes(x = .data[[param]])) +
+    geom_histogram(
+      binwidth = (max(df[[param]], na.rm = TRUE) - min(df[[param]], na.rm = TRUE)) / 100,
+      fill = "blue", color = "black", alpha = 0.7, boundary = 0
+    ) +
+    theme_minimal() +
+    labs(title = paste("Histogram of", param), x = param, y = "Frequency")
+  print(p)
+}
+```
+
+## Histograms for metrics
+```{r}
+metric_names <- c("avg_shannon", "avg_bbp", "alive_predators", "mean_tl", "mean_n_of_species")
+for (metric in metric_names) {
+  p <- ggplot(df, aes(x = .data[[metric]])) +
+    geom_histogram(
+      binwidth = (max(df[[metric]], na.rm = TRUE) - min(df[[metric]], na.rm = TRUE)) / 30,
+      fill = "green", color = "black", alpha = 0.7, boundary = 0
+    ) +
+    theme_minimal() +
+    labs(title = paste("Histogram of", metric), x = metric, y = "Frequency")
+  print(p)
+}
+```
+
+# Correlation Matrix
+```{r}
+# Select numeric variables
+numeric_vars <- df %>%
+  select(sigma, epsilon, alfa, sigma_comp, assymetry,
+         avg_shannon, avg_bbp, alive_predators, mean_tl, mean_n_of_species)
+
+# Compute correlation matrix
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Plot correlation matrix
+corrplot(cor_matrix, method = "color", type = "upper",
+         tl.col = "black", tl.srt = 45, addCoef.col = "black",
+         number.cex = 0.7, mar = c(0, 0, 1, 0))
+
+print(cor_matrix)
+```
+
+## Extracting highly correlated pairs
+```{r}
+# Extracting pairs with high correlation (absolute value > 0.7)
+high_corr <- which(abs(cor_matrix) > 0.7 & abs(cor_matrix) < 1, arr.ind = TRUE)
+if (nrow(high_corr) > 0) {
+  cat("Highly correlated variable pairs (|correlation| > 0.7):\n")
+  for (i in 1:nrow(high_corr)) {
+    var1 <- rownames(cor_matrix)[high_corr[i, 1]]
+    var2 <- colnames(cor_matrix)[high_corr[i, 2]]
+    corr_value <- cor_matrix[high_corr[i, 1], high_corr[i, 2]]
+    if (high_corr[i, 1] < high_corr[i, 2]) {
+      cat(sprintf("%s and %s: %.2f\n", var1, var2, corr_value))
+    }
+  }
+}
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+ggpair = ggpairs(numeric_vars,
+                 lower = list(continuous = wrap("points", size = 0.5)),
+                 upper = list(continuous = wrap("cor")),
+                 diag = list(continuous = wrap("barDiag")))
+ggpair
+```
+
+# Scatter plots for key relationships
+## Parameters Vs Metrics
+### Sigma Vs Average Shannon
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = sigma, y = avg_shannon)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Sigma Vs Average Shannon Index",
+       x = "Sigma (Interaction Strength)", y = "Average Shannon Index") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+### Sigma Vs Average Shannon by Epsilon
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = sigma, y = avg_shannon)) +
+  theme_classic() +
+  geom_point(alpha = 0.3, size = 0.8) +
+  facet_wrap(~epsilon) +
+  labs(title = "Average Shannon Index Vs Sigma",
+       x = "Sigma (Interaction Strength)", y = "Average Shannon Index") +
+  geom_smooth(method = "lm", color = "red")
+```
+
+### Average bbp Vs Epsilon
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = epsilon, y = avg_bbp)) +
+  geom_point(alpha = 0.3) +
+  xlim(c(0, 5)) +
+  labs(title = "Epsilon Vs Average BBP",
+       x = "Epsilon (Predator-Prey Asymmetry)", y = "Average BBP") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+### Sigma Vs Mean Trophic Level
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = sigma, y = mean_tl)) +
+  geom_point(alpha = 0.3) +
+  xlim(c(0, 5)) +
+  labs(title = "Sigma Vs Mean Trophic Level",
+       x = "Sigma (Average Interaction Strength)", y = "Mean Trophic Level") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+## Metrics Vs Metrics
+### Highly correlated
+#### Average Competition Strength Vs Average BBP
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = sigma_comp, y = avg_bbp)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average Competition Strength Vs Average BBP",
+       x = "Average Competition Strength", y = "Average BBP") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+#### Average BBP vs Mean Trophic Level
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = avg_bbp, y = mean_tl)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average BBP Vs Mean Trophic Level",
+       x = "Average BBP", y = "Mean Trophic Level") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+### More complex relationships
+#### Average Shannon Vs Alive Predators
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = avg_shannon, y = alive_predators)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average Shannon Index Vs Alive Predators",
+       x = "Average Shannon Index", y = "Proportion of alive predators") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+#### Average Shannon Vs Average BBP
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = avg_shannon, y = avg_bbp)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average Shannon Index Vs Average BBP",
+       x = "Average Shannon Index", y = "Average BBP") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+**But if we look at Mean Number of Species (Average Species Richness) instead of the Shannon Index, then we see a clearer relationship.**
+
+#### Mean Species Richness Vs Average BBP
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = mean_n_of_species, y = avg_bbp)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  facet_wrap(~sigma_comp) + 
+  labs(title = "Mean Species Richness Vs Average BBP",
+       x = "Mean Species Richness", y = "Average BBP") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+#### Average BBP Vs Alive Predators
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = avg_bbp, y = alive_predators)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average BBP Vs Alive Predators",
+       x = "Average BBP", y = "Proportion of alive predators") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+#### Average Species Richness Vs Mean Trophic Level
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = mean_n_of_species, y = mean_tl)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average Species Richness Vs Mean Trophic Level",
+       x = "Average Species Richness", y = "Mean Trophic Level") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+**Here we see that high regional richness can only be maintained by reducing the amount o
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = mean_n_of_species, y = mean_tl, color = alive_predators)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average Species Richness Vs Mean Trophic Level",
+       x = "Average Species Richness", y = "Mean Trophic Level") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+#### Alive Predators Vs Mean Trophic Level
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = mean_tl, y = alive_predators)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Alive Predators Vs Mean Trophic Level",
+       x = "Mean Trophic Level", y = "Proportion of alive predators") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+#### Biomass Pyramid Slope
+```{r}
+slope_df = read_csv("pyramid_slope_from_DirectSampling.csv")
+```
+**Merging slope to the original df**
+```{r}
+df_with_slope <- merge(df, slope_df, by = c("sigma", "epsilon", "alfa", "sigma_comp", "assymetry"))
+```
+
+```{r, warning=FALSE, message=FALSE}
+ggplot(df_with_slope, aes(x = sigma, y = slope)) +
+  facet_wrap(~epsilon) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Sigma Vs Biomass Slope",
+       x = "Sigma (Interaction Strength)", y = "Biomass Pyramid Slope") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+```{r, warning=FALSE, message=FALSE}
+ggplot(df_with_slope, aes(x = sigma_comp, y = slope)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Sigma Vs Biomass Slope",
+       x = "Sigma_comp (Competition Strength)", y = "Biomass Pyramid Slope") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+```{r}
+slope_model_with_interaction = lm(slope ~ (sigma + epsilon + alfa + sigma_comp + assymetry)^2, data = df_with_slope)
+summary(slope_model_with_interaction)
+
+# Backward elimination based on AIC
+model_step <- step(slope_model_with_interaction, direction = "backward")
+
+model_step
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
