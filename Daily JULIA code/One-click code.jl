@@ -913,7 +913,6 @@ lambda_DA = NamedTuple((
     minimum = DimArray(reshape([NaN64 for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76))),
     harmonic = DimArray(reshape([NaN64 for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 ))
-# lambda_DA[1]
 
 # Loop through the axes to calculate lambda_DA for each suitability method
 for row in axes(lambda_DA.multiplicative, 1), col in axes(lambda_DA.multiplicative, 2)
