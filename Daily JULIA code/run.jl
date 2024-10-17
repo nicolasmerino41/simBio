@@ -1,4 +1,4 @@
-PC = "MM-1"
+PC = "nicol"
 num_species = 256
 include("HerpsVsBirmmals.jl")
 include("kernels.jl")

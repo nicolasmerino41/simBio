@@ -124,7 +124,7 @@ if (nrow(high_corr) > 0) {
 }
 ```
 
-```{r, warning=FALSE, message=FALSE, eval=FALSE}
+```{r, warning=FALSE, message=FALSE}
 ggpair = ggpairs(numeric_vars,
                  lower = list(continuous = wrap("points", size = 0.5)),
                  upper = list(continuous = wrap("cor")),
@@ -272,6 +272,7 @@ ggplot(df, aes(x = mean_tl, y = alive_predators)) +
   geom_smooth(method = "lm", color = "red") +
   theme_classic()
 ```
+
 #### Biomass Pyramid Slope
 ```{r}
 slope_df = read_csv("pyramid_slope_from_DirectSampling.csv")
@@ -300,10 +301,12 @@ ggplot(df_with_slope, aes(x = sigma_comp, y = slope)) +
   theme_classic()
 ```
 
+# Linear Models
 ```{r}
 slope_model_with_interaction = lm(slope ~ (sigma + epsilon + alfa + sigma_comp + assymetry)^2, data = df_with_slope)
 summary(slope_model_with_interaction)
-
+```
+```{r}
 # Backward elimination based on AIC
 model_step <- step(slope_model_with_interaction, direction = "backward")
 
