@@ -1,12 +1,11 @@
 PC = "nicol"
 num_species = 256
-include("HerpsVsBirmmals.jl")
-include("kernels.jl")
-include("One-click code.jl")
-include("human_footprint.jl")
-include("Implicit competition for herbivores.jl")
+include(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\Daily JULIA code\\HerpsVsBirmmals.jl"))
+include(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\Daily JULIA code\\kernels.jl"))
+include(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\Daily JULIA code\\One-click code.jl"))
+include(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\Daily JULIA code\\human_footprint.jl"))
+include(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\Daily JULIA code\\Implicit competition for herbivores.jl"))
 # include("2010-2100 RasterSeries.jl")
-
 # pepe = (
 #     birmmals = Matrix(DA_birmmals_with_abundances),
 #     herps = Matrix(DA_herps_with_abundances),

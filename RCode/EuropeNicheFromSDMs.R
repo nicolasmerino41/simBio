@@ -15,11 +15,17 @@ library(tidyterra)
 setwd("C:/Users/nicol/OneDrive/PhD/GitHub/simBio")
 ##### ATLAS DATA #####
 # Loading species data from ATLAS data
-iberian_interact_matrix = read.csv("Objects/iberian_interact_matrix.csv")[,2:257]
-Species_spain <- vect("Objects/Species_spain_vector.shp")
-species_names = gsub("\\.", " ", colnames(iberian_interact_matrix))
-names(Species_spain) = species_names 
-Species_spain_df <- as.data.frame(Species_spain) # Transform the vector into a df
+europe_species_matrix = read.csv("JULIA Europe/europe_species_df.csv")
+species_names = colnames(europe_species_df[,2:1150])
+species_names = gsub("\\.", " ", species_names)
+europe_species_df <- as.data.frame(europe_species_matrix) # Transform the vector into a df
+
+info_df = read.csv("JULIA Europe/info_df.csv")
+
+europe_raster_mask = rast("JULIA Europe/mask.tif")
+plot(europe_raster_mask)
+
+
 
 spanish_points <- centroids(Species_spain)
 crs(spanish_points) = "+proj=longlat +datum=WGS84 +no_defs"

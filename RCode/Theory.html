@@ -1516,6 +1516,37 @@ accomplished by: <span class="math display">\[d_i = 0\]</span> or <span class="m
 \frac{\alpha_{ij}}{d_i}X_j \right)\]</span> Which means that equilibrium
 densities can be found through: <span class="math display">\[0=K-X^*+A·X^*\]</span> <span class="math display">\[X^*=K(I-A)^{-1}\]</span></p>
 </div>
+<div id="new-framework" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> New Framework</h1>
+<ol style="list-style-type: decimal">
+<li><p><strong>Resource Dynamics</strong> <span class="math display">\[
+\frac{dR}{dt} = \text{NPP} - \sum_{i} c_i X_i
+\]</span></p></li>
+<li><p><strong>Herbivore Dynamics</strong> <span class="math display">\[   \frac{dH_i}{dt} = H_i \left( g_i \cdot
+\frac{R}{R + h_i} \right) + \sum_{j} \alpha_{ij}
+H_j   \]</span></p></li>
+<li><p><strong>Predator Dynamics</strong> <span class="math display">\[   \frac{dP_k}{dt} = C_k \cdot P_k \left( e_k
+\cdot \sum_{i} d_{ik} H_i \right) + \sum_{j} \beta_{kj}
+P_j   \]</span></p></li>
+<li><p><strong>Interaction Strengths</strong> <span class="math display">\[   \text{Predator: } \frac{\alpha_{ij}}{d_i} =
+A_{ij} \sim |N(0,\sigma)| \\   \text{Prey: } -A_{ij} \]</span></p></li>
+<li><p><strong>Equilibrium Conditions</strong></p>
+<ul>
+<li><p><strong>Resources:</strong></p>
+<p><span class="math display">\[ 0 = \text{NPP} - \sum_{i} c_i X_i
+\]</span></p></li>
+<li><p><strong>Herbivores:</strong></p>
+<p><span class="math display">\[ 0 = X_i \left( g_i \cdot \frac{R}{R +
+h_i} \right) + \sum_{j} \alpha_{ij} X_j \]</span> <span class="math display">\[ X_i^* = \frac{g_i R^*}{R^* + h_i} \quad
+\text{where} \quad R^* = \frac{\text{NPP}}{\sum_{i} c_i}
+\]</span></p></li>
+<li><p><strong>Predators:</strong></p>
+<p><span class="math display">\[ 0 = C_k \cdot P_k \left( e_k \cdot
+\sum_{i} d_{ik} X_i^* \right) + \sum_{j} \beta_{kj} P_j
+\]</span></p></li>
+</ul></li>
+</ol>
+</div>
 
 
 

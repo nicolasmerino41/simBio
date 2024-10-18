@@ -50,3 +50,32 @@ $$0= \left( K_i - X_i + \sum_{i\neq j}^{N} \frac{\alpha_{ij}}{d_i}X_j \right)$$
 Which means that equilibrium densities can be found through:
 $$0=K-X^*+A·X^*$$
 $$X^*=K(I-A)^{-1}$$
+
+# New Framework
+
+1. **Resource Dynamics**
+   $$
+   \frac{dR}{dt} = \text{NPP} - \sum_{i} u_i H_i R_i
+   $$
+
+2. **Herbivore Dynamics**
+  $$ \frac{dH_i}{dt} = g_i H_i R_{z} + \sum_{j} c_{ij} H_i H_j - m_iH_i $$
+3. **Predator Dynamics**
+   $$   \frac{dP_i}{dt} = g_i \left( e_i \cdot \sum_{i} \alpha_{ij} P_i X_j \right) - P_im_i  $$
+
+4. **Interaction Strengths**
+   $$   \text{Predator: } \frac{\alpha_{ij}}{d_i} = A_{ij} \sim |N(0,\sigma)| \\   \text{Prey: } -A_{ij} $$
+
+5. **Equilibrium Conditions**
+   - **Resources:**
+     
+     $$ 0 = \text{NPP} - \sum_{i} c_i X_i $$
+     
+   - **Herbivores:**
+     
+     $$ 0 = X_i \left( g_i \cdot \frac{R}{R + h_i} \right) + \sum_{j} \alpha_{ij} X_j $$
+     $$ X_i^* = \frac{g_i R^*}{R^* + h_i} \quad \text{where} \quad R^* = \frac{\text{NPP}}{\sum_{i} c_i} $$
+   
+   - **Predators:**
+     
+     $$ 0 = C_k \cdot P_k \left( e_k \cdot \sum_{i} d_{ik} X_i^* \right) + \sum_{j} \beta_{kj} P_j $$

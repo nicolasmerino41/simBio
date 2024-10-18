@@ -1,6 +1,6 @@
 include("HerpsVsBirmmalsEurope.jl")
 ########### ONLY RUN IF YOU NEED TO REBUILD EUROPE_RASTER ###########
-if false 
+ 
     ######### Europe Species Df PART #########
 # Read the first row to get column names
 temp_df = CSV.File("JULIA Europe/europe_species_df.csv")
@@ -28,9 +28,11 @@ for i in CartesianIndices(maskk)
         push!(info_df, (i[1], i[2], maskk[i]))
     end
 end
+CSV.write("JULIA Europe/info_df.csv", info_df)
 maskID = CSV.File("JULIA Europe/mask_ID.csv") |> DataFrame
 maskID = maskID[!, [2,4]]
-
+Makie.plot(maskk)
+zuzu = parent(maskk)
 ###### Abundance RASTER OF MyStructs1149 ######
 raster_data_DA = [MyStructs1149(SVector{1149, Float64}(fill(0.0, 1149))) for _ in 1:671*589]
 Europe_raster = Raster(reshape(raster_data_DA, 671, 589), dims=dims(maskk))
@@ -47,12 +49,12 @@ for i in good_indices
 end
 serialize("JULIA Europe/Rasters/Europe_raster_presence_absence.jls", Europe_raster)
 Rasters.write("JULIA Europe/Rasters/Europe_raster_presence_absence.tif", Europe_raster)
-end
+
 
 #############################################################
 #############################################################
 Europe_raster = deserialize("JULIA Europe/Rasters/Europe_raster_presence_absence.jls")
-
+Rasters.write("JULIA Europe/Rasters/Europe_raster_presence_absence.tif", Europe_raster)
 ############### Europe_sum ###############
 # ONLY RUN IF WANT TO REBUILD Europe_sum
 if false

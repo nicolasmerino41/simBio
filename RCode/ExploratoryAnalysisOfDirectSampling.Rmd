@@ -313,6 +313,75 @@ model_step <- step(slope_model_with_interaction, direction = "backward")
 model_step
 ```
 
+```{r}
+# Define parameters
+K <- 1
+X <- seq(0, 2, by = 0.01)
+Y <- X * (K - X)
+
+# Plot the equation
+plot(X, Y, type = "l", lwd = 2, col = "blue",
+     main = expression(paste("Plot of ", X, "(", K, " - ", X, ")")),
+     xlab = "X",
+     ylab = expression(X(K - X)),
+     ylim = c(-2, max(Y)))
+
+# Add grid lines for better readability
+grid()
+```
+```{r}
+# Install and load the deSolve package if not already installed
+if (!require(deSolve)) {
+  install.packages("deSolve")
+  library(deSolve)
+}
+
+# Define the ODE function
+logistic_ode <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dX <- X * (K - X)
+    list(c(dX))
+  })
+}
+
+# Parameters
+parameters <- c(K = 1)
+
+# Initial state
+state <- c(X = 0.1)
+
+# Time sequence
+times <- seq(0, 10, by = 0.01)
+
+# Solve the ODE
+out <- ode(y = state, times = times, func = logistic_ode, parms = parameters)
+
+# Convert output to data frame
+out_df <- as.data.frame(out)
+
+# Calculate dX/dt
+out_df$dX_dt <- with(out_df, X * (parameters["K"] - X))
+
+# Plot Population and dX/dt over Time
+library(ggplot2)
+
+# Melt the data for easier plotting
+library(reshape2)
+melted_df <- melt(out_df, id.vars = "time", measure.vars = c("X", "dX_dt"),
+                  variable.name = "Variable", value.name = "Value")
+
+# Create the plot
+ggplot(melted_df, aes(x = time, y = Value, color = Variable)) +
+  geom_line(size = 1) +
+  labs(title = expression(paste("Population Dynamics: ", frac(dX, dt), " = X(K - X)")),
+       x = "Time",
+       y = "Value",
+       color = "Variable") +
+  theme_minimal() +
+  ylim(c(0, 1.2)) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
 
 
 
