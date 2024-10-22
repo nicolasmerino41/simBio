@@ -133,6 +133,27 @@ ggpair
 ```
 
 # Scatter plots for key relationships
+## Highly correlated
+### Average Competition Strength Vs Average BBP
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = sigma_comp, y = avg_bbp)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average Competition Strength Vs Average BBP",
+       x = "Average Competition Strength", y = "Average BBP") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
+### Average BBP vs Mean Trophic Level
+```{r, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = avg_bbp, y = mean_tl)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "Average BBP Vs Mean Trophic Level",
+       x = "Average BBP", y = "Mean Trophic Level") +
+  geom_smooth(method = "lm", color = "red") +
+  theme_classic()
+```
+
 ## Parameters Vs Metrics
 ### Sigma Vs Average Shannon
 ```{r, warning=FALSE, message=FALSE}
@@ -178,29 +199,7 @@ ggplot(df, aes(x = sigma, y = mean_tl)) +
 ```
 
 ## Metrics Vs Metrics
-### Highly correlated
-#### Average Competition Strength Vs Average BBP
-```{r, warning=FALSE, message=FALSE}
-ggplot(df, aes(x = sigma_comp, y = avg_bbp)) +
-  geom_point(alpha = 0.3, size = 0.8) +
-  labs(title = "Average Competition Strength Vs Average BBP",
-       x = "Average Competition Strength", y = "Average BBP") +
-  geom_smooth(method = "lm", color = "red") +
-  theme_classic()
-```
-
-#### Average BBP vs Mean Trophic Level
-```{r, warning=FALSE, message=FALSE}
-ggplot(df, aes(x = avg_bbp, y = mean_tl)) +
-  geom_point(alpha = 0.3, size = 0.8) +
-  labs(title = "Average BBP Vs Mean Trophic Level",
-       x = "Average BBP", y = "Mean Trophic Level") +
-  geom_smooth(method = "lm", color = "red") +
-  theme_classic()
-```
-
-### More complex relationships
-#### Average Shannon Vs Alive Predators
+### Average Shannon Vs Alive Predators
 ```{r, warning=FALSE, message=FALSE}
 ggplot(df, aes(x = avg_shannon, y = alive_predators)) +
   geom_point(alpha = 0.3, size = 0.8) +
@@ -210,7 +209,7 @@ ggplot(df, aes(x = avg_shannon, y = alive_predators)) +
   theme_classic()
 ```
 
-#### Average Shannon Vs Average BBP
+### Average Shannon Vs Average BBP
 ```{r, warning=FALSE, message=FALSE}
 ggplot(df, aes(x = avg_shannon, y = avg_bbp)) +
   geom_point(alpha = 0.3, size = 0.8) +
@@ -222,7 +221,7 @@ ggplot(df, aes(x = avg_shannon, y = avg_bbp)) +
 
 **But if we look at Mean Number of Species (Average Species Richness) instead of the Shannon Index, then we see a clearer relationship.**
 
-#### Mean Species Richness Vs Average BBP
+### Mean Species Richness Vs Average BBP
 ```{r, warning=FALSE, message=FALSE}
 ggplot(df, aes(x = mean_n_of_species, y = avg_bbp)) +
   geom_point(alpha = 0.3, size = 0.8) +
@@ -233,7 +232,7 @@ ggplot(df, aes(x = mean_n_of_species, y = avg_bbp)) +
   theme_classic()
 ```
 
-#### Average BBP Vs Alive Predators
+### Average BBP Vs Alive Predators
 ```{r, warning=FALSE, message=FALSE}
 ggplot(df, aes(x = avg_bbp, y = alive_predators)) +
   geom_point(alpha = 0.3, size = 0.8) +
@@ -243,7 +242,7 @@ ggplot(df, aes(x = avg_bbp, y = alive_predators)) +
   theme_classic()
 ```
 
-#### Average Species Richness Vs Mean Trophic Level
+### Average Species Richness Vs Mean Trophic Level
 ```{r, warning=FALSE, message=FALSE}
 ggplot(df, aes(x = mean_n_of_species, y = mean_tl)) +
   geom_point(alpha = 0.3, size = 0.8) +
@@ -263,7 +262,7 @@ ggplot(df, aes(x = mean_n_of_species, y = mean_tl, color = alive_predators)) +
   theme_classic()
 ```
 
-#### Alive Predators Vs Mean Trophic Level
+### Alive Predators Vs Mean Trophic Level
 ```{r, warning=FALSE, message=FALSE}
 ggplot(df, aes(x = mean_tl, y = alive_predators)) +
   geom_point(alpha = 0.3, size = 0.8) +
@@ -273,7 +272,7 @@ ggplot(df, aes(x = mean_tl, y = alive_predators)) +
   theme_classic()
 ```
 
-#### Biomass Pyramid Slope
+### Biomass Pyramid Slope
 ```{r}
 slope_df = read_csv("pyramid_slope_from_DirectSampling.csv")
 ```
