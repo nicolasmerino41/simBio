@@ -1,4 +1,4 @@
-PC = "nicol"
+PC = "MM-1"
 num_species = 256
 include("HerpsVsBirmmals.jl")
 include("kernels.jl")
@@ -35,6 +35,12 @@ alfa = 0.9
 # Trophic
 caca = deepcopy(iberian_interact_NA)
 full_IM = Matrix(turn_adj_into_inter(caca, sigma, epsilon, self_regulation, beta))
+count = 0
+for i in 1:256
+    if all(full_IM[:, i] == 0.0)
+        count += 1
+    end
+end
 # Competition
 competition_NA = deepcopy(iberian_interact_NA)
 competition_NA .= 0.0
