@@ -81,7 +81,7 @@ fig = Figure(resolution = (800, 600))
 ax = Axis(fig[1,1])
 hidexdecorations!(ax; grid=false)
 hideydecorations!(ax; grid=false)
-image!(ax, Europe_raster; interpolate=false, colormap=:viridis)
+image!(ax, Europe_raster; interpolate=false, colormap=custom_palette)
 display(fig)
 
 MK.image(Europe_sum; interpolate=false, colormap=:viridis)

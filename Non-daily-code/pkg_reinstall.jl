@@ -11,13 +11,13 @@ packages = [
 # Retrieve a list of installed packages and their versions
 pkg_list = Pkg.installed()
 # Remove "DG" and "Dispersal" from the list if they exist
-packages = filter(pkg -> pkg ∉ ["DynamicGrids", "Dispersal"], pkg_list)
+packages = filter(pkg -> pkg ∉ ["DynamicGrids", "Dispersal", "OrdinaryDiffEq"], installed_pkg_names)
 # Extract only the package names
-installed_pkg_names = [pkg for (pkg, ver) in pkg_list]
+installed_pkg_names = [pkg for pkg in packages]
 
 # Removing all the packages in the installed_pkg_names list
 for pkg_name in installed_pkg_names
-    Pkg.rm(pkg_name)
+    Pkg.add(pkg_name)
 end
 new_vector = append!(installed_pkg_names[1:2], installed_pkg_names[4:5])
 new_vector = append!(new_vector, installed_pkg_names[7:end])
