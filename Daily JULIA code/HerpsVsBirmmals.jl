@@ -107,7 +107,7 @@ struct MyHerps{T <: AbstractFloat} <: FieldVector{2, T}
     function MyHerps(a::SVector{49, T}) where T <: AbstractFloat
         new{T}(a, sum(a))
     end
-
+    
     # Explicit constructor allowing manual setting of both `a` and `b`
     MyHerps(a::SVector{49, T}, b::T) where T <: AbstractFloat = new{T}(a, b)
 end
