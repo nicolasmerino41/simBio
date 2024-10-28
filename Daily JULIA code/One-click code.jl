@@ -167,6 +167,8 @@ web = CSV.read(joinpath(meta_path, "Metaweb_data\\TetraEU_pairwise_interactions.
 
 web = DataFrame(predator = web.sourceTaxonName, prey = web.targetTaxonName)
 
+check_species_type = filter(row -> row.predator == "Pelobates cultripes", web) # Just add the species name to check if it's a predator
+
 web.predator = string.(web.predator)
 web.prey = string.(web.prey)
 web = web[:, [:predator, :prey]]
@@ -247,7 +249,7 @@ herbivore_names = TrophInd[TrophInd[:, :TL] .== 1, :Species]
 
 # Turn iberian_interact_matrix into a DataFrame
 # Convert the iberian_interact_matrix into a DataFrame with appropriate column and row names
-iberian_interact_df = DataFrame(iberian_interact_matrix, species_names)
+iberian_interact_df = DataFrame(iberian_interact_matrix, spain_names)
 function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation, beta)
     adjacency = deepcopy(adjacencyy)
     epsilon = float(epsilon)
@@ -288,7 +290,8 @@ function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation, beta)
     adjacency = u
     return adjacency
 end
-
+iberian_interact_NA = NamedArray(Matrix(iberian_interact_df), (names(iberian_interact_df), names(iberian_interact_df)))
+serialize("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Networks\\DFs\\iberian_interact_NA.jls", iberian_interact_NA)
 ############ DESERIALIZING DATA ############################
 ############################################################
 A_matrix_list = deserialize(joinpath(meta_path, "A_matrix_list.jls"))::Vector{Matrix{Float64}}
