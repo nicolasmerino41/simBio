@@ -291,7 +291,7 @@ function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation, beta)
     return adjacency
 end
 iberian_interact_NA = NamedArray(Matrix(iberian_interact_df), (names(iberian_interact_df), names(iberian_interact_df)))
-serialize("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Networks\\DFs\\iberian_interact_NA.jls", iberian_interact_NA)
+# serialize("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Networks\\DFs\\iberian_interact_NA.jls", iberian_interact_NA)
 ############ DESERIALIZING DATA ############################
 ############################################################
 A_matrix_list = deserialize(joinpath(meta_path, "A_matrix_list.jls"))::Vector{Matrix{Float64}}
