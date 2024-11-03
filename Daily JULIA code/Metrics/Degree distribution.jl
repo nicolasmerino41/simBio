@@ -90,7 +90,7 @@ ax2 = Axis(f[1,2])
 ax3 = Axis(f[2,1])
 ax4 = Axis(f[2,2])
 image!(ax1, connectance_map; interpolate=false, colormap=custom_palette, colorrange = (0, 0.15))
-image!(ax2, npp_DA; interpolate=false, colormap=custom_palette)
+image!(ax2, DA_richness; interpolate=false, colormap=custom_palette)
 image!(ax3, mean_degree_grid; interpolate=false, colormap=custom_palette)
 image!(ax4, clustering_grid; interpolate=false, colormap=custom_palette, colorrange = (0, 0.2))
 ax1.yreversed = true
