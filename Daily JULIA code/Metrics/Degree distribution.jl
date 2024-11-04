@@ -5,7 +5,7 @@ using Random
 # Sample data (replace this with your actual data)
 idx_sampled = sample(idx, 16, replace = false)
 # Create a grid layout for the plots
-fig = Figure(resolution=(800, 800))
+fig = Figure(resolution=(600, 600))
 axess = [Axis(fig[i, j]; title="Sample $(i + (j - 1) * 4)") for i in 1:4, j in 1:4]
 
 # Loop through sampled indices and plot

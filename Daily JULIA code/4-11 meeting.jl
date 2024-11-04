@@ -24,7 +24,7 @@ pepe_state = (
 
 ##### Parameters #####
 self_regulation = 1.0
-sigma = 1.0
+sigma = 0.1
 sigma_comp = 0.0
 epsilon = 1.0
 beta = 1.0  
@@ -180,7 +180,7 @@ sampled_cells = sample(cells, 20, replace=false)
 # Determine the layout for 20 plots (e.g., 4 rows × 5 columns)
 nrows = 4
 ncols = 5
-fig = Figure(resolution=(800, 600))
+fig = Figure(resolution=(1000, 800))
 
 # Convert time to a vector (Makie expects arrays)
 time = collect(1:num_timesteps)
