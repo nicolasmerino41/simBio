@@ -34,6 +34,7 @@ maskID = maskID[!, [2,4]]
 Makie.plot(maskk)
 zuzu = parent(maskk)
 ###### Abundance RASTER OF MyStructs1149 ######
+if false
 raster_data_DA = [MyStructs1149(SVector{1149, Float64}(fill(0.0, 1149))) for _ in 1:671*589]
 Europe_raster = Raster(reshape(raster_data_DA, 671, 589), dims=dims(maskk))
 i = good_indices[2] 
@@ -49,12 +50,14 @@ for i in good_indices
 end
 serialize("JULIA Europe/Rasters/Europe_raster_presence_absence.jls", Europe_raster)
 Rasters.write("JULIA Europe/Rasters/Europe_raster_presence_absence.tif", Europe_raster)
-
-
+end
 #############################################################
 #############################################################
 Europe_raster = deserialize("JULIA Europe/Rasters/Europe_raster_presence_absence.jls")
-Rasters.write("JULIA Europe/Rasters/Europe_raster_presence_absence.tif", Europe_raster)
+Europe_DA = DimArray(reshape([MyStructs1149(SVector{1149, Float64}(fill(0.0, 1149))) for _ in 1:671*589], 671, 589), (Dim{:a}(1:671), Dim{:b}(1:589)))
+for i in good_indices
+    Europe_DA[i] = Europe_raster[i]
+end
 ############### Europe_sum ###############
 # ONLY RUN IF WANT TO REBUILD Europe_sum
 if false
@@ -76,16 +79,28 @@ function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:M
     scalars = map(mystruct -> mystruct.b, A)
     return Makie.convert_arguments(t, scalars)
 end
-
+DA_with_ones = deepcopy(DA_with_abundances)
+for i in idx
+    vector = Vector(DA_with_abundances[i].a)
+    vector[vector .== 10.0] .= 1.0
+    element = MyStructs256(SVector{256, Float64}(vector))
+    DA_with_ones[i] = element
+end
 fig = Figure(resolution = (800, 600))
 ax = Axis(fig[1,1])
+ax2 = Axis(fig[1,2])
 hidexdecorations!(ax; grid=false)
 hideydecorations!(ax; grid=false)
-image!(ax, Europe_raster; interpolate=false, colormap=custom_palette)
+hidexdecorations!(ax2; grid=false)
+hideydecorations!(ax2; grid=false)
+heatmap!(ax, Matrix(Europe_raster), interpolate=false, colormap=custom_palette, colorrange = (0, 1149))
+heatmap!(ax2, Matrix(DA_with_ones), interpolate=false, colormap=custom_palette, colorrange = (0, 1149))
+ax.yreversed = true
+ax2.yreversed = true
 display(fig)
 
-MK.image(Europe_sum; interpolate=false, colormap=:viridis)
-
+MK.heatmap(Europe_raster; interpolate=false, colormap=:viridis)
+MK.heatmap(Matrix(DA_with_abundances); interpolate=false, colormap=:viridis)
 ############# SMALL SIMULATION TRIAL ############
 rule = Cell{:state, :state}() do data, state, I
     # if any(isinf, state.a) || any(isnan, state.a)
@@ -95,8 +110,8 @@ rule = Cell{:state, :state}() do data, state, I
     return MyStructs1149(SVector{1149, Float64}(state.a .+ 1))
 end
 pepe = (;
-    state = raster_DA,
-    Europe_sum = Europe_sum
+    state = Matrix(Europe_raster),
+    Europe_sum = Matrix(Europe_sum)
 )
 
 array_output = ResultOutput(
@@ -105,8 +120,7 @@ array_output = ResultOutput(
 )
 
 makie_output = MakieOutput(pepe, tspan = 1:10;
-    fps = 10, ruleset = Ruleset(rule),
-    mask = Europe_sum) do (; layout, frame)
+    fps = 10, ruleset = Ruleset(rule)) do (; layout, frame)
 
     # Setup the keys and titles for each plot
     plot_keys = [:biomass, :simulated_richness, :Europe_sum]
@@ -118,7 +132,7 @@ makie_output = MakieOutput(pepe, tspan = 1:10;
     # Apply the same color map and limits to all plots, ensure axes are hidden, and set titles
     for (ax, key, title) in zip(axes, plot_keys, titles)
         if key == :biomass
-            Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette)
+            Makie.heatmap!(ax, frame[:state]; interpolate=false)
         elseif key == :simulated_richness
             Makie.image!(ax, frame[:state]; colormap=custom_palette)
         elseif key == :Europe_sum
@@ -133,3 +147,10 @@ makie_output = MakieOutput(pepe, tspan = 1:10;
         ax.yreversed[] = false
     end
 end
+
+init = fill(MyStructs1149(SVector{1149, Float64}(rand(1149))), (671, 589))
+MK.heatmap(Matrix(Europe_raster); interpolate=false, colormap=:viridis)
+typeof(DA_with_abundances) == typeof(Europe_DA)
+
+DA_with_abundances[1,1] 
+Europe_DA[1,1]

@@ -95,3 +95,84 @@ function Base.maximum(a::AbstractMatrix{MyStructs1149{T}}) where {T <: AbstractF
     # Extract all `b` values from each MyStructs1149 element in the matrix and find the maximum
     return maximum(map(x -> x.b, a))
 end
+
+
+# For a heatmap we just plot the scalars
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyStructs1149, 2})
+    scalars = map(mystruct -> mystruct.b, A)
+    return Makie.convert_arguments(t, scalars)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyBirmmals, 2})
+    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+    return Makie.convert_arguments(t, scalars)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyHerps, 2})
+    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+    return Makie.convert_arguments(t, scalars)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs1149, 2})
+    # Count presence based on the threshold
+    richness = map(mystruct -> count(i -> mystruct.a[i] > 1.0, 1:length(mystruct.a)), A)
+    return Makie.convert_arguments(t, richness)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2})
+    # Count presence based on the threshold
+    richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_birds[i], 1:length(mystruct.a)), A)
+    return Makie.convert_arguments(t, richness)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2})
+    # Count presence based on the threshold
+    richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_herps[i], 1:length(mystruct.a)), A)
+    return Makie.convert_arguments(t, richness)
+end
+# WITH LAMBDA
+# For MyStructs
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs1149, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
+    return Makie.convert_arguments(t, richness)
+end
+# PLOT
+# For MyStructs
+# function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs1149, 2})
+#     richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_DA.multiplicative)
+#     return Makie.convert_arguments(t, richness)
+# end
+# MK.image(Matrix(des_file_to_try); colomap = custom_palette)
+# For MyBirmmals
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyBirmmals, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_birds[i], 1:length(mystruct.a)), A, lambda_grid)
+    return Makie.convert_arguments(t, richness)
+end
+# For MyHerps
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyHerps, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector_herps[i], 1:length(mystruct.a)), A, lambda_grid)
+    return Makie.convert_arguments(t, richness)
+end
+# FOR RASTER
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyStructs1149, 2})
+    scalars = map(mystruct -> mystruct.b, A).*lambda_raster.multiplicative
+    return Makie.convert_arguments(t, scalars)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyBirmmals, 2})
+    scalars = map(mystruct -> mystruct.b, A).*lambda_raster.multiplicative
+    return Makie.convert_arguments(t, scalars)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractRaster{<:MyHerps, 2})
+    scalars = map(mystruct -> mystruct.b, A).*lambda_raster.multiplicative
+    return Makie.convert_arguments(t, scalars)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyStructs1149, 2}, lambda_grid::AbstractRaster{<:AbstractFloat, 2})
+    # Count presence based on the threshold
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
+    return Makie.convert_arguments(t, richness)
+end                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyBirmmals, 2}, lambda_grid::AbstractRaster{<:AbstractFloat, 2})
+    # Count presence based on the threshold
+    richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_birds[i], 1:length(mystruct.a)), A)
+    return Makie.convert_arguments(t, richness)
+end
+function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractRaster{<:MyHerps, 2}, lambda_grid::AbstractRaster{<:AbstractFloat, 2})
+    # Count presence based on the threshold
+    richness = map(mystruct -> count(i -> mystruct.a[i] > body_mass_vector_herps[i], 1:length(mystruct.a)), A)
+    return Makie.convert_arguments(t, richness)
+end

@@ -1515,37 +1515,510 @@ on.</em></p>
 accomplished by: <span class="math display">\[d_i = 0\]</span> or <span class="math display">\[0= \left( K_i - X_i + \sum_{i\neq j}^{N}
 \frac{\alpha_{ij}}{d_i}X_j \right)\]</span> Which means that equilibrium
 densities can be found through: <span class="math display">\[0=K-X^*+A·X^*\]</span> <span class="math display">\[X^*=K(I-A)^{-1}\]</span></p>
+<hr />
 </div>
 <div id="new-framework" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> New Framework</h1>
-<ol style="list-style-type: decimal">
-<li><p><strong>Resource Dynamics</strong> <span class="math display">\[
-\frac{dR}{dt} = \text{NPP} - \sum_{i} c_i X_i
-\]</span></p></li>
-<li><p><strong>Herbivore Dynamics</strong> <span class="math display">\[   \frac{dH_i}{dt} = H_i \left( g_i \cdot
-\frac{R}{R + h_i} \right) + \sum_{j} \alpha_{ij}
-H_j   \]</span></p></li>
-<li><p><strong>Predator Dynamics</strong> <span class="math display">\[   \frac{dP_k}{dt} = C_k \cdot P_k \left( e_k
-\cdot \sum_{i} d_{ik} H_i \right) + \sum_{j} \beta_{kj}
-P_j   \]</span></p></li>
-<li><p><strong>Interaction Strengths</strong> <span class="math display">\[   \text{Predator: } \frac{\alpha_{ij}}{d_i} =
-A_{ij} \sim |N(0,\sigma)| \\   \text{Prey: } -A_{ij} \]</span></p></li>
-<li><p><strong>Equilibrium Conditions</strong></p>
+<div id="resource-dynamics" class="section level2" number="2.1">
+<h2><span class="header-section-number">2.1</span> Resource
+Dynamics</h2>
+<p><span class="math display">\[\frac{dR}{dt} = \text{NPP} - \sum_i c_i
+X_i\]</span></p>
+</div>
+<div id="herbivore-dynamics" class="section level2" number="2.2">
+<h2><span class="header-section-number">2.2</span> Herbivore
+Dynamics</h2>
+<p><span class="math display">\[\frac{dH_i}{dt} = H_i \left( g_i \cdot
+\frac{R}{R + h_i} \right) + \sum_j \alpha_{ij} H_j
+\]</span></p>
+</div>
+<div id="predator-dynamics" class="section level2" number="2.3">
+<h2><span class="header-section-number">2.3</span> Predator
+Dynamics</h2>
+<p><span class="math display">\[\frac{dP_k}{dt} = C_k \cdot P_k \left(
+e_k \cdot \sum_i d_{ik} H_i \right) + \sum_j \beta_{kj} P_j\]</span></p>
+</div>
+<div id="interaction-strengths" class="section level2" number="2.4">
+<h2><span class="header-section-number">2.4</span> Interaction
+Strengths</h2>
 <ul>
-<li><p><strong>Resources:</strong></p>
-<p><span class="math display">\[ 0 = \text{NPP} - \sum_{i} c_i X_i
-\]</span></p></li>
-<li><p><strong>Herbivores:</strong></p>
-<p><span class="math display">\[ 0 = X_i \left( g_i \cdot \frac{R}{R +
-h_i} \right) + \sum_{j} \alpha_{ij} X_j \]</span> <span class="math display">\[ X_i^* = \frac{g_i R^*}{R^* + h_i} \quad
-\text{where} \quad R^* = \frac{\text{NPP}}{\sum_{i} c_i}
-\]</span></p></li>
-<li><p><strong>Predators:</strong></p>
-<p><span class="math display">\[ 0 = C_k \cdot P_k \left( e_k \cdot
-\sum_{i} d_{ik} X_i^* \right) + \sum_{j} \beta_{kj} P_j
-\]</span></p></li>
+<li><p><strong>Predator</strong>:</p>
+<p><span class="math display">\[\alpha_{ij} d_i = A_{ij} \sim |N(0,
+\sigma)|\]</span></p></li>
+<li><p><strong>Prey</strong>:</p>
+<p><span class="math display">\[-A_{ij}\]</span></p></li>
+</ul>
+</div>
+<div id="equilibrium-conditions" class="section level2" number="2.5">
+<h2><span class="header-section-number">2.5</span> Equilibrium
+Conditions</h2>
+<div id="resources" class="section level3" number="2.5.1">
+<h3><span class="header-section-number">2.5.1</span> Resources</h3>
+<p><span class="math display">\[0 = \text{NPP} - \sum_i c_i
+X_i\]</span></p>
+</div>
+<div id="herbivores" class="section level3" number="2.5.2">
+<h3><span class="header-section-number">2.5.2</span> Herbivores</h3>
+<p><span class="math display">\[0 = X_i \left( g_i \cdot \frac{R}{R +
+h_i} \right) + \sum_j \alpha_{ij} X_j\]</span></p>
+<p><span class="math display">\[X_i^* = \frac{g_i R^*}{R^* +
+h_i}\]</span></p>
+<p>where</p>
+<p><span class="math display">\[R^* = \frac{\text{NPP}}{\sum_i
+c_i}\]</span></p>
+</div>
+<div id="predators" class="section level3" number="2.5.3">
+<h3><span class="header-section-number">2.5.3</span> Predators</h3>
+<p><span class="math display">\[0 = C_k \cdot P_k \left( e_k \cdot
+\sum_i d_{ik} X_i^* \right) + \sum_j \beta_{kj} P_j
+\]</span></p>
+<hr />
+</div>
+</div>
+</div>
+<div id="new-model-equations" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> New Model
+Equations</h1>
+<div id="resource-dynamics-1" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Resource
+Dynamics</h2>
+<p><span class="math display">\[\frac{dR}{dt} = \text{NPP} - l R - a R
+H\]</span></p>
+<ul>
+<li><span class="math inline">\(\frac{dR}{dt}\)</span>: Rate of change
+of resource biomass over time.</li>
+<li><span class="math inline">\(\text{NPP}\)</span>: Net Primary
+Productivity.</li>
+<li><span class="math inline">\(l\)</span>: Leaching rate (natural loss
+rate of the resource).</li>
+<li><span class="math inline">\(a\)</span>: Attack rate of the herbivore
+on the resource.</li>
+<li><span class="math inline">\(R\)</span>: Resource biomass.</li>
+<li><span class="math inline">\(H\)</span>: Herbivore biomass.</li>
+</ul>
+</div>
+<div id="herbivore-dynamics-1" class="section level2" number="3.2">
+<h2><span class="header-section-number">3.2</span> Herbivore
+Dynamics</h2>
+<p><span class="math display">\[\frac{dH}{dt} = \epsilon a R H - d
+H^2\]</span></p>
+<ul>
+<li><span class="math inline">\(\frac{dH}{dt}\)</span>: Rate of change
+of herbivore biomass over time.</li>
+<li><span class="math inline">\(\epsilon\)</span>: Assimilation
+efficiency of the herbivore.</li>
+<li><span class="math inline">\(a\)</span>: Attack rate of the herbivore
+on the resource.</li>
+<li><span class="math inline">\(R\)</span>: Resource biomass.</li>
+<li><span class="math inline">\(H\)</span>: Herbivore biomass.</li>
+<li><span class="math inline">\(d\)</span>: Density-dependent mortality
+rate of the herbivore.</li>
+</ul>
+</div>
+<div id="generalization-to-multiple-herbivores" class="section level2" number="3.3">
+<h2><span class="header-section-number">3.3</span> Generalization to
+Multiple Herbivores</h2>
+<div id="resource-dynamics-2" class="section level3" number="3.3.1">
+<h3><span class="header-section-number">3.3.1</span> Resource
+Dynamics</h3>
+<p><span class="math display">\[\frac{dR}{dt} = \text{NPP} - l R -
+\sum_{i} a_i R H_i\]</span></p>
+<ul>
+<li><span class="math inline">\(a_i\)</span>: Attack rate of herbivore
+species <span class="math inline">\(i\)</span>.</li>
+<li><span class="math inline">\(H_i\)</span>: Biomass of herbivore
+species <span class="math inline">\(i\)</span>.</li>
+</ul>
+</div>
+<div id="herbivore-dynamics-2" class="section level3" number="3.3.2">
+<h3><span class="header-section-number">3.3.2</span> Herbivore
+Dynamics</h3>
+<p><span class="math display">\[\frac{dH_i}{dt} = \epsilon_i a_i R H_i -
+d_i H_i^2\]</span></p>
+<ul>
+<li><span class="math inline">\(\epsilon_i\)</span>: Assimilation
+efficiency of herbivore species <span class="math inline">\(i\)</span>.</li>
+<li><span class="math inline">\(d_i\)</span>: Density-dependent
+mortality rate of herbivore species <span class="math inline">\(i\)</span>.</li>
+</ul>
+</div>
+</div>
+<div id="including-predators" class="section level2" number="3.4">
+<h2><span class="header-section-number">3.4</span> Including
+Predators</h2>
+<div id="predator-dynamics-1" class="section level3" number="3.4.1">
+<h3><span class="header-section-number">3.4.1</span> Predator
+Dynamics</h3>
+<p><span class="math display">\[\frac{dP_j}{dt} = \epsilon&#39;_j b_j
+\sum_{i} H_i P_j - m_j P_j\]</span></p>
+<ul>
+<li><span class="math inline">\(P_j\)</span>: Biomass of predator
+species <span class="math inline">\(j\)</span>.</li>
+<li><span class="math inline">\(\epsilon&#39;_j\)</span>: Assimilation
+efficiency of predator species <span class="math inline">\(j\)</span>.</li>
+<li><span class="math inline">\(b_j\)</span>: Attack rate of predator
+species <span class="math inline">\(j\)</span> on herbivores.</li>
+<li><span class="math inline">\(m_j\)</span>: Mortality rate of predator
+species <span class="math inline">\(j\)</span>.</li>
+</ul>
+</div>
+<div id="herbivore-dynamics-with-predation" class="section level3" number="3.4.2">
+<h3><span class="header-section-number">3.4.2</span> Herbivore Dynamics
+with Predation</h3>
+<p><span class="math display">\[\frac{dH_i}{dt} = \epsilon_i a_i R H_i -
+d_i H_i^2 - \sum_{j} b_j H_i P_j\]</span></p>
+<ul>
+<li><span class="math inline">\(\sum_{j} b_j H_i P_j\)</span> represents
+predation pressure on herbivore <span class="math inline">\(i\)</span>
+from all predators.</li>
+</ul>
+</div>
+</div>
+<div id="interaction-strengths-1" class="section level2" number="3.5">
+<h2><span class="header-section-number">3.5</span> Interaction
+Strengths</h2>
+<div id="attack-rates-and-efficiencies" class="section level3" number="3.5.1">
+<h3><span class="header-section-number">3.5.1</span> Attack Rates and
+Efficiencies</h3>
+<ul>
+<li><strong>Attack Rate (<span class="math inline">\(a_i\)</span>, <span class="math inline">\(b_j\)</span>)</strong>:
+<ul>
+<li>Can be set based on empirical data or drawn from distributions.</li>
+</ul></li>
+<li><strong>Assimilation Efficiency (<span class="math inline">\(\epsilon_i\)</span>, <span class="math inline">\(\epsilon&#39;_j\)</span>)</strong>:
+<ul>
+<li>Typically less than 1, representing energy conversion
+efficiency.</li>
+</ul></li>
+</ul>
+</div>
+</div>
+<div id="equilibrium-conditions-1" class="section level2" number="3.6">
+<h2><span class="header-section-number">3.6</span> Equilibrium
+Conditions</h2>
+<div id="resource-equilibrium" class="section level3" number="3.6.1">
+<h3><span class="header-section-number">3.6.1</span> Resource
+Equilibrium</h3>
+<p><span class="math display">\[0 = \text{NPP} - l R^* - \sum_{i} a_i
+R^* H_i^*\]</span></p>
+<p>Solving for <span class="math inline">\(R^*\)</span>:</p>
+<p><span class="math display">\[R^* = \frac{\text{NPP}}{l + \sum_{i} a_i
+H_i^*}\]</span></p>
+</div>
+<div id="herbivore-equilibrium" class="section level3" number="3.6.2">
+<h3><span class="header-section-number">3.6.2</span> Herbivore
+Equilibrium</h3>
+<p><span class="math display">\[0 = \epsilon_i a_i R^* H_i^* - d_i
+{H_i^*}^2 - \sum_{j} b_j H_i^* P_j^*\]</span></p>
+</div>
+<div id="predator-equilibrium" class="section level3" number="3.6.3">
+<h3><span class="header-section-number">3.6.3</span> Predator
+Equilibrium</h3>
+<p><span class="math display">\[0 = \epsilon&#39;_j b_j \sum_{i} H_i^*
+P_j^* - m_j P_j^*\]</span></p>
+</div>
+</div>
+</div>
+<div id="equilibrium-analysis-of-the-resource-herbivore-model" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Equilibrium Analysis of
+the Resource-Herbivore Model</h1>
+<p>We consider a simple ecological model with one herbivore species and
+no predators. The dynamics are given by the following differential
+equations:</p>
+<div id="model-equations" class="section level2" number="4.1">
+<h2><span class="header-section-number">4.1</span> Model Equations</h2>
+<p><strong>Resource Dynamics:</strong></p>
+<p><span class="math display">\[
+\frac{dR}{dt} = \text{NPP} - l R - a R H
+\]</span></p>
+<ul>
+<li><span class="math inline">\(\text{NPP}\)</span>: Net Primary
+Productivity.</li>
+<li><span class="math inline">\(l\)</span>: Leaching rate (resource loss
+rate).</li>
+<li><span class="math inline">\(a\)</span>: Attack rate (herbivore’s
+consumption rate of the resource).</li>
+<li><span class="math inline">\(R\)</span>: Resource biomass.</li>
+<li><span class="math inline">\(H\)</span>: Herbivore biomass.</li>
+</ul>
+<p><strong>Herbivore Dynamics:</strong></p>
+<p><span class="math display">\[
+\frac{dH}{dt} = \epsilon a R H - d H^2
+\]</span></p>
+<ul>
+<li><span class="math inline">\(\epsilon\)</span>: Assimilation
+efficiency.</li>
+<li><span class="math inline">\(d\)</span>: Density-dependent mortality
+rate of the herbivore.</li>
+</ul>
+</div>
+<div id="equilibrium-conditions-2" class="section level2" number="4.2">
+<h2><span class="header-section-number">4.2</span> Equilibrium
+Conditions</h2>
+<p>At equilibrium (<span class="math inline">\(\frac{dR}{dt} =
+0\)</span> and <span class="math inline">\(\frac{dH}{dt} = 0\)</span>),
+we have:</p>
+<div id="resource-equilibrium-1" class="section level3" number="4.2.1">
+<h3><span class="header-section-number">4.2.1</span> Resource
+Equilibrium</h3>
+<p>Set <span class="math inline">\(\frac{dR}{dt} = 0\)</span>:</p>
+<p><span class="math display">\[
+0 = \text{NPP} - l R^* - a R^* H^*
+\]</span></p>
+<p>Solving for <span class="math inline">\(R^*\)</span>:</p>
+<p><span class="math display">\[
+l R^* + a R^* H^* = \text{NPP}
+\]</span></p>
+<p><span class="math display">\[
+R^* (l + a H^*) = \text{NPP}
+\]</span></p>
+<p><span class="math display">\[
+R^* = \frac{\text{NPP}}{l + a H^*}
+\]</span></p>
+</div>
+<div id="herbivore-equilibrium-1" class="section level3" number="4.2.2">
+<h3><span class="header-section-number">4.2.2</span> Herbivore
+Equilibrium</h3>
+<p>Set <span class="math inline">\(\frac{dH}{dt} = 0\)</span>:</p>
+<p><span class="math display">\[
+0 = \epsilon a R^* H^* - d H^{*2}
+\]</span></p>
+<p>Assuming <span class="math inline">\(H^* \neq 0\)</span>, divide both
+sides by <span class="math inline">\(H^*\)</span>:</p>
+<p><span class="math display">\[
+\epsilon a R^* - d H^* = 0
+\]</span></p>
+<p>Substitute <span class="math inline">\(R^* = \dfrac{\text{NPP}}{l + a
+H^*}\)</span> into the equation:</p>
+<p><span class="math display">\[
+\epsilon a \left( \frac{\text{NPP}}{l + a H^*} \right) - d H^* = 0
+\]</span></p>
+<p>Multiply both sides by <span class="math inline">\((l + a
+H^*)\)</span> to eliminate the denominator:</p>
+<p><span class="math display">\[
+\epsilon a \text{NPP} - d H^* (l + a H^*) = 0
+\]</span></p>
+<p>Simplify the right side:</p>
+<p><span class="math display">\[
+\epsilon a \text{NPP} - d l H^* - d a H^{*2} = 0
+\]</span></p>
+<p>Bring all terms to one side to form a quadratic equation in <span class="math inline">\(H^*\)</span>:</p>
+<p><span class="math display">\[
+d a H^{*2} + d l H^* - \epsilon a \text{NPP} = 0
+\]</span></p>
+<p>This is a quadratic equation of the form:</p>
+<p><span class="math display">\[
+A H^{*2} + B H^* + C = 0
+\]</span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(A = d a\)</span></li>
+<li><span class="math inline">\(B = d l\)</span></li>
+<li><span class="math inline">\(C = - \epsilon a
+\text{NPP}\)</span></li>
+</ul>
+</div>
+</div>
+<div id="solving-the-quadratic-equation" class="section level2" number="4.3">
+<h2><span class="header-section-number">4.3</span> Solving the Quadratic
+Equation</h2>
+<p>Using the quadratic formula:</p>
+<p><span class="math display">\[
+H^* = \frac{-B \pm \sqrt{B^2 - 4 A C}}{2 A}
+\]</span></p>
+<p>Substitute the coefficients:</p>
+<p><span class="math display">\[
+H^* = \frac{ - d l \pm \sqrt{ (d l)^2 - 4 d a (- \epsilon a \text{NPP})
+} }{ 2 d a }
+\]</span></p>
+<p>Simplify the discriminant (<span class="math inline">\(\Delta\)</span>):</p>
+<p><span class="math display">\[
+\Delta = (d l)^2 + 4 d a^2 \epsilon \text{NPP}
+\]</span></p>
+<p>Simplify numerator and denominator:</p>
+<p><span class="math display">\[
+H^* = \frac{ - d l \pm \sqrt{ (d l)^2 + 4 d a^2 \epsilon \text{NPP} } }{
+2 d a }
+\]</span></p>
+<p>Divide numerator and denominator by <span class="math inline">\(d\)</span>:</p>
+<p><span class="math display">\[
+H^* = \frac{ - l \pm \sqrt{ l^2 + \dfrac{4 a^2 \epsilon \text{NPP}}{d} }
+}{ 2 a }
+\]</span></p>
+<div id="selecting-the-biologically-relevant-solution" class="section level3" number="4.3.1">
+<h3><span class="header-section-number">4.3.1</span> Selecting the
+Biologically Relevant Solution</h3>
+<p>Since <span class="math inline">\(l &gt; 0\)</span> and the square
+root is greater than <span class="math inline">\(l\)</span>, the
+negative root yields a negative <span class="math inline">\(H^*\)</span>, which is not biologically
+meaningful. Therefore, we take the positive root:</p>
+<p><span class="math display">\[
+H^* = \frac{ - l + \sqrt{ l^2 + \dfrac{4 a^2 \epsilon \text{NPP}}{d} }
+}{ 2 a }
+\]</span></p>
+</div>
+<div id="equilibrium-resource-biomass" class="section level3" number="4.3.2">
+<h3><span class="header-section-number">4.3.2</span> Equilibrium
+Resource Biomass</h3>
+<p>Using <span class="math inline">\(R^* = \dfrac{\text{NPP}}{l + a
+H^*}\)</span>.</p>
+<hr />
+</div>
+</div>
+<div id="interpretation-of-the-equilibrium-results" class="section level2" number="4.4">
+<h2><span class="header-section-number">4.4</span> Interpretation of the
+Equilibrium Results</h2>
+<div id="equilibrium-herbivore-biomass-h" class="section level3" number="4.4.1">
+<h3><span class="header-section-number">4.4.1</span> Equilibrium
+Herbivore Biomass (<span class="math inline">\(H^*\)</span>)</h3>
+<p><strong>Dependence on Net Primary Productivity (<span class="math inline">\(\text{NPP}\)</span>):</strong></p>
+<ul>
+<li>As <span class="math inline">\(\text{NPP}\)</span> increases, the
+term under the square root increases, leading to a higher <span class="math inline">\(H^*\)</span>.</li>
+<li><strong>Biological Meaning:</strong> Higher resource input supports
+larger herbivore populations.</li>
+</ul>
+<p><strong>Effect of Assimilation Efficiency (<span class="math inline">\(\epsilon\)</span>):</strong></p>
+<ul>
+<li>Higher <span class="math inline">\(\epsilon\)</span> increases the
+term under the square root, leading to a higher <span class="math inline">\(H^*\)</span>.</li>
+<li><strong>Biological Meaning:</strong> Herbivores that convert
+consumed resources more efficiently can sustain higher populations.</li>
+</ul>
+<p><strong>Impact of Mortality Rate (<span class="math inline">\(d\)</span>):</strong></p>
+<ul>
+<li>Higher <span class="math inline">\(d\)</span> reduces the term <span class="math inline">\(\dfrac{4 a^2 \epsilon \text{NPP}}{d}\)</span>,
+decreasing <span class="math inline">\(H^*\)</span>.</li>
+<li><strong>Biological Meaning:</strong> Higher mortality reduces
+herbivore biomass.</li>
+</ul>
+<p><strong>Role of Attack Rate (<span class="math inline">\(a\)</span>):</strong></p>
+<ul>
+<li>Higher <span class="math inline">\(a\)</span> increases the term
+under the square root, leading to a higher <span class="math inline">\(H^*\)</span>.</li>
+<li><strong>Biological Meaning:</strong> Herbivores that consume
+resources more effectively can sustain higher populations.</li>
+</ul>
+<p><strong>Effect of Leaching Rate (<span class="math inline">\(l\)</span>):</strong></p>
+<ul>
+<li><span class="math inline">\(l\)</span> appears negatively in the
+numerator and within the square root.</li>
+<li><strong>Biological Meaning:</strong> Higher resource loss can reduce
+<span class="math inline">\(H^*\)</span>, but the overall effect depends
+on the balance with other parameters.</li>
+</ul>
+</div>
+<div id="equilibrium-resource-biomass-r" class="section level3" number="4.4.2">
+<h3><span class="header-section-number">4.4.2</span> Equilibrium
+Resource Biomass (<span class="math inline">\(R^*\)</span>)</h3>
+<p><strong>Dependence on <span class="math inline">\(\text{NPP}\)</span>:</strong></p>
+<ul>
+<li>Direct proportionality: Higher <span class="math inline">\(\text{NPP}\)</span> increases <span class="math inline">\(R^*\)</span>.</li>
+<li><strong>Biological Meaning:</strong> More resource input leads to
+higher resource availability unless consumed by herbivores.</li>
+</ul>
+<p><strong>Herbivore Biomass (<span class="math inline">\(H^*\)</span>):</strong></p>
+<ul>
+<li>Inverse relationship: Higher <span class="math inline">\(H^*\)</span> increases <span class="math inline">\(a H^*\)</span>, reducing <span class="math inline">\(R^*\)</span>.</li>
+<li><strong>Biological Meaning:</strong> Greater herbivore populations
+consume more resources, decreasing resource biomass.</li>
+</ul>
+<p><strong>Leaching Rate (<span class="math inline">\(l\)</span>):</strong></p>
+<ul>
+<li>Inverse relationship: Higher <span class="math inline">\(l\)</span>
+increases the denominator, reducing <span class="math inline">\(R^*\)</span>.</li>
+<li><strong>Biological Meaning:</strong> More resource loss through
+leaching decreases resource availability.</li>
+</ul>
+</div>
+<div id="conditions-for-population-persistence" class="section level3" number="4.4.3">
+<h3><span class="header-section-number">4.4.3</span> Conditions for
+Population Persistence</h3>
+<ul>
+<li><strong>Herbivores Persist (<span class="math inline">\(H^* &gt;
+0\)</span>)</strong> when the term under the square root is sufficient
+to make <span class="math inline">\(H^*\)</span> positive.</li>
+<li><strong>Resource and Herbivore Balance:</strong> The system reaches
+equilibrium when resource input and losses balance with herbivore
+consumption and mortality.</li>
+</ul>
+</div>
+</div>
+<div id="biological-implications" class="section level2" number="4.5">
+<h2><span class="header-section-number">4.5</span> Biological
+Implications</h2>
+<ol style="list-style-type: decimal">
+<li><p><strong>Resource Limitation and Carrying Capacity:</strong></p>
+<ul>
+<li>The resource level sets an upper limit on herbivore biomass. If
+resources are abundant (high <span class="math inline">\(\text{NPP}\)</span>), herbivores can reach higher
+population sizes.</li>
+</ul></li>
+<li><p><strong>Efficiency and Energy Transfer:</strong></p>
+<ul>
+<li><strong>Assimilation Efficiency (<span class="math inline">\(\epsilon\)</span>)</strong> is critical for
+herbivore success. Higher efficiency means more energy is converted into
+biomass, supporting larger populations.</li>
+</ul></li>
+<li><p><strong>Mortality and Population Control:</strong></p>
+<ul>
+<li><strong>Density-Dependent Mortality (<span class="math inline">\(d
+H^2\)</span>)</strong> regulates herbivore populations, preventing
+overexploitation of resources.</li>
+</ul></li>
+<li><p><strong>Leaching and Ecosystem Productivity:</strong></p>
+<ul>
+<li><strong>Leaching Rate (<span class="math inline">\(l\)</span>)</strong> represents resource losses
+that are not available to herbivores. Managing these losses can enhance
+ecosystem productivity.</li>
 </ul></li>
 </ol>
+</div>
+<div id="practical-applications" class="section level2" number="4.6">
+<h2><span class="header-section-number">4.6</span> Practical
+Applications</h2>
+<ul>
+<li><p><strong>Conservation and Management:</strong></p>
+<ul>
+<li><strong>Enhancing <span class="math inline">\(\text{NPP}\)</span>:</strong> Practices that
+increase primary productivity (e.g., fertilization) can support higher
+herbivore populations.</li>
+<li><strong>Reducing Mortality:</strong> Protecting herbivores from
+predators or disease can increase their populations but may require
+managing resource availability to prevent depletion.</li>
+<li><strong>Managing Leaching:</strong> Reducing resource losses (e.g.,
+through soil conservation) can increase both resource and herbivore
+biomass.</li>
+</ul></li>
+<li><p><strong>Ecosystem Stability:</strong></p>
+<ul>
+<li>Understanding these dynamics helps predict how ecosystems respond to
+changes, such as climate shifts affecting <span class="math inline">\(\text{NPP}\)</span> or human activities altering
+mortality rates.</li>
+</ul></li>
+</ul>
+</div>
+<div id="conclusion" class="section level2" number="4.7">
+<h2><span class="header-section-number">4.7</span> Conclusion</h2>
+<p>The equilibrium analysis reveals the complex interplay between
+resource availability, herbivore consumption, and losses due to leaching
+and mortality. The positive root of the quadratic equation provides the
+biologically meaningful equilibrium herbivore biomass. By analyzing the
+parameters, we see that:</p>
+<ul>
+<li><strong>Resource input (<span class="math inline">\(\text{NPP}\)</span>)</strong> and
+<strong>assimilation efficiency (<span class="math inline">\(\epsilon\)</span>)</strong> positively influence
+herbivore biomass.</li>
+<li><strong>Mortality rate (<span class="math inline">\(d\)</span>)</strong> and <strong>leaching rate
+(<span class="math inline">\(l\)</span>)</strong> negatively influence
+herbivore biomass.</li>
+<li><strong>Attack rate (<span class="math inline">\(a\)</span>)</strong> enhances herbivore biomass by
+increasing consumption efficiency but can reduce resource biomass.</li>
+</ul>
+<p>This model highlights the importance of balancing these factors to
+maintain ecosystem health and sustainability.</p>
+<hr />
+</div>
 </div>
 
 
