@@ -246,7 +246,7 @@ $$
 0 = \epsilon a R^* H^* - d H^{*2}
 $$
 
-Assuming $H^* \neq 0$, divide both sides by $H^*$:
+Assuming $H^* \neq 0$:
 
 $$
 \epsilon a R^* - d H^* = 0
@@ -275,18 +275,6 @@ Bring all terms to one side to form a quadratic equation in $H^*$:
 $$
 d a H^{*2} + d l H^* - \epsilon a \text{NPP} = 0
 $$
-
-This is a quadratic equation of the form:
-
-$$
-A H^{*2} + B H^* + C = 0
-$$
-
-where:
-
-- $A = d a$
-- $B = d l$
-- $C = - \epsilon a \text{NPP}$
 
 ## Solving the Quadratic Equation
 
