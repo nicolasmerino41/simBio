@@ -386,142 +386,318 @@ begin
 end
 
 ########### NEW RESOURCE EXPLICIT, NPP-BASED MODEL ###########
-num_producers = 3   # Number of producer species
-num_herbivores = 2  # Number of herbivore species
+begin
+    # Seed for reproducibility
+    Random.seed!(rand(1:100, 1)[1])
 
-# Seed for reproducibility
-Random.seed!(1234)
+    # Number of species
+    num_producers = 10   # Number of producer species
+    num_herbivores = 5  # Number of herbivore species
 
-# Resource parameters
-NPP = 1.0    # Net Primary Productivity
-l = 0.1      # Leaching rate
+    # Resource parameters
+    NPP = 1.0    # Net Primary Productivity
+    l = 0.1      # Leaching rate
 
-# Producer parameters
-params_producers = []
-for alpha in 1:num_producers
-    push!(params_producers, Dict(
-        :c => rand() * 0.05 + 0.01,     # Uptake rate
-        :d => rand() * 0.01 + 0.005     # Mortality rate
-    ))
-end
-
-# Herbivore parameters
-params_herbivores = []
-for i in 1:num_herbivores
-    push!(params_herbivores, Dict(
-        :d => rand() * 0.01 + 0.005     # Mortality rate
-    ))
-end
-
-# Interaction parameters
-epsilon = 0.5  # Assimilation efficiency (assumed same for all)
-
-# Attack rates (a_i_alpha)
-a = [rand() * 0.05 + 0.01 for i in 1:num_herbivores, alpha in 1:num_producers]
-
-# Initial resource biomass
-R0 = 10.0
-
-# Initial producer biomasses
-P0 = [rand() * 5.0 + 1.0 for _ in 1:num_producers]
-
-# Initial herbivore biomasses
-H0 = [rand() * 2.0 + 1.0 for _ in 1:num_herbivores]
-
-# Combine all initial conditions
-u0 = [R0; P0; H0]
-
-function ecosystem!(du, u, p, t)
-    # Unpack parameters
-    num_producers = p[:num_producers]
-    num_herbivores = p[:num_herbivores]
-    params_resource = p[:params_resource]
-    params_producers = p[:params_producers]
-    params_herbivores = p[:params_herbivores]
-    a = p[:a]
-    epsilon = p[:epsilon]
-
-    # Unpack state variables
-    R = u[1]
-    P = u[2:1+num_producers]
-    H = u[2+num_producers:end]
-
-    # Initialize derivatives
-    du .= 0.0
-
-    # Resource dynamics
-    consumption = sum([params_producers[alpha][:c] * P[alpha] * R for alpha in 1:num_producers])
-    du[1] = NPP - l * R - consumption
-
-    # Producer dynamics
+    # Producer parameters
+    params_producers = []
     for alpha in 1:num_producers
-        # Total herbivory on producer alpha
-        herbivory = sum([a[i, alpha] * H[i] for i in 1:num_herbivores])
-        # Corrected producer dynamics with density-dependent mortality
-        du[1 + alpha] = epsilon * params_producers[alpha][:c] * R * P[alpha] - d_p[alpha] * P[alpha]^2 - P[alpha] * herbivory
+        push!(params_producers, Dict(
+            :c => rand() * 0.05 + 0.01,     # Uptake rate
+            :d => rand() * 0.01 + 0.005     # Mortality rate
+        ))
     end
 
-    # Herbivore dynamics
+    # Herbivore parameters
+    params_herbivores = []
     for i in 1:num_herbivores
-        # Total consumption of producers by herbivore i
-        consumption = sum([a[i, alpha] * P[alpha] for alpha in 1:num_producers])
-        # Corrected herbivore dynamics with density-dependent mortality
-        du[1 + num_producers + i] = epsilon * H[i] * consumption - d_h[i] * H[i]^2
+        push!(params_herbivores, Dict(
+            :d => rand() * 0.01 + 0.005     # Mortality rate
+        ))
     end
+
+    # Mortality rates for producers and herbivores
+    d_p = [params_producers[alpha][:d] for alpha in 1:num_producers]
+    d_h = [params_herbivores[i][:d] for i in 1:num_herbivores]
+
+    # Interaction parameters
+    epsilon = 0.5  # Assimilation efficiency (assumed same for all)
+
+    # Attack rates (a_i_alpha)
+    a = [rand() * 0.05 + 0.01 for i in 1:num_herbivores, alpha in 1:num_producers]
+
+    # Initial resource biomass
+    R0 = 10.0
+
+    # Initial producer biomasses
+    P0 = [rand() * 5.0 + 1.0 for _ in 1:num_producers]
+
+    # Initial herbivore biomasses
+    H0 = [rand() * 2.0 + 1.0 for _ in 1:num_herbivores]
+
+    # Combine all initial conditions
+    u0 = [R0; P0; H0]
+
+    # Time span for the simulation
+    tspan = (0.0, 200.0)
+
+    # Define the ODE function
+    function ecosystem!(du, u, p, t)
+        # Parameters are captured via closure
+        # Unpack state variables
+        R = u[1]
+        P = u[2:1+num_producers]
+        H = u[2+num_producers:end]
+
+        # Initialize derivatives
+        du .= 0.0
+
+        # Resource dynamics
+        consumption = sum([params_producers[alpha][:c] * P[alpha] * R for alpha in 1:num_producers])
+        du[1] = NPP - l * R - consumption
+
+        # Producer dynamics
+        for alpha in 1:num_producers
+            # Total herbivory on producer alpha
+            herbivory = sum([a[i, alpha] * H[i] for i in 1:num_herbivores])
+            # Corrected producer dynamics with density-dependent mortality
+            du[1 + alpha] = epsilon * params_producers[alpha][:c] * R * P[alpha] - d_p[alpha] * P[alpha]^2 - P[alpha] * herbivory
+        end
+
+        # Herbivore dynamics
+        for i in 1:num_herbivores
+            # Total consumption of producers by herbivore i
+            consumption_i = sum([a[i, alpha] * P[alpha] for alpha in 1:num_producers])
+            # Corrected herbivore dynamics with density-dependent mortality
+            du[1 + num_producers + i] = epsilon * H[i] * consumption_i - d_h[i] * H[i]^2
+        end
+    end
+
+    # Define the ODE problem without passing parameters
+    prob = ODEProblem(ecosystem!, u0, tspan)
+
+    # Solve the ODEs
+    sol = solve(prob, Tsit5())
+
+    # Prepare data for plotting
+    t = sol.t
+    R = sol[1, :]
+    P = sol[2:1+num_producers, :]
+    H = sol[2+num_producers:end, :]
+
+    # Create a plot object
+    plt = Plots.plot(title="Ecosystem Dynamics with Density-Dependent Mortality", xlabel="Time", ylabel="Biomass")
+
+    # Plot resource biomass
+    Plots.plot!(plt, t, R, label="Resource (R)", linewidth=2)
+
+    # Plot producer biomasses
+    for alpha in 1:num_producers
+        Plots.plot!(plt, t, P[alpha, :], label="Producer P$alpha", linewidth=2)
+    end
+
+    # Plot herbivore biomasses
+    for i in 1:num_herbivores
+        Plots.plot!(plt, t, H[i, :], label="Herbivore H$i", linewidth=2, linestyle=:dash)
+    end  
+
+    # Customize plot attributes
+    Plots.xlims!(plt, 0, tspan[2])
+    Plots.ylims!(plt, 0, maximum([maximum(R), maximum(P), maximum(H)]) * 1.1)
+
+    # Display the plot
+    display(plt)
 end
 
-# Mortality rates for producers and herbivores
-d_p = [params_producers[alpha][:d] for alpha in 1:num_producers]
-d_h = [params_herbivores[i][:d] for i in 1:num_herbivores]
+########### NEW RESOURCE EXPLICIT, NPP-BASED MODEL WITH PREDATORS ###########
+begin
+    # Seed for reproducibility
+    Random.seed!(1234)
 
-params = Dict(
-    :num_producers => num_producers,
-    :num_herbivores => num_herbivores,
-    :params_resource => Dict(:NPP => NPP, :l => l),
-    :params_producers => params_producers,
-    :params_herbivores => params_herbivores,
-    :a => a,
-    :epsilon => epsilon,
-    :d_p => d_p,
-    :d_h => d_h
-)
+    # Verbose flag
+    verbose = true  # Set to `false` to disable printing extinction messages
 
-# Time span for the simulation
-tspan = (0.0, 200.0)
+    # Number of species
+    num_producers = 200    # Number of producer species
+    num_herbivores = 50   # Number of herbivore species
+    num_predators = 20    # Number of predator species
 
-# Define the ODE problem
-prob = ODEProblem(ecosystem!, u0, tspan, params)
+    # Resource parameters
+    NPP = 1.0    # Net Primary Productivity
+    l = 0.1      # Leaching rate
 
-sol = solve(prob, Tsit5())
+    # Producer parameters
+    params_producers = []
+    for alpha in 1:num_producers
+        push!(params_producers, Dict(
+            :c => rand() * 0.05 + 0.01,     # Uptake rate
+            :d => rand() * 0.01 + 0.005     # Mortality rate
+        ))
+    end
 
-using Plots
+    # Herbivore parameters
+    params_herbivores = []
+    for i in 1:num_herbivores
+        push!(params_herbivores, Dict(
+            :d => rand() * 0.01 + 0.005     # Mortality rate
+        ))
+    end
 
-t = sol.t
-R = sol[1, :]
-P = sol[2:1+num_producers, :]
-H = sol[2+num_producers:end, :]
+    # Predator parameters
+    params_predators = []
+    for k in 1:num_predators
+        push!(params_predators, Dict(
+            :d => rand() * 0.01 + 0.005     # Mortality rate
+        ))
+    end
 
-# Create a plot object
-plt = plot(title="Ecosystem Dynamics with Density-Dependent Mortality", xlabel="Time", ylabel="Biomass")
+    # Mortality rates
+    d_p = [params_producers[alpha][:d] for alpha in 1:num_producers]
+    d_h = [params_herbivores[i][:d] for i in 1:num_herbivores]
+    d_c = [params_predators[k][:d] for k in 1:num_predators]
 
-# Plot resource biomass
-plot!(plt, t, R, label="Resource (R)", linewidth=2)
+    # Assimilation efficiencies
+    epsilon_P = 0.5  # Producers
+    epsilon_H = 0.5  # Herbivores
+    epsilon_C = 0.5  # Predators
 
-# Plot producer biomasses
-for alpha in 1:num_producers
-    plot!(plt, t, P[alpha, :], label="Producer P$alpha", linewidth=2)
+    # Attack rates (trophic matrices)
+    a = [rand() * 0.05 + 0.01 for i in 1:num_herbivores, alpha in 1:num_producers]   # Herbivore on producer
+    b = [rand() * 0.05 + 0.01 for k in 1:num_predators, i in 1:num_herbivores]       # Predator on herbivore
+
+    # Initial conditions
+    R0 = 10.0
+    P0 = [rand() * 5.0 + 1.0 for _ in 1:num_producers]
+    H0 = [rand() * 2.0 + 1.0 for _ in 1:num_herbivores]
+    C0 = [rand() * 1.0 + 0.5 for _ in 1:num_predators]
+    u0 = [R0; P0; H0; C0]
+
+    # Time span
+    tspan = (0.0, 200.0)
+
+    # Species names for printing (optional)
+    producer_names = ["Producer P$α" for α in 1:num_producers]
+    herbivore_names = ["Herbivore H$i" for i in 1:num_herbivores]
+    predator_names = ["Predator C$k" for k in 1:num_predators]
+    species_names = vcat(producer_names, herbivore_names, predator_names)  # Concatenate species names
+
+    # Define the ODE function
+    function ecosystem!(du, u, p, t)
+        # Unpack state variables
+        R = u[1]
+        P = u[2:1+num_producers]
+        H = u[2+num_producers : 1+num_producers+num_herbivores]
+        C = u[2+num_producers+num_herbivores : end]
+
+        # Initialize derivatives
+        du .= 0.0
+
+        ## Resource dynamics
+        resource_consumption = sum([params_producers[alpha][:c] * P[alpha] * R for alpha in 1:num_producers])
+        du[1] = NPP - l * R - resource_consumption
+
+        ## Producer dynamics
+        for alpha in 1:num_producers
+            # Total herbivory on producer alpha
+            herbivory = sum([a[i, alpha] * H[i] for i in 1:num_herbivores])
+            # Producer dynamics
+            du[1 + alpha] = epsilon_P * params_producers[alpha][:c] * R * P[alpha] - d_p[alpha] * P[alpha]^2 - P[alpha] * herbivory
+        end
+
+        ## Herbivore dynamics
+        for i in 1:num_herbivores
+            # Total consumption of producers by herbivore i
+            consumption_i = sum([a[i, alpha] * P[alpha] for alpha in 1:num_producers])
+            # Predation on herbivore i by predators
+            predation = sum([b[k, i] * C[k] for k in 1:num_predators])
+            # Herbivore dynamics
+            du[1 + num_producers + i] = epsilon_H * H[i] * consumption_i - d_h[i] * H[i]^2 - H[i] * predation
+        end
+
+        ## Predator dynamics
+        for k in 1:num_predators
+            # Total consumption of herbivores by predator k
+            consumption_k = sum([b[k, i] * H[i] for i in 1:num_herbivores])
+            # Predator dynamics
+            du[1 + num_producers + num_herbivores + k] = epsilon_C * C[k] * consumption_k - d_c[k] * C[k]^2
+        end
+    end
+
+    # Define the condition function for the callback
+    function condition_extinction(u, t, integrator)
+        min_biomass = minimum(u[2:end])  # Exclude resource
+        return min_biomass
+    end
+
+    # Define the affect function for the callback with verbose option
+    function affect_extinction!(integrator)
+        u = integrator.u
+        t = integrator.t
+        # Check and set negative biomasses to zero
+        for idx in 2:length(u)  # Exclude resource
+            if u[idx] < 0.0
+                u[idx] = 0.0  # Set biomass to zero
+            end
+        end
+        # Print extinction messages if verbose is true
+        if verbose
+            for idx in 2:length(u)  # Exclude resource
+                if integrator.u[idx] == 0.0 && integrator.uprev[idx] > 0.0
+                    species_idx = idx - 1  # Adjust index since u[1] is resource
+                    if species_idx ≤ num_producers
+                        species_name = producer_names[species_idx]
+                    elseif species_idx ≤ num_producers + num_herbivores
+                        species_name = herbivore_names[species_idx - num_producers]
+                    else
+                        species_name = predator_names[species_idx - num_producers - num_herbivores]
+                    end
+                    println("Species $(species_name) went extinct at time t = $(t).")
+                end
+            end
+        end
+    end
+
+    # Create the ContinuousCallback
+    extinction_callback = ContinuousCallback(condition_extinction, affect_extinction!; save_positions=(true, true))
+
+    # Define the ODE problem
+    prob = ODEProblem(ecosystem!, u0, tspan)
+
+    # Solve the ODEs with the callback
+    sol = solve(prob, Tsit5(); callback=extinction_callback)
+
+    # Prepare data for plotting
+    t = sol.t
+    R = sol[1, :]
+    P = sol[2:1+num_producers, :]
+    H = sol[2+num_producers : 1+num_producers+num_herbivores, :]
+    C = sol[2+num_producers+num_herbivores : end, :]
+
+    # Create a plot object
+    plt = Plots.plot(title="Ecosystem Dynamics with Predators and Extinction Events", xlabel="Time", ylabel="Biomass")
+
+    # Plot resource biomass
+    Plots.plot!(plt, t, R, label=false, linewidth=2)
+
+    # Plot producer biomasses
+    for alpha in 1:num_producers
+        Plots.plot!(plt, t, P[alpha, :], label=false, linewidth=2)
+    end
+
+    # Plot herbivore biomasses
+    for i in 1:num_herbivores
+        Plots.plot!(plt, t, H[i, :], label=false, linewidth=2, linestyle=:dash)
+    end
+
+    # Plot predator biomasses
+    for k in 1:num_predators
+        Plots.plot!(plt, t, C[k, :], label=false, linewidth=2, linestyle=:dot)
+    end
+
+    # Customize plot attributes
+    Plots.xlims!(plt, 0, tspan[2])
+    Plots.ylims!(plt, 0, maximum([maximum(R), maximum(P), maximum(H), maximum(C)]) * 1.1)
+
+    # Display the plot
+    display(plt)
 end
 
-# Plot herbivore biomasses
-for i in 1:num_herbivores
-    plot!(plt, t, H[i, :], label="Herbivore H$i", linewidth=2, linestyle=:dash)
-end
-
-# Customize plot attributes
-xlims!(plt, 0, tspan[2])
-ylims!(plt, 0, maximum([maximum(R), maximum(P), maximum(H)]) * 1.1)
-legend!(plt, :right)
-grid!(plt, true)
-
-# Display the plot
-display(plt)
