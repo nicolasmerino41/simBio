@@ -258,19 +258,7 @@ $$
 \epsilon a \left( \frac{\text{NPP}}{l + a H^*} \right) - d H^* = 0
 $$
 
-Multiply both sides by $(l + a H^*)$ to eliminate the denominator:
-
-$$
-\epsilon a \text{NPP} - d H^* (l + a H^*) = 0
-$$
-
-Simplify the right side:
-
-$$
-\epsilon a \text{NPP} - d l H^* - d a H^{*2} = 0
-$$
-
-Bring all terms to one side to form a quadratic equation in $H^*$:
+Simplify:
 
 $$
 d a H^{*2} + d l H^* - \epsilon a \text{NPP} = 0
@@ -278,47 +266,18 @@ $$
 
 ## Solving the Quadratic Equation
 
-Using the quadratic formula:
-
-$$
-H^* = \frac{-B \pm \sqrt{B^2 - 4 A C}}{2 A}
-$$
-
-Substitute the coefficients:
-
-$$
-H^* = \frac{ - d l \pm \sqrt{ (d l)^2 - 4 d a (- \epsilon a \text{NPP}) } }{ 2 d a }
-$$
-
-Simplify the discriminant ($\Delta$):
-
-$$
-\Delta = (d l)^2 + 4 d a^2 \epsilon \text{NPP}
-$$
-
-Simplify numerator and denominator:
-
-$$
-H^* = \frac{ - d l \pm \sqrt{ (d l)^2 + 4 d a^2 \epsilon \text{NPP} } }{ 2 d a }
-$$
-
-Divide numerator and denominator by $d$:
 
 $$
 H^* = \frac{ - l \pm \sqrt{ l^2 + \dfrac{4 a^2 \epsilon \text{NPP}}{d} } }{ 2 a }
 $$
 
-### Selecting the Biologically Relevant Solution
+### The Biologically Relevant Solution
 
 Since $l > 0$ and the square root is greater than $l$, the negative root yields a negative $H^*$, which is not biologically meaningful. Therefore, we take the positive root:
 
 $$
 H^* = \frac{ - l + \sqrt{ l^2 + \dfrac{4 a^2 \epsilon \text{NPP}}{d} } }{ 2 a }
 $$
-
-### Equilibrium Resource Biomass
-
-Using $R^* = \dfrac{\text{NPP}}{l + a H^*}$.
 
 ---
 
@@ -390,28 +349,6 @@ Using $R^* = \dfrac{\text{NPP}}{l + a H^*}$.
 4. **Leaching and Ecosystem Productivity:**
 
    - **Leaching Rate ($l$)** represents resource losses that are not available to herbivores. Managing these losses can enhance ecosystem productivity.
-
-## Practical Applications
-
-- **Conservation and Management:**
-
-  - **Enhancing $\text{NPP}$:** Practices that increase primary productivity (e.g., fertilization) can support higher herbivore populations.
-  - **Reducing Mortality:** Protecting herbivores from predators or disease can increase their populations but may require managing resource availability to prevent depletion.
-  - **Managing Leaching:** Reducing resource losses (e.g., through soil conservation) can increase both resource and herbivore biomass.
-
-- **Ecosystem Stability:**
-
-  - Understanding these dynamics helps predict how ecosystems respond to changes, such as climate shifts affecting $\text{NPP}$ or human activities altering mortality rates.
-
-## Conclusion
-
-The equilibrium analysis reveals the complex interplay between resource availability, herbivore consumption, and losses due to leaching and mortality. The positive root of the quadratic equation provides the biologically meaningful equilibrium herbivore biomass. By analyzing the parameters, we see that:
-
-- **Resource input ($\text{NPP}$)** and **assimilation efficiency ($\epsilon$)** positively influence herbivore biomass.
-- **Mortality rate ($d$)** and **leaching rate ($l$)** negatively influence herbivore biomass.
-- **Attack rate ($a$)** enhances herbivore biomass by increasing consumption efficiency but can reduce resource biomass.
-
-This model highlights the importance of balancing these factors to maintain ecosystem health and sustainability.
 
 ---
 
