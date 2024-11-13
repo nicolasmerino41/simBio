@@ -196,6 +196,6 @@ end
 
 # Run the simulation and obtain the output
 total_biomass = run_simulation()
-
+value = 0.8
 # Output the result (OpenMOLE will capture the variable 'total_biomass')
 println("total_biomass = ", total_biomass)
