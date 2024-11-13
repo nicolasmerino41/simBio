@@ -1,0 +1,238 @@
+---
+title: "Predation Term Justification"
+author: "Nicolàs Merino, Jean-François Arnoldi, Núria Galiana, Miguel B. Araújo"
+date: "November 2024"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    bookdown: true
+    highlight: tango
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Predator Implementation
+
+## Extended Model Equations
+
+We now extend the model to include predators. The dynamics of herbivores \( H_i \) and predators \( P_k \) are given by:
+
+### Herbivores:
+
+The dynamics of herbivore \( i \) including predation are:
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i}{m_i} - 1 \right] - \frac{H_i + \sum_{j \neq i} \beta_{ij} H_j}{H_i^0} \right) - \frac{1}{H_i} \sum_{k} f_{ki} P_k
+$$
+
+### Predators:
+
+The dynamics of predator \( k \) are:
+
+$$
+\frac{1}{P_k} \frac{dP_k}{dt} = e_k \sum_{i} f_{ki} - m_k
+$$
+
+where:
+
+- \( H_i \) is the density of herbivore species \( i \).
+- \( P_k \) is the density of predator species \( k \).
+- \( m_i \) is the mortality rate of herbivore \( i \).
+- \( g_i \) is the growth rate of herbivore \( i \).
+- \( \beta_{ij} \) represents the competition coefficient between herbivores \( i \) and \( j \).
+- \( H_i^0 \) is the characteristic density of herbivore \( i \).
+- \( f_{ki} \) is the functional response of predator \( k \) consuming prey \( i \).
+- \( e_k \) is the conversion efficiency of predator \( k \).
+- \( m_k \) is the mortality rate of predator \( k \).
+
+---
+
+## Clarifying the Predation Term in Herbivore Dynamics
+
+### Understanding the Predation Term
+
+Your confusion arises from how the predation term is included in the herbivore dynamics, specifically why it appears as \( \frac{1}{H_i} \sum_{k} f_{ki} P_k \) and seems to become independent of \( H_i \) when moving \( H_i \) from the left-hand side (LHS) to the right-hand side (RHS) of the equation.
+
+Let's dissect this step by step.
+
+### Step 1: Starting with the Total Change in Herbivore Density
+
+The total rate of change of herbivore \( i \) is:
+
+$$
+\frac{dH_i}{dt} = H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \sum_{j \neq i} \beta_{ij} H_j \right) - \sum_{k} f_{ki} P_k
+$$
+
+Here, \( \sum_{k} f_{ki} P_k \) represents the **total predation losses** for herbivore \( i \) (units: individuals per time).
+
+### Step 2: Writing the Per Capita Growth Rate
+
+To express the per capita growth rate, we divide both sides by \( H_i \):
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{m_i}{H_i^0} \left( H_i + \sum_{j \neq i} \beta_{ij} H_j \right) - \frac{1}{H_i} \sum_{k} f_{ki} P_k
+$$
+
+Now, each term on the right-hand side (RHS) represents a per capita rate (units: per time).
+
+### Step 3: Addressing the Predation Term
+
+#### **Why is the Predation Term Divided by \( H_i \)?**
+
+- **Total Predation Losses:** \( \sum_{k} f_{ki} P_k \) (units: individuals per time).
+- **Per Capita Predation Losses:** \( \frac{1}{H_i} \sum_{k} f_{ki} P_k \) (units: per time).
+
+By dividing the total predation losses by \( H_i \), we obtain the **per capita predation rate** for herbivore \( i \).
+
+#### **Does the Predation Term Become Independent of \( H_i \)?**
+
+When we rearrange the equation by multiplying both sides by \( H_i \), we get back to the total growth rate:
+
+$$
+\frac{dH_i}{dt} = H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \sum_{j \neq i} \beta_{ij} H_j \right) - \sum_{k} f_{ki} P_k
+$$
+
+Notice that the predation term \( \sum_{k} f_{ki} P_k \) **does not depend on \( H_i \) explicitly** in this form.
+
+**But why is this acceptable?**
+
+### Understanding the Functional Response
+
+The key lies in the definition of the functional response \( f_{ki} \).
+
+#### **Linear Functional Response (Type I)**
+
+If we assume a Type I functional response (mass-action), then:
+
+$$
+f_{ki} = a_{ki} H_i
+$$
+
+- \( a_{ki} \) is the attack rate coefficient between predator \( k \) and prey \( i \).
+
+In this case, the total predation rate is:
+
+$$
+\sum_{k} f_{ki} P_k = H_i \sum_{k} a_{ki} P_k
+$$
+
+Thus, the **total predation losses** are proportional to \( H_i \).
+
+When we divide by \( H_i \) to get the **per capita predation rate**, we have:
+
+$$
+\frac{1}{H_i} \sum_{k} f_{ki} P_k = \sum_{k} a_{ki} P_k
+$$
+
+This per capita rate **does not depend on \( H_i \)**.
+
+**Conclusion:** In a Type I functional response, the per capita predation rate depends only on predator densities and attack rates, not on prey density.
+
+#### **Type II Functional Response**
+
+If we use a Type II functional response, which is more realistic:
+
+$$
+f_{ki} = \frac{a_{ki} H_i}{1 + a_{ki} h_{ki} H_i}
+$$
+
+- \( h_{ki} \) is the handling time.
+
+In this case, the total predation rate \( \sum_{k} f_{ki} P_k \) **depends nonlinearly on \( H_i \)**.
+
+When we compute the per capita predation rate:
+
+$$
+\frac{1}{H_i} \sum_{k} f_{ki} P_k = \sum_{k} \left( \frac{a_{ki}}{1 + a_{ki} h_{ki} H_i} \right) P_k
+$$
+
+Here, the per capita predation rate **still depends on \( H_i \)** due to the denominator \( 1 + a_{ki} h_{ki} H_i \).
+
+### Reconciling the Confusion
+
+#### **In the Original Model**
+
+- If the functional response \( f_{ki} \) is linear in \( H_i \), the per capita predation rate is independent of \( H_i \).
+- The total predation losses are proportional to \( H_i \), ensuring that the overall predation impact scales with prey density.
+
+#### **When Multiplying Both Sides by \( H_i \)**
+
+- Multiplying both sides of the per capita growth rate by \( H_i \) gives the total growth rate.
+- The predation term becomes \( \sum_{k} f_{ki} P_k \), representing the total number of prey \( i \) consumed per unit time.
+
+#### **Why Does Prey Abundance Seem Irrelevant in Per Capita Terms?**
+
+- In per capita terms, the rate at which an individual prey is consumed depends on predator density (and attack rates), not on prey density (for Type I functional response).
+- This reflects the assumption that each prey individual has the same risk of being consumed, regardless of overall prey abundance.
+
+### Biological Interpretation
+
+- **Total Predation Losses (\( \sum_{k} f_{ki} P_k \))**: Increase with prey density \( H_i \), meaning more prey are consumed when there are more prey available.
+- **Per Capita Predation Rate (\( \frac{1}{H_i} \sum_{k} f_{ki} P_k \))**: May remain constant (Type I) or decrease with increasing \( H_i \) (Type II), reflecting dilution effects or predator satiation.
+
+### Summary
+
+- **Per Capita vs. Total Rates**: The per capita predation rate can appear independent of \( H_i \) in certain models, but the total predation losses always scale with \( H_i \).
+- **Functional Response Matters**: The dependency of the per capita predation rate on \( H_i \) depends on the form of the functional response used.
+  - **Type I**: Linear, per capita rate independent of \( H_i \).
+  - **Type II**: Nonlinear, per capita rate depends on \( H_i \).
+
+---
+
+## Revisiting the Herbivore Dynamics with Type II Functional Response
+
+Let's consider the Type II functional response in the herbivore dynamics:
+
+### Herbivore Dynamics with Type II Predation
+
+The per capita growth rate:
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i}{m_i} - 1 \right] - \frac{H_i + \sum_{j \neq i} \beta_{ij} H_j}{H_i^0} \right) - \sum_{k} \left( \frac{a_{ki}}{1 + a_{ki} h_{ki} H_i} \right) P_k
+$$
+
+Now, the per capita predation rate depends on \( H_i \), addressing your concern that prey abundance should have relevance in the dynamics.
+
+---
+
+## Conclusion
+
+- **In Models with Linear Predation (Type I Functional Response)**:
+  - **Per Capita Predation Rate**: Independent of \( H_i \).
+  - **Total Predation Losses**: Proportional to \( H_i \).
+
+- **In Models with Nonlinear Predation (Type II Functional Response)**:
+  - **Per Capita Predation Rate**: Depends on \( H_i \).
+  - **Total Predation Losses**: Reflect saturation effects at high \( H_i \).
+
+- **Biological Relevance**:
+  - **Type I**: Appropriate when predators have unlimited appetite and prey are sparse.
+  - **Type II**: More realistic, accounting for predator satiation and handling time.
+
+---
+
+## Recommendations
+
+- **If Prey Abundance Should Affect Per Capita Predation Rate**:
+  - Use a **Type II functional response** in your model.
+  - This will ensure that the per capita predation rate depends on \( H_i \).
+
+- **Mathematical Consistency**:
+  - The cancellation of \( H_i \) when moving terms is correct mathematically.
+  - The biological interpretation depends on the chosen functional response.
+
+---
+
+I hope this clarifies why the predation term appears as it does in the herbivore dynamics and how prey abundance affects (or does not affect) the per capita predation rate depending on the functional response used.
+
+If you have any further questions or need additional clarification, please let me know!
