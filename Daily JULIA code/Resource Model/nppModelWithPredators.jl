@@ -368,7 +368,7 @@ begin
     end
 
     # Create a single figure
-    fig = MK.Figure(resolution = (600, 500))
+    fig = MK.Figure(; size = (600, 500))
 
     ax = MK.Axis(fig[1, 1], xlabel = "Time", ylabel = "Density",
                  title = "Herbivore and Predator Dynamics Over Time")
