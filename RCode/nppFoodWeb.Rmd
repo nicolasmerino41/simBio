@@ -3,6 +3,9 @@ title: "THE MODEL"
 author: "Nicolàs Merino, Jean-François Arnoldi, Núria Galiana, Miguel B. Araújo"
 date: "November 2024"
 output:
+  pdf_document:
+    toc: true
+    toc_depth: '5'
   html_document:
     theme: flatly
     toc: true
@@ -12,9 +15,6 @@ output:
       collapsed: false
     bookdown: true
     highlight: tango
-  pdf_document:
-    toc: true
-    toc_depth: '5'
 ---
 
 ```{r setup, include=FALSE}
@@ -24,6 +24,62 @@ knitr::opts_chunk$set(echo = TRUE)
 # Introduction
 
 In this document, we explore the parametrization of a food web model based on Net Primary Productivity (NPP). We start by considering a model of herbivores and then extend it to include predators.
+
+# Jeff's Original Document
+
+NPP parametrization of a food web
+Consider the trophic level above primary producers (herbivores):
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i}{m_i} - 1 \right] - \frac{H_i + \sum_{j \neq i} \beta_{ij} H_j}{H_i^0} \right) \tag*{Eq.1}
+$$
+
+NPP is
+
+$$
+\text{NPP} = \sum_{i \in S} g_i H_i \tag*{Eq.2}
+$$
+
+Where \( S \) is the set of \( S^* \) surviving herbivores. If \( \mu \) is the mean competition
+strength between herbivores than we propose to parametrize the model via a
+knowledge of NPP. Given the natural mortality rate \( m_i \) of herbivores and \( H_i^0 \) a
+characteristic density then
+
+$$
+\frac{g_i}{m_i} = \sqrt{ \frac{1 + \mu (S^* - 1)}{S^*} \cdot \frac{\text{NPP}}{H_i^0 m_i} } \tag*{Eq.3}
+$$
+
+Or, equivalently, if we denote \( F_i \) the minimal NPP needed for the maintenance of a single population of species i then
+
+$$
+\frac{g_i}{m_i} = \sqrt{ \frac{1 + \mu (S^* - 1)}{S^*} \cdot \frac{\text{NPP}}{F_i} }; \ H_i^0 = \frac{F_i}{m_i} \tag*{Eq.3.1}
+$$
+
+To see why we make this choice, suppose for simplicity that \( \beta_{ij} \equiv \mu < 1 \) (mean field competition). Then at equilibrium
+
+$$
+H_i^0 \left( \frac{g_i}{m_i} - 1 \right) = (1 - \mu) H_i + \mu S^* \bar{H} \tag*{Eq.4}
+$$
+
+So
+
+$$
+(1 + \mu (S^* - 1)) \bar{H} = \frac{1}{S^*} \sum_{i} H_i^0 \left( \frac{g_i}{m_i} - 1 \right) \tag*{Eq.5}
+$$
+
+So
+
+$$
+(1 - \mu) H_i = H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \frac{ \mu }{1 + \mu (S^* - 1)} \sum_{j} H_j^0 \left( \frac{g_j}{m_j} - 1 \right) \tag*{Eq.6}
+$$
+
+then, given our parametrization,
+
+$$
+(1 - \mu) \text{NPP} \approx \left( 1 + \mu (S^* - 1) \right) \text{NPP} \left[ 1 - \frac{ \mu S^* }{ 1 + \mu (S^* - 1) } \times \frac{1}{S^{*2}} \sum_{i,j \in S} \sqrt{ \frac{ m_i H_j^0 }{ m_j H_i^0 } } \right] \tag*{Eq.7}
+$$
+
+if we can assume that \( \frac{1}{S^{*2}} \sum_{i,j \in S} \sqrt{ \frac{ m_i H_j^0 }{ m_j H_i^0 } } \approx 1 \) we get to \( \text{NPP} = \sum_{i \in S} g_i H_i \)
 
 # Herbivore-Only Model
 
@@ -39,7 +95,7 @@ $$
 Alternatively, we can write:
 
 $$
-\frac{dH_i}{dt} = H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \sum_{j \neq i} \beta_{ij} H_j \right)
+\frac{dH_i}{dt} = H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \sum_{j \neq i} \beta_{ij} H_j \right) \tag*{Eq.1.1}
 $$
 
 where:
@@ -117,7 +173,7 @@ $$
 H_i^0 \left( \frac{g_i}{m_i} - 1 \right) = H_i + \mu \sum_{j \neq i} H_j
 $$
 
-Now, express the sum over \( j \neq i \):
+Now, we express the sum over \( j \neq i \):
 
 - The total herbivore biomass is \( H_{\text{total}} = \sum_{j} H_j = S^* \bar{H} \).
 - The sum over \( j \neq i \) is \( \sum_{j \neq i} H_j = H_{\text{total}} - H_i = S^* \bar{H} - H_i \).
@@ -128,7 +184,7 @@ $$
 H_i^0 \left( \frac{g_i}{m_i} - 1 \right) = H_i + \mu \left( S^* \bar{H} - H_i \right)
 $$
 
-Simplify the right-hand side:
+Simplify the RHS:
 
 $$
 H_i + \mu \left( S^* \bar{H} - H_i \right) = H_i (1 - \mu) + \mu S^* \bar{H}
@@ -144,13 +200,13 @@ $$
 
 Sum both sides over all \( i \in S \):
 
-Left-hand side (LHS):
+LHS:
 
 $$
 \sum_{i} H_i^0 \left( \frac{g_i}{m_i} - 1 \right)
 $$
 
-Right-hand side (RHS):
+RHS:
 
 $$
 \sum_{i} \left( (1 - \mu) H_i + \mu S^* \bar{H} \right) = (1 - \mu) H_{\text{total}} + \mu S^* \sum_{i} \bar{H}
@@ -193,13 +249,13 @@ This equation expresses the average herbivore density \( \bar{H} \) in terms of 
 Recall the individual equilibrium equation:
 
 $$
-(1 - \mu) H_i = H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \mu S^* \bar{H}
+(1 - \mu) H_i = H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \mu S^* \bar{H}  \tag*{Eq.4 (rearranged)}
 $$
 
 From the previous step, we have an expression for \( \bar{H} \):
 
 $$
-\bar{H} = \frac{1}{S^*} \cdot \frac{ \sum_{j} H_j^0 \left( \frac{g_j}{m_j} - 1 \right) }{1 + \mu (S^* - 1)}
+\bar{H} = \frac{1}{S^*} \cdot \frac{ \sum_{j} H_j^0 \left( \frac{g_j}{m_j} - 1 \right) }{1 + \mu (S^* - 1)} \tag*{Eq.5 (rearranged)}
 $$
 
 Substitute \( \bar{H} \) back into the individual equilibrium equation:
@@ -218,136 +274,11 @@ This equation shows how the density of species \( i \) depends on its own parame
 
 ## Total Herbivore Biomass and NPP
 
-### Expression for Total Biomass
-
-Multiply both sides of the individual equilibrium equation by \( g_i \):
+Here, we try to derive Eq.7 and prove that, under certain conditions, \( \text{NPP} = \sum_{i \in S} g_i H_i \):
 
 $$
-(1 - \mu) g_i H_i = g_i H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - g_i \left( \frac{ \mu }{1 + \mu (S^* - 1)} \sum_{j} H_j^0 \left( \frac{g_j}{m_j} - 1 \right) \right)
+(1 - \mu) \text{NPP} \approx \left( 1 + \mu (S^* - 1) \right) \text{NPP} \left[ 1 - \frac{ \mu S^* }{ 1 + \mu (S^* - 1) } \times \frac{1}{S^{*2}} \sum_{i,j \in S} \sqrt{ \frac{ m_i H_j^0 }{ m_j H_i^0 } } \right] \tag*{Eq.7}
 $$
-
-Sum over all species \( i \):
-
-$$
-(1 - \mu) \sum_{i} g_i H_i = \sum_{i} g_i H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \frac{ \mu }{1 + \mu (S^* - 1)} \sum_{i} g_i \sum_{j} H_j^0 \left( \frac{g_j}{m_j} - 1 \right) \tag*{Eq.7}
-$$
-
-Note that the second term involves a double sum. For simplification, assume symmetry and similar parameters among species.
-
-### Approximations with Similar Species
-
-Assuming all species have similar parameters:
-
-- \( m_i = m \)
-- \( H_i^0 = H^0 \)
-- \( g_i = g \)
-
-Then:
-
-- \( \left( \frac{g_i}{m_i} - 1 \right) = \left( \frac{g}{m} - 1 \right) \)
-- \( \sum_{i} H_i^0 \left( \frac{g_i}{m_i} - 1 \right) = S^* H^0 \left( \frac{g}{m} - 1 \right) \)
-
-Substitute back:
-
-$$
-(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* - \frac{ \mu }{1 + \mu (S^* - 1)} g S^* H^0 \left( \frac{g}{m} - 1 \right) S^*
-$$
-
-Simplify the second term:
-
-$$
-\text{Second Term} = \frac{ \mu S^{*2} g H^0 \left( \frac{g}{m} - 1 \right) }{1 + \mu (S^* - 1)}
-$$
-
-Therefore:
-
-$$
-(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* - \frac{ \mu S^{*2} g H^0 \left( \frac{g}{m} - 1 \right) }{1 + \mu (S^* - 1)}
-$$
-
-Combine terms:
-
-$$
-(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* \left( 1 - \frac{ \mu S^* }{1 + \mu (S^* - 1)} \right)
-$$
-
-Simplify the fraction:
-
-$$
-\frac{ \mu S^* }{1 + \mu (S^* - 1)} = \frac{ \mu S^* }{1 + \mu S^* - \mu } = \frac{ \mu S^* }{1 + \mu S^* - \mu } = \frac{ \mu S^* }{ (1 - \mu ) + \mu S^* }
-$$
-
-But this doesn't simplify much further. Alternatively, recognize that:
-
-$$
-1 - \frac{ \mu S^* }{1 + \mu (S^* - 1)} = \frac{ (1 + \mu (S^* - 1)) - \mu S^* }{1 + \mu (S^* - 1)} = \frac{ 1 + \mu (S^* - 1) - \mu S^* }{1 + \mu (S^* - 1)} = \frac{ 1 - \mu }{1 + \mu (S^* - 1)}
-$$
-
-But since the numerator is \( 1 - \mu \), which is the same as the coefficient on the left-hand side.
-
-Therefore, we have:
-
-$$
-(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* \cdot \frac{ 1 - \mu }{1 + \mu (S^* - 1)}
-$$
-
-Divide both sides by \( 1 - \mu \):
-
-$$
-\sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* \cdot \frac{1}{1 + \mu (S^* - 1)}
-$$
-
-Recognize that \( \sum_{i} g H_i = \text{NPP} \):
-
-$$
-\text{NPP} = g H^0 \left( \frac{g}{m} - 1 \right) S^* \cdot \frac{1}{1 + \mu (S^* - 1)}
-$$
-
-Therefore, the total NPP is:
-
-$$
-\text{NPP} = g H^0 \left( \frac{g}{m} - 1 \right) \cdot \frac{ S^* }{1 + \mu (S^* - 1)}
-$$
-
-### Rewriting Total Biomass
-
-Recall that the total herbivore biomass \( B \) is:
-
-$$
-B = S^* \bar{H} = \frac{ S^* H^0 \left( \frac{g}{m} - 1 \right) }{1 + \mu (S^* - 1)}
-$$
-
-Therefore, the total biomass \( B \) is related to NPP by:
-
-$$
-B = H^0 \left( \frac{g}{m} - 1 \right) \cdot \frac{ S^* }{1 + \mu (S^* - 1)} = \frac{ \text{NPP} }{g }
-$$
-
-But since \( \text{NPP} = g \cdot B \), this seems circular unless we have additional approximations.
-
-### Simplifying Assumptions
-
-Assuming that \( \frac{g}{m} - 1 \approx \frac{g}{m} \) when \( g \gg m \), which may be valid for high growth rates.
-
-Alternatively, considering that in the limit of small \( \mu \) and large \( S^* \), certain terms can be approximated.
-
-However, given the complexity, we can conclude that:
-
-- Under the assumption of similar species parameters, the total herbivore biomass \( B \) is proportional to NPP.
-
-- Competition (\( \mu \)) and the number of species (\( S^* \)) modulate this relationship.
-
-## Summary
-
-From the detailed derivation, we find that:
-
-1. The average herbivore density \( \bar{H} \) depends on the species parameters, competition coefficient \( \mu \), and NPP.
-
-2. The total herbivore biomass \( B \) is related to NPP through the species' growth and mortality rates and competition.
-
-3. Under certain assumptions and approximations, we can show that \( \sum_{i} g_i H_i \approx \text{NPP} \), confirming the consistency of the model.
-
-## Total Herbivore Biomass and NPP (additional)
 
 ### Derivation of the Total Biomass Equation
 
@@ -377,13 +308,13 @@ $$
 
 Sum both sides over all species \( i \):
 
-_Left-hand side (LHS):_
+_LHS:_
 
 $$
 (1 - \mu) \sum_{i \in S} g_i H_i
 $$
 
-_Right-hand side (RHS):_
+_RHS:_
 
 $$
 \sum_{i \in S} g_i H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \sum_{i \in S} g_i \mu S^* \bar{H}
@@ -568,7 +499,7 @@ $$
 Rewriting the equation:
 
 $$
-(1 - \mu) \text{NPP} \approx \left( 1 + \mu (S^* - 1) \right) \text{NPP} \left[ 1 - \frac{ \mu S^* }{ 1 + \mu (S^* - 1) } \times \frac{1}{S^{*2}} \sum_{i,j \in S} \sqrt{ \frac{ m_i H_j^0 }{ m_j H_i^0 } } \right]
+(1 - \mu) \text{NPP} \approx \left( 1 + \mu (S^* - 1) \right) \text{NPP} \left[ 1 - \frac{ \mu S^* }{ 1 + \mu (S^* - 1) } \times \frac{1}{S^{*2}} \sum_{i,j \in S} \sqrt{ \frac{ m_i H_j^0 }{ m_j H_i^0 } } \right] \tag*{Eq.7}
 $$
 
 **Step 15: Assumption for Simplification**
@@ -665,18 +596,10 @@ At equilibrium (\( \frac{dH_i}{dt} = 0 \)), we have:
 $$
 H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \mu \sum_{j \neq i} H_j \right) = \sum_{k} f_{ki} P_k
 $$
-
-The predation term acts as an additional mortality for herbivores.
-
+\newpage
 ## Net Primary Productivity with Predators
 
-The NPP consumed by herbivores is:
-
-$$
-\text{NPP} = \sum_{i \in S} g_i H_i
-$$
-
-Predation redistributes energy from herbivores to predators but does not change the total NPP input into the system.
+Predation redistributes energy from herbivores to predators but should not change the total NPP input into the system.Hence, the NPP consumed by herbivores should remain \( \text{NPP} = \sum_{i \in S} g_i H_i \):
 
 ## Parametrization Adjustments
 
@@ -692,7 +615,7 @@ $$
 \frac{g_i}{m_i^{\text{eff}}} = \sqrt{ \frac{1 + \mu (S^* - 1)}{S^*} \cdot \frac{\text{NPP}}{H_i^0 m_i^{\text{eff}}} }
 $$
 
-This adjustment ensures that the growth rates \( g_i \) are sufficient to balance both natural mortality and predation.
+This adjustment should ensure that the growth rates \( g_i \) are sufficient to balance both natural mortality and predation.
 
 ## Equilibrium Considerations
 
@@ -710,5 +633,136 @@ $$
 P_k \left( e_k \sum_{i} f_{ki} - m_k \right) = 0
 $$
 
+\newpage
 
+# Total Herbivore Biomass and NPP (experimental)
+
+## Expression for Total Biomass
+
+Multiply both sides of the individual equilibrium equation by \( g_i \):
+
+$$
+(1 - \mu) g_i H_i = g_i H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - g_i \left( \frac{ \mu }{1 + \mu (S^* - 1)} \sum_{j} H_j^0 \left( \frac{g_j}{m_j} - 1 \right) \right)
+$$
+
+Sum over all species \( i \):
+
+$$
+(1 - \mu) \sum_{i} g_i H_i = \sum_{i} g_i H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \frac{ \mu }{1 + \mu (S^* - 1)} \sum_{i} g_i \sum_{j} H_j^0 \left( \frac{g_j}{m_j} - 1 \right) \tag*{Eq.7}
+$$
+
+Note that the second term involves a double sum. For simplification, we can assume symmetry and similar parameters among species.
+
+## Approximations with Similar Species
+
+Assuming all species have similar parameters:
+
+- \( m_i = m \)
+- \( H_i^0 = H^0 \)
+- \( g_i = g \)
+
+Then:
+
+- \( \left( \frac{g_i}{m_i} - 1 \right) = \left( \frac{g}{m} - 1 \right) \)
+- \( \sum_{i} H_i^0 \left( \frac{g_i}{m_i} - 1 \right) = S^* H^0 \left( \frac{g}{m} - 1 \right) \)
+
+Substitute back:
+
+$$
+(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* - \frac{ \mu }{1 + \mu (S^* - 1)} g S^* H^0 \left( \frac{g}{m} - 1 \right) S^*
+$$
+
+Simplify the second term:
+
+$$
+\text{Second Term} = \frac{ \mu S^{*2} g H^0 \left( \frac{g}{m} - 1 \right) }{1 + \mu (S^* - 1)}
+$$
+
+Therefore:
+
+$$
+(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* - \frac{ \mu S^{*2} g H^0 \left( \frac{g}{m} - 1 \right) }{1 + \mu (S^* - 1)}
+$$
+
+Combine terms:
+
+$$
+(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* \left( 1 - \frac{ \mu S^* }{1 + \mu (S^* - 1)} \right)
+$$
+
+Simplify the fraction:
+
+$$
+\frac{ \mu S^* }{1 + \mu (S^* - 1)} = \frac{ \mu S^* }{1 + \mu S^* - \mu } = \frac{ \mu S^* }{1 + \mu S^* - \mu } = \frac{ \mu S^* }{ (1 - \mu ) + \mu S^* }
+$$
+
+But this doesn't simplify much further. Alternatively, recognize that:
+
+$$
+1 - \frac{ \mu S^* }{1 + \mu (S^* - 1)} = \frac{ (1 + \mu (S^* - 1)) - \mu S^* }{1 + \mu (S^* - 1)} = \frac{ 1 + \mu (S^* - 1) - \mu S^* }{1 + \mu (S^* - 1)} = \frac{ 1 - \mu }{1 + \mu (S^* - 1)}
+$$
+
+But since the numerator is \( 1 - \mu \), which is the same as the coefficient on the LHS.
+
+Therefore, we have:
+
+$$
+(1 - \mu) \sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* \cdot \frac{ 1 - \mu }{1 + \mu (S^* - 1)}
+$$
+
+Divide both sides by \( 1 - \mu \):
+
+$$
+\sum_{i} g H_i = g H^0 \left( \frac{g}{m} - 1 \right) S^* \cdot \frac{1}{1 + \mu (S^* - 1)}
+$$
+
+Recognize that \( \sum_{i} g H_i = \text{NPP} \):
+
+$$
+\text{NPP} = g H^0 \left( \frac{g}{m} - 1 \right) S^* \cdot \frac{1}{1 + \mu (S^* - 1)}
+$$
+
+Therefore, the total NPP is:
+
+$$
+\text{NPP} = g H^0 \left( \frac{g}{m} - 1 \right) \cdot \frac{ S^* }{1 + \mu (S^* - 1)}
+$$
+
+## Rewriting Total Biomass
+
+Recall that the total herbivore biomass \( B \) is:
+
+$$
+B = S^* \bar{H} = \frac{ S^* H^0 \left( \frac{g}{m} - 1 \right) }{1 + \mu (S^* - 1)}
+$$
+
+Therefore, the total biomass \( B \) is related to NPP by:
+
+$$
+B = H^0 \left( \frac{g}{m} - 1 \right) \cdot \frac{ S^* }{1 + \mu (S^* - 1)} = \frac{ \text{NPP} }{g }
+$$
+
+But since \( \text{NPP} = g \cdot B \), this seems circular unless we have additional approximations.
+
+## Simplifying Assumptions
+
+Assuming that \( \frac{g}{m} - 1 \approx \frac{g}{m} \) when \( g \gg m \), which may be valid for high growth rates.
+
+Alternatively, considering that in the limit of small \( \mu \) and large \( S^* \), certain terms can be approximated.
+
+However, given the complexity, we can conclude that:
+
+- Under the assumption of similar species parameters, the total herbivore biomass \( B \) is proportional to NPP.
+
+- Competition (\( \mu \)) and the number of species (\( S^* \)) modulate this relationship.
+
+## Summary
+
+From the detailed derivation, we find that:
+
+1. The average herbivore density \( \bar{H} \) depends on the species parameters, competition coefficient \( \mu \), and NPP.
+
+2. The total herbivore biomass \( B \) is related to NPP through the species' growth and mortality rates and competition.
+
+3. Under certain assumptions and approximations, we can show that \( \sum_{i} g_i H_i \approx \text{NPP} \), confirming the consistency of the model.
 
