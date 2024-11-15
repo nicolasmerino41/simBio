@@ -8,7 +8,7 @@ hf_spain = map(x -> x == 128.0 ? 0.0 : x, hf_spain)
 inverted_hf = 1 ./ deepcopy(hf_spain)
 inverted_hf = map(x -> x == Inf ? 0.0 : x, inverted_hf)
 
-map_plot(inverted_hf; palette = custom_palette, flip = false);
+# map_plot(inverted_hf; palette = custom_palette, flip = false);
 
 ######## FOR DA'S ##########
 inverted_hf_DA = DimArray(Matrix(inverted_hf), (Dim{:a}(1:125), Dim{:b}(1:76)))

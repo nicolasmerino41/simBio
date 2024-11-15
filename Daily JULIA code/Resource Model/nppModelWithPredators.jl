@@ -179,7 +179,7 @@ begin
     # Display the figure
     display(fig)
 end
-
+using CairoMakie
 ########## NEW TRY WITH IM ############################
 begin
     
