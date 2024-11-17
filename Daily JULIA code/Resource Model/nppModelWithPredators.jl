@@ -185,12 +185,20 @@ begin
     
     # Set parameters
     legend = false
-    num_herbivores = 20
-    num_predators = 10
-    NPP = 10000.0
+    num_herbivores = 5
+    num_predators = 2
+    NPP = 1000.0
     mu = 0.1
     H0_mean_aprox = NPP / num_herbivores
-    connectivity = 1.0  # Connectivity for interaction matrix IM
+    connectivity = 0.8  # Connectivity for interaction matrix IM
+    last_year = 1000
+    # Herbivores:
+    m_mean_h = 0.1
+    # Predator:
+    m_mean_p = 0.1
+    a_mean_p = 0.01
+    h_mean_p = 0.1
+    e_mean_p = 0.1
 
     # Define the Herbivores struct
     mutable struct Herbivores
@@ -209,8 +217,8 @@ begin
                                     H_init_mean::Float64=5.0, H_init_sd::Float64=1.0)
         herbivores_list = []
         for i in 1:num_herbivores
-            m = max(0.01, rand(Normal(m_mean, m_sd)))          # Mortality rate
-            H0 = max(1.0, rand(Normal(H0_mean, H0_sd)))        # Characteristic density
+            m = rand(Normal(m_mean, m_sd))          # Mortality rate
+            H0 = rand(Normal(H0_mean, H0_sd))        # Characteristic density
             H_init = H0  # Initial abundance set to characteristic density
             push!(herbivores_list, Herbivores(m=m, H0=H0, H_init=H_init))
         end
@@ -245,17 +253,17 @@ begin
 
     # Function to create a list of predators with adjusted parameters
     function create_predator_list(num_predators::Int; m_mean::Float64=0.1, m_sd::Float64=0.02,
-                                  a_mean::Float64=0.001, a_sd::Float64=0.0001,
+                                  a_mean::Float64=0.01, a_sd::Float64=0.0001,
                                   h_mean::Float64=0.1, h_sd::Float64=0.01,
                                   e_mean::Float64=0.1, e_sd::Float64=0.01,
                                   P_init_mean::Float64=5.0, P_init_sd::Float64=1.0)
         predator_list = []
         for _ in 1:num_predators
-            m = max(0.01, rand(Normal(m_mean, m_sd)))              # Mortality rate
-            a = max(0.0001, rand(Normal(a_mean, a_sd)))            # Attack rate
-            h = max(0.01, rand(Normal(h_mean, h_sd)))              # Handling time
-            e = max(0.01, rand(Normal(e_mean, e_sd)))              # Conversion efficiency
-            P_init = max(0.1, rand(Normal(P_init_mean, P_init_sd)))  # Initial abundance
+            m = rand(Normal(m_mean, m_sd))              # Mortality rate
+            a = rand(Normal(a_mean, a_sd))            # Attack rate
+            h = rand(Normal(h_mean, h_sd))              # Handling time
+            e = rand(Normal(e_mean, e_sd))              # Conversion efficiency
+            P_init = rand(Normal(P_init_mean, P_init_mean/10))  # Initial abundance
             push!(predator_list, Predator(m=m, a=a, h=h, e=e, P_init=P_init))
         end
         return predator_list
@@ -320,7 +328,7 @@ begin
     end
 
     # Create herbivores_list and calculate growth rates
-    herbivores_list = create_herbivores_list(num_herbivores)
+    herbivores_list = create_herbivores_list(num_herbivores; m_mean=m_mean_h, H0_mean=H0_mean_aprox)
     calculate_growth_rates(herbivores_list, NPP, mu)  # Use positional arguments
 
     # Create beta_matrix
@@ -331,7 +339,11 @@ begin
     end
 
     # Create predator list
-    predator_list = create_predator_list(num_predators)
+    predator_list = create_predator_list(
+        num_predators; 
+        m_mean=m_mean_p, a_mean=a_mean_p, 
+        h_mean=h_mean_p, e_mean=e_mean_p
+    )
 
     # Generate the interaction matrix
     IM = generate_interaction_matrix(num_predators, S_star, connectivity)
@@ -344,7 +356,7 @@ begin
     u_init = vcat(H_init_values, P_init_values)
 
     # Define the time span for simulation
-    tspan = (0.0, 200.0)
+    tspan = (0.0, last_year)
 
     # Define the ODE problem
     p = (herbivores_list, beta_matrix, predator_list, IM)
@@ -357,15 +369,23 @@ begin
     times = sol.t
     herbivore_data = sol[1:length(herbivores_list), :]  # Herbivore dynamics
     predator_data = sol[length(herbivores_list)+1:end, :]  # Predator dynamics
+    herbivore_biomass = sum(sol[1:length(herbivores_list), end])
+    predator_biomass = sum(sol[length(herbivores_list)+1:end, end])
+    pred_herb_ratio = predator_biomass / herbivore_biomass
+    total_biomass = herbivore_biomass + predator_biomass
 
-    if any(herbivore_data[:, end] .<= 1.0) 
+    if true #any(herbivore_data[:, end] .<= 1.0) 
         num_extinct_herbivores = count(herbivore_data[:, end] .<= 1.0)
-        println(num_extinct_herbivores, " herbivore(s) went extinct.")
+        println("$num_extinct_herbivores/$num_herbivores herbivore(s) went extinct.")
     end
-    if any(predator_data[:, end] .<= 1.0)
+    if true #any(predator_data[:, end] .<= 1.0)
         num_extinct_predators = count(predator_data[:, end] .<= 1.0)
-        println(num_extinct_predators, " predator(s) went extinct.")
+        println("$num_extinct_predators/$num_predators predator(s) went extinct.")
     end
+    println("Herbivore biomass ", herbivore_biomass)
+    println("Predator biomass ", predator_biomass)
+    println("Predator/herbivore ratio $pred_herb_ratio")
+    println("Total_biomass/NPP = ", total_biomass/NPP)
 
     # Create a single figure
     fig = MK.Figure(; size = (600, 500))
@@ -557,8 +577,8 @@ begin
             prob = ODEProblem(ecosystem_dynamics!, u_init, tspan, p)
             sol = solve(prob, Tsit5(); reltol=1e-6, abstol=1e-6)
             H_array = sol[1:S_star, :]
-            total_biomass = sum(H_array[:, end])
-            push!(results_mu, (NPP=NPP, total_biomass=total_biomass, mu=mu))
+            total_biomass_end = sum(H_array[:, end])
+            push!(results_mu, (NPP=NPP, total_biomass_end=total_biomass_end, mu=mu))
         end
     end
 
@@ -582,8 +602,8 @@ begin
             prob = ODEProblem(ecosystem_dynamics!, u_init, tspan, p)
             sol = solve(prob, Tsit5(); reltol=1e-6, abstol=1e-6)
             H_array = sol[1:S_star, :]
-            total_biomass = sum(H_array[:, end])
-            push!(results_species, (NPP=NPP, total_biomass=total_biomass, num_species=num_herbivores))
+            total_biomass_end = sum(H_array[:, end])
+            push!(results_species, (NPP=NPP, total_biomass_end=total_biomass_end, num_species=num_herbivores))
         end
     end
 
@@ -611,7 +631,7 @@ begin
     for (i, mu_value) in enumerate(unique_mu)
         mask = df_mu.mu .== mu_value
         npp_data = df_mu.NPP[mask]
-        biomass_data = df_mu.total_biomass[mask]
+        biomass_data = df_mu.total_biomass_end[mask]
 
         # Scatter plot
         MK.scatter!(
@@ -636,7 +656,7 @@ begin
     for (i, species_num) in enumerate(unique_species)
         mask = df_species.num_species .== species_num
         npp_data = df_species.NPP[mask]
-        biomass_data = df_species.total_biomass[mask]
+        biomass_data = df_species.total_biomass_end[mask]
 
         # Scatter plot
         MK.scatter!(

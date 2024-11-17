@@ -1,6 +1,6 @@
 PC = "nicol"
 num_species = 256
-include("HerpsVsBirmmals.jl")
+@time include("HerpsVsBirmmals.jl")
 include("kernels.jl")
 include("One-click code.jl")
 include("human_footprint.jl")
