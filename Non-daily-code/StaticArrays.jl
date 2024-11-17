@@ -138,7 +138,7 @@ end
 parent_init = parent(inits[1])
 DimensionalData.dims(parent_init, que)
 
-dims(inits[1] 
+dims(inits[1])
 
 matrix_struct = Matrix{MyStructs{Float32}}(undef, 84, 54)
 for row in axes(parent_init, 1), col in axes(parent_init, 2)
