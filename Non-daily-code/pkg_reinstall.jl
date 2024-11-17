@@ -13,7 +13,7 @@ pkg_list = Pkg.installed()
 # Remove "DG" and "Dispersal" from the list if they exist
 packages = filter(pkg -> pkg ∉ ["DynamicGrids", "Dispersal", "OrdinaryDiffEq"], installed_pkg_names)
 # Extract only the package names
-installed_pkg_names = [pkg for pkg in packages]
+installed_pkg_names = [pkg for pkg in pkg_list]
 
 # Removing all the packages in the installed_pkg_names list
 for pkg_name in installed_pkg_names
@@ -37,4 +37,28 @@ end
 
 for pkg_name in installed_pkg_names
     Pkg.free()
+end
+
+
+using Pkg
+
+# Get a list of all installed packages
+installed_packages = keys(Pkg.project().dependencies)
+installed_packages_vector = collect(installed_packages)
+installed_packages_vector = push!(installed_packages_vector, "GLM")
+println(installed_packages_vector)
+
+# List of packages to exclude
+packages_to_remove = ["DynamicGrids", "Dispersal", "CUDA", "EcologicalNetworkDynamics"]
+
+# Remove specified packages from the list
+updated_packages = filter(x -> !(x in packages_to_remove), installed_packages_vector)
+println(updated_packages)
+
+for pkg_name in installed_packages_vector
+    Pkg.rm(pkg_name)
+end
+
+for pkg_name in updated_packages
+    Pkg.add(pkg_name)
 end
