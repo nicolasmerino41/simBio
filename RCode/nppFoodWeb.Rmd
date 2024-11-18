@@ -3,9 +3,6 @@ title: "THE MODEL"
 author: "Nicolàs Merino, Jean-François Arnoldi, Núria Galiana, Miguel B. Araújo"
 date: "November 2024"
 output:
-  pdf_document:
-    toc: true
-    toc_depth: '5'
   html_document:
     theme: flatly
     toc: true
@@ -15,6 +12,9 @@ output:
       collapsed: false
     bookdown: true
     highlight: tango
+  pdf_document:
+    toc: true
+    toc_depth: '5'
 ---
 
 ```{r setup, include=FALSE}
@@ -597,6 +597,7 @@ $$
 H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \mu \sum_{j \neq i} H_j \right) = \sum_{k} f_{ki} P_k
 $$
 \newpage
+
 ## Net Primary Productivity with Predators
 
 Predation redistributes energy from herbivores to predators but should not change the total NPP input into the system.Hence, the NPP consumed by herbivores should remain \( \text{NPP} = \sum_{i \in S} g_i H_i \):
