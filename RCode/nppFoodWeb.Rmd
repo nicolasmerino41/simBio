@@ -3,6 +3,9 @@ title: "THE MODEL"
 author: "Nicolàs Merino, Jean-François Arnoldi, Núria Galiana, Miguel B. Araújo"
 date: "November 2024"
 output:
+  pdf_document:
+    toc: true
+    toc_depth: '5'
   html_document:
     theme: flatly
     toc: true
@@ -12,9 +15,6 @@ output:
       collapsed: false
     bookdown: true
     highlight: tango
-  pdf_document:
-    toc: true
-    toc_depth: '5'
 ---
 
 ```{r setup, include=FALSE}
@@ -766,4 +766,84 @@ From the detailed derivation, we find that:
 2. The total herbivore biomass \( B \) is related to NPP through the species' growth and mortality rates and competition.
 
 3. Under certain assumptions and approximations, we can show that \( \sum_{i} g_i H_i \approx \text{NPP} \), confirming the consistency of the model.
+
+\newpage
+
+# Predator Implementation
+
+## Extended Model Equations
+
+We now extend the model to include predators. The dynamics of herbivores \( H_i \) and predators \( P_k \) are given by:
+
+**Herbivores:**
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i}{m_i} - 1 \right] - \frac{H_i + \sum_{j \neq i} \beta_{ij} H_j}{H_i^0} \right) - \sum_{k} \frac{f_{ki} P_k}{H_i}
+$$
+**I believe \( \sum_{k} \frac{f_{ki} P_k}{H_i} \) is the way to go since the effect of \(H_i\) is embedded in the functional response \(f_{ki} = \frac{a_k H_i}{1 + a_k h_k H_i}\). Right?
+**
+
+\
+
+**Predators:**
+
+$$
+\frac{1}{P_k} \frac{dP_k}{dt} = e_k \sum_{i} f_{ki} - m_k
+$$
+
+where:
+
+- \( f_{ki} \) is the functional response of predator \( k \) on prey \( i \).
+- \( e_k \) is the conversion efficiency of predator \( k \).
+- \( m_k \) is the mortality rate of predator \( k \).
+
+## Functional Response
+
+For now, we assume a Type II functional response:
+
+$$
+f_{ki} = \frac{a_k H_i}{1 + a_k h_k H_i}
+$$
+
+where:
+
+- \( a_k \) is the attack rate of predator \( k \).
+- \( h_k \) is the handling time of predator \( k \).
+
+## Adjustments to the Herbivore Dynamics
+
+Including predation, the herbivore dynamics become:
+
+$$
+\frac{dH_i}{dt} = H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \mu \sum_{j \neq i} H_j \right) - \sum_{k} f_{ki} P_k
+$$
+
+At equilibrium, we have:
+
+$$
+H_i m_i \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i m_i}{H_i^0} \left( H_i + \mu \sum_{j \neq i} H_j \right) = \sum_{k} f_{ki} P_k
+$$
+\newpage
+
+## Net Primary Productivity with Predators
+
+I assume, predation redistributes energy from herbivores to predators but should not change the total NPP input into the system. **Hence, I assume the NPP consumed by herbivores should remain \( \text{NPP} = \sum_{i \in S} g_i H_i \)?**
+
+## Parametrization Adjustments
+
+To account for predation in the parametrization, we can adjust the effective mortality rate of herbivores:
+
+$$
+m_i^{\text{eff}} = m_i + \frac{1}{H_i} \sum_{k} f_{ki} P_k
+$$
+
+Our parametrization of \( g_i \) can be modified to include \( m_i^{\text{eff}} \):
+
+$$
+\frac{g_i}{m_i^{\text{eff}}} = \sqrt{ \frac{1 + \mu (S^* - 1)}{S^*} \cdot \frac{\text{NPP}}{H_i^0 m_i^{\text{eff}}} }
+$$
+
+Thus, this adjustment should ensure that the growth rates \( g_i \) are sufficient to balance both natural mortality and predation. **Am I wrong?**
+
+\newpage
 
