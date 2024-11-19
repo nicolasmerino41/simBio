@@ -54,7 +54,6 @@ Base.:/(x::MyStructs256, y::AbstractVector) = MyStructs256(x.a ./ SVector{num_sp
 Base.:*(y::AbstractVector, x::MyStructs256) = MyStructs256(SVector{num_species, Float64}(y) .* x.a, sum(SVector{num_species, Float64}(y) .* x.a))
 Base.:/(y::AbstractVector, x::MyStructs256) = MyStructs256(SVector{num_species, Float64}(y) ./ x.a, sum(SVector{num_species, Float64}(y) ./ x.a))
 
-
 # Define what a NaN is for MyStructs256
 Base.isnan(x::MyStructs256) = isnan(x.b) || any(isnan, x.a)
 
