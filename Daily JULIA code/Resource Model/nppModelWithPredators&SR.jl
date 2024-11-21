@@ -8,18 +8,18 @@ begin
     num_herbivores = 80
     num_predators = 40
     NPP = 1000.0
-    mu = 0.5
+    mu = 0.1
     H0_mean_aprox = NPP / num_herbivores
     connectivity = 0.4  # Connectivity for interaction matrix IM
-    last_year = 2000
+    last_year = 1000
     # Herbivores:
     m_mean_h = 0.1
     # Predator:
     m_mean_p = 0.1
-    a_mean_p = 0.1
+    a_mean_p = 0.01
     h_mean_p = 0.1
     e_mean_p = 0.1
-    c_mean_p = 1.0
+    c_mean_p = 0.1
 
     # Define the Herbivores struct
     mutable struct Herbivores
