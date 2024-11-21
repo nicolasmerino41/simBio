@@ -8,10 +8,10 @@ begin
     num_herbivores = 80
     num_predators = 40
     NPP = 1000.0
-    mu = 0.0
+    mu = 0.5
     H0_mean_aprox = NPP / num_herbivores
-    connectivity = 0.8  # Connectivity for interaction matrix IM
-    last_year = 1000
+    connectivity = 0.4  # Connectivity for interaction matrix IM
+    last_year = 2000
     # Herbivores:
     m_mean_h = 0.1
     # Predator:
@@ -201,16 +201,18 @@ begin
     total_biomass = herbivore_biomass + predator_biomass
 
     if true #any(herbivore_data[:, end] .<= 1.0) 
-        num_extinct_herbivores = count(herbivore_data[:, end] .<= 1.0)
-        println("$num_extinct_herbivores/$num_herbivores herbivore(s) went extinct.")
+        # num_extinct_herbivores = count(herbivore_data[:, end] .<= 1.0)
+        num_survived_herbivores = count(herbivore_data[:, end] .> 1.0)
+        println("$num_survived_herbivores/$num_herbivores herbivore(s) survived.")
     end
     if true #any(predator_data[:, end] .<= 1.0)
-        num_extinct_predators = count(predator_data[:, end] .<= 1.0)
-        println("$num_extinct_predators/$num_predators predator(s) went extinct.")
+        # num_extinct_predators = count(predator_data[:, end] .<= 1.0)
+        num_survived_predators = count(predator_data[:, end] .> 1.0)
+        println("$num_survived_predators/$num_predators predator(s) survived.")
     end
     println("Herbivore biomass ", round(herbivore_biomass, digits=2))
     println("Predator biomass ", round(predator_biomass, digits=2))
-    println("Predator/herbivore ratio ", round(pred_herb_ratio, digits=2))
+    println("Predator/herbivore ratio ", pred_herb_ratio)
     println("Total_biomass/NPP = ", round(total_biomass/NPP, digits=2))
 
     # Create a single figure
