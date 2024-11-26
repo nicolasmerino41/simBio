@@ -23,3 +23,5 @@ pl = MK.heatmap(
     # title="Total Biomass Heatmap",
     # colormap=:thermal
 )
+
+results_ose_long = CSV.File("Daily JULIA code/Resource Model/simulation_results.csv") |> DataFrame
