@@ -6,14 +6,14 @@ begin
     plot = true
     # Set parameters
     legend = false
-    num_herbivores = 10
-    num_predators = 2
+    num_herbivores = 5
+    num_predators = 0
     NPP = 100.0
-    mu = 0.1
-    H0_mean_aprox = NPP / num_herbivores  # Average characteristic density
+    mu = 0.0
+    H0_mean_aprox = NPP / num_herbivores + 10.0  # Average characteristic density
     H0_sd = 0.0000001  # Standard deviation of characteristic density
     connectivity = 0.9  # Connectivity for interaction matrix IM
-    last_year = 200
+    last_year = 1000
     # Herbivores:
     m_mean_h = 0.1  # Mean mortality rate
     m_sd_h = 0.00000000000002  # Standard deviation of mortality rate
@@ -22,7 +22,7 @@ begin
     a_mean_p = 0.01
     h_mean_p = 0.1
     e_mean_p = 0.1
-    c_mean_p = 0.0  # Self-regulation coefficient mean
+    c_mean_p = 1.0  # Self-regulation coefficient mean
     P_init_mean = H0_mean_aprox
 
     const EXTINCTION_THRESHOLD = 1e-6
