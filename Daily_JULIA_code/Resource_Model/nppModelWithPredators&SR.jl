@@ -7,12 +7,12 @@ begin
     # Set parameters
     legend = false
     num_herbivores = 10
-    num_predators = 0
-    NPP = 10.0
-    mu = 1.1
+    num_predators = 2
+    NPP = 100.0
+    mu = 0.1
     H0_mean_aprox = NPP / num_herbivores  # Average characteristic density
     H0_sd = 0.0000001  # Standard deviation of characteristic density
-    connectivity = 0.4  # Connectivity for interaction matrix IM
+    connectivity = 0.9  # Connectivity for interaction matrix IM
     last_year = 200
     # Herbivores:
     m_mean_h = 0.1  # Mean mortality rate
@@ -23,6 +23,7 @@ begin
     h_mean_p = 0.1
     e_mean_p = 0.1
     c_mean_p = 0.0  # Self-regulation coefficient mean
+    P_init_mean = H0_mean_aprox
 
     const EXTINCTION_THRESHOLD = 1e-6
 
@@ -82,7 +83,7 @@ begin
                                   a_mean::Float64=0.01, a_sd::Float64=0.0001,
                                   h_mean::Float64=0.1, h_sd::Float64=0.01,
                                   e_mean::Float64=0.1, e_sd::Float64=0.01,
-                                  P_init_mean::Float64=5.0, P_init_sd::Float64=1.0,
+                                  P_init_mean::Float64=P_init_mean, P_init_sd::Float64=P_init_mean/10,
                                   c_mean::Float64=0.1, c_sd::Float64=0.01)
         predator_list = Predator[]
         for _ in 1:num_predators
@@ -90,7 +91,7 @@ begin
             a = rand(Normal(a_mean, a_sd))            # Attack rate
             h = rand(Normal(h_mean, h_sd))              # Handling time
             e = rand(Normal(e_mean, e_sd))              # Conversion efficiency
-            P_init = rand(Normal(P_init_mean, P_init_mean/10))  # Initial abundance
+            P_init = rand(Normal(P_init_mean, P_init_sd))  # Initial abundance
             c = rand(Normal(c_mean, c_sd))              # Self-regulation coefficient
             push!(predator_list, Predator(m=m, a=a, h=h, e=e, P_init=P_init, c=c))
         end
@@ -199,9 +200,9 @@ begin
     p = (herbivores_list, beta_matrix, predator_list, IM)
     prob = ODEProblem(ecosystem_dynamics!, u_init, tspan, p)
 
-    # Define extinction callbacks
+    # Define extinction callbacks and positive domain
     callbacks = []
-
+    push!(callbacks, PositiveDomain())
     # For herbivores
     for i in 1:length(herbivores_list)
         condition(u, t, integrator) = u[i] - EXTINCTION_THRESHOLD
