@@ -25,3 +25,18 @@ pl = MK.heatmap(
 )
 
 results_ose_long = CSV.File("Daily JULIA code/Resource Model/simulation_results.csv") |> DataFrame
+
+fig = Figure(resolution = (500, 400))
+
+ax = Axis(fig[1, 1], xlabel = "Connectivity", ylabel = "Total Biomass",
+             title = "Scatter Plot Colored by Mu")
+
+scatter!(
+    ax,
+    results_ose_long.connectivity,
+    results_ose_long.total_biomass,
+    color = results_ose_long.mu,
+    colormap = :viridis,  # Choose a colormap
+    markersize = 8,
+    label = "Biomass vs Connectivity"
+)
