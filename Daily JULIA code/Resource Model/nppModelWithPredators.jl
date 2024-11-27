@@ -1,193 +1,11 @@
 using GLM
-begin
-    legend = false
-    num_herbivores = 20
-    num_predators = 10
-    NPP = 1000.0
-    mu = 0.5
-    H0_mean_aprox = NPP/num_herbivores
-    # Predator struct definition
-    mutable struct Predator
-        m::Float64        # Mortality rate
-        a::Float64        # Attack rate
-        h::Float64        # Handling time
-        e::Float64        # Conversion efficiency
-        P_init::Float64   # Initial abundance
-    end
-
-    # Predator constructor
-    Predator(; m::Float64, a::Float64, h::Float64, e::Float64, P_init::Float64) = Predator(m, a, h, e, P_init)
-
-    # Function to create a list of predators with adjusted parameters
-    function create_predator_list(num_predators::Int; m_mean::Float64=0.1, m_sd::Float64=0.02,
-        a_mean::Float64=0.001, a_sd::Float64=0.0001,
-        h_mean::Float64=0.1, h_sd::Float64=0.01,
-        e_mean::Float64=0.1, e_sd::Float64=0.01,
-        P_init_mean::Float64=5.0, P_init_sd::Float64=1.0)
-    predator_list = []
-    for _ in 1:num_predators
-    m = max(0.01, rand(Normal(m_mean, m_sd)))              # Mortality rate
-    a = max(0.0001, rand(Normal(a_mean, a_sd)))            # Attack rate
-    h = max(0.01, rand(Normal(h_mean, h_sd)))              # Handling time
-    e = max(0.01, rand(Normal(e_mean, e_sd)))              # Conversion efficiency
-    P_init = max(0.1, rand(Normal(P_init_mean, P_init_sd)))  # Initial abundance
-    push!(predator_list, Predator(m=m, a=a, h=h, e=e, P_init=P_init))
-    end
-    return predator_list
-    end
-
-    # Function to create herbivores_list (assuming it's defined elsewhere)
-    # Let's define it here for completeness
-    mutable struct Herbivores
-        m::Float64        # Mortality rate
-        H0::Float64       # Characteristic density (H_i^0)
-        H_init::Float64   # Initial abundance (H_i(0))
-        g::Float64        # Growth rate (to be calculated)
-    end
-
-    # Outer constructor to accept keyword arguments
-    Herbivores(; m::Float64, H0::Float64, H_init::Float64, g::Float64=0.0) = Herbivores(m, H0, H_init, g)
-
-    # Function to create herbivores_list
-    function create_herbivores_list(num_herbivores::Int; m_mean::Float64=0.1, m_sd::Float64=0.02,
-                                 H0_mean::Float64=H0_mean_aprox, H0_sd::Float64=H0_mean_aprox/10,
-                                 H_init_mean::Float64=5.0, H_init_sd::Float64=1.0)
-        herbivores_list = []
-        for i in 1:num_herbivores
-            m = max(0.01, rand(Normal(m_mean, m_sd)))          # Mortality rate
-            H0 = max(1.0, rand(Normal(H0_mean, H0_sd)))        # Characteristic density
-            H_init = H0
-            # H_init = max(0.1, rand(Normal(H_init_mean, H_init_sd)))  # Initial abundance
-            push!(herbivores_list, Herbivores(m=m, H0=H0, H_init=H_init))
-        end
-        return herbivores_list
-    end
-
-    # Function to calculate growth rates based on NPP
-    function calculate_growth_rates(herbivores_list, NPP, mu)
-        S_star = length(herbivores_list)
-        # Calculate Fi for each herbivore
-        F_list = [sp.H0 * sp.m for sp in herbivores_list]
-        # Calculate the numerator of the competition term
-        competition_numerator = 1 + mu * (S_star - 1)
-        # Calculate gi for each herbivore
-        for (i, sp) in enumerate(herbivores_list)
-            Fi = F_list[i]
-            sp.g = sp.m * sqrt((competition_numerator / S_star) * (NPP / Fi))
-        end
-    end
-
-    # Ecosystem dynamics function with corrected predator ingestion
-    function ecosystem_dynamics!(du, u, p, t)
-        herbivores_list, beta_matrix, predator_list = p
-        S_star = length(herbivores_list)
-        num_predators = length(predator_list)
-        H = u[1:S_star]  # Herbivore densities
-        P = u[S_star+1:end]  # Predator densities
-        du_H = zeros(S_star)
-        du_P = zeros(num_predators)
-
-        # Herbivore dynamics
-        for i in 1:S_star
-            sp = herbivores_list[i]
-            # Compute competition term
-            competition = sum(beta_matrix[i, :] .* H) / sp.H0
-            # Compute predation term
-            predation = 0.0
-            for k in 1:num_predators
-                pred = predator_list[k]
-                f_ki = (pred.a * H[i]) / (1 + pred.a * pred.h * H[i])  # Functional response
-                predation += P[k] * f_ki
-            end
-            # Compute derivative for herbivores
-            du_H[i] = H[i] * sp.m * ((sp.g / sp.m) - 1 - competition) - predation
-        end
-
-        # Predator dynamics
-        for k in 1:num_predators
-            pred = predator_list[k]
-            ingestion = 0.0
-            for i in 1:S_star
-                f_ki = (pred.a * H[i]) / (1 + pred.a * pred.h * H[i])  # Functional response
-                ingestion += f_ki  # Corrected: Do not multiply by H[i] again
-            end
-            # Compute derivative for predators
-            du_P[k] = P[k] * (pred.e * ingestion - pred.m)
-        end
-
-        # Assign derivatives
-        du[1:S_star] = du_H
-        du[S_star+1:end] = du_P
-    end
-
-    # Create herbivores_list list and calculate growth rates
-    herbivores_list = create_herbivores_list(num_herbivores)
-    calculate_growth_rates(herbivores_list, 10000.0, 0.5)  # Use positional arguments
-
-    # Create beta_matrix
-    S_star = length(herbivores_list)
-    beta_matrix = fill(0.5, S_star, S_star)
-    for i in 1:S_star
-        beta_matrix[i, i] = 1.0  # Self-competition
-    end
-
-    # Create predator list
-    predator_list = create_predator_list(num_predators)
-
-    # Initial conditions for herbivores and predators
-    H_init_values = [sp.H_init for sp in herbivores_list]
-    P_init_values = [pred.P_init for pred in predator_list]
-
-    # Combined initial conditions for the system
-    u_init = vcat(H_init_values, P_init_values)
-
-    # Define the time span for simulation
-    tspan = (0.0, 100.0)
-
-    # Define the ODE problem
-    prob = ODEProblem(ecosystem_dynamics!, u_init, tspan, (herbivores_list, beta_matrix, predator_list))
-
-    # Solve the ODE
-    sol = solve(prob, Tsit5(); reltol=1e-6, abstol=1e-6)
-
-    # Extract time series data
-    times = sol.t
-    herbivore_data = sol[1:length(herbivores_list), :]  # Herbivore dynamics
-    predator_data = sol[length(herbivores_list)+1:end, :]  # Predator dynamics
-
-    # Create a single figure
-    fig = MK.Figure(resolution = (600, 500))
-
-    ax = MK.Axis(fig[1, 1], xlabel = "Time", ylabel = "Density",
-              title = "Herbivore and Predator Dynamics Over Time")
-
-    # Plot herbivore dynamics with solid lines
-    for i in 1:length(herbivores_list)
-        MK.lines!(ax, times, herbivore_data[i, :], label = "Herbivore $(i)")
-    end
-
-    # Plot predator dynamics with dashed lines
-    for k in 1:length(predator_list)
-        MK.lines!(ax, times, predator_data[k, :], label = "Predator $(k)", linestyle = :dash)
-    end
-
-    # Add a legend
-    if legend
-        MK.axislegend(ax; position = :rt)
-    end
-
-    # Display the figure
-    display(fig)
-end
-using CairoMakie
 ########## NEW TRY WITH IM ############################
 begin
-    
     # Set parameters
     legend = false
     num_herbivores = 5
-    num_predators = 2
-    NPP = 1000.0
+    num_predators = 0
+    NPP = 1000000.0
     mu = 0.1
     H0_mean_aprox = NPP / num_herbivores
     connectivity = 0.8  # Connectivity for interaction matrix IM
@@ -199,6 +17,8 @@ begin
     a_mean_p = 0.01
     h_mean_p = 0.1
     e_mean_p = 0.1
+
+    const EXTINCTION_THRESHOLD = 1e-6
 
     # Define the Herbivores struct
     mutable struct Herbivores
@@ -213,9 +33,9 @@ begin
 
     # Function to create herbivores_list
     function create_herbivores_list(num_herbivores::Int; m_mean::Float64=0.1, m_sd::Float64=0.02,
-                                    H0_mean::Float64=H0_mean_aprox, H0_sd::Float64=H0_mean_aprox/10,
+                                    H0_mean::Float64, H0_sd::Float64=0.0000000000000000001,
                                     H_init_mean::Float64=5.0, H_init_sd::Float64=1.0)
-        herbivores_list = []
+        herbivores_list = Herbivores[]
         for i in 1:num_herbivores
             m = rand(Normal(m_mean, m_sd))          # Mortality rate
             H0 = rand(Normal(H0_mean, H0_sd))        # Characteristic density
@@ -257,7 +77,7 @@ begin
                                   h_mean::Float64=0.1, h_sd::Float64=0.01,
                                   e_mean::Float64=0.1, e_sd::Float64=0.01,
                                   P_init_mean::Float64=5.0, P_init_sd::Float64=1.0)
-        predator_list = []
+        predator_list = Predator[]
         for _ in 1:num_predators
             m = rand(Normal(m_mean, m_sd))              # Mortality rate
             a = rand(Normal(a_mean, a_sd))            # Attack rate
@@ -292,34 +112,42 @@ begin
 
         # Herbivore dynamics
         for i in 1:S_star
-            sp = herbivores_list[i]
-            # Compute competition term
-            competition = sum(beta_matrix[i, :] .* H) / sp.H0
-            # Compute predation term
-            predation = 0.0
-            for k in 1:num_predators
-                if IM[k, i]
-                    pred = predator_list[k]
-                    f_ki = (pred.a * H[i]) / (1 + pred.a * pred.h * H[i])  # Functional response
-                    predation += P[k] * f_ki
+            if H[i] > 0  # Only update if species is alive
+                sp = herbivores_list[i]
+                # Compute competition term
+                competition = sum(beta_matrix[i, :] .* H) / sp.H0
+                # Compute predation term
+                predation = 0.0
+                for k in 1:num_predators
+                    if IM[k, i] && P[k] > 0
+                        pred = predator_list[k]
+                        f_ki = (pred.a * H[i]) / (1 + pred.a * pred.h * H[i])  # Functional response
+                        predation += P[k] * f_ki
+                    end
                 end
+                # Compute derivative for herbivores
+                du_H[i] = H[i] * sp.m * ((sp.g / sp.m) - 1 - competition) - predation
+            else
+                du_H[i] = 0.0  # Keep derivative at zero if extinct
             end
-            # Compute derivative for herbivores
-            du_H[i] = H[i] * sp.m * ((sp.g / sp.m) - 1 - competition) - predation
         end
 
         # Predator dynamics
         for k in 1:num_predators
-            pred = predator_list[k]
-            ingestion = 0.0
-            for i in 1:S_star
-                if IM[k, i]
-                    f_ki = (pred.a * H[i]) / (1 + pred.a * pred.h * H[i])  # Functional response
-                    ingestion += f_ki
+            if P[k] > 0  # Only update if species is alive
+                pred = predator_list[k]
+                ingestion = 0.0
+                for i in 1:S_star
+                    if IM[k, i] && H[i] > 0
+                        f_ki = (pred.a * H[i]) / (1 + pred.a * pred.h * H[i])  # Functional response
+                        ingestion += f_ki
+                    end
                 end
+                # Compute derivative for predators
+                du_P[k] = P[k] * (pred.e * ingestion - pred.m)
+            else
+                du_P[k] = 0.0  # Keep derivative at zero if extinct
             end
-            # Compute derivative for predators
-            du_P[k] = P[k] * (pred.e * ingestion - pred.m)
         end
 
         # Assign derivatives
@@ -349,8 +177,8 @@ begin
     IM = generate_interaction_matrix(num_predators, S_star, connectivity)
 
     # Initial conditions for herbivores and predators
-    H_init_values = [sp.H_init for sp in herbivores_list]
-    P_init_values = [pred.P_init for pred in predator_list]
+    H_init_values = Float64[sp.H_init for sp in herbivores_list]
+    P_init_values = Float64[pred.P_init for pred in predator_list]
 
     # Combined initial conditions for the system
     u_init = vcat(H_init_values, P_init_values)
@@ -362,8 +190,32 @@ begin
     p = (herbivores_list, beta_matrix, predator_list, IM)
     prob = ODEProblem(ecosystem_dynamics!, u_init, tspan, p)
 
-    # Solve the ODE
-    sol = solve(prob, Tsit5(); reltol=1e-6, abstol=1e-6)
+    # Define extinction callbacks
+    # using DifferentialEquations
+
+    callbacks = []
+
+    # For herbivores
+    for i in 1:length(herbivores_list)
+        condition(u, t, integrator) = u[i] - EXTINCTION_THRESHOLD
+        affect!(integrator) = integrator.u[i] = 0.0
+        push!(callbacks, ContinuousCallback(condition, affect!))
+    end
+
+    # For predators
+    offset = length(herbivores_list)
+    for i in 1:length(predator_list)
+        idx = offset + i  # Adjust index for predators
+        condition(u, t, integrator) = u[idx] - EXTINCTION_THRESHOLD
+        affect!(integrator) = integrator.u[idx] = 0.0
+        push!(callbacks, ContinuousCallback(condition, affect!))
+    end
+
+    # Combine all callbacks
+    cb = CallbackSet(callbacks...)
+
+    # Solve the ODE with callbacks
+    sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
 
     # Extract time series data
     times = sol.t
@@ -374,38 +226,41 @@ begin
     pred_herb_ratio = predator_biomass / herbivore_biomass
     total_biomass = herbivore_biomass + predator_biomass
 
-    if true #any(herbivore_data[:, end] .<= 1.0) 
-        num_extinct_herbivores = count(herbivore_data[:, end] .<= 1.0)
-        println("$num_extinct_herbivores/$num_herbivores herbivore(s) went extinct.")
-    end
-    if true #any(predator_data[:, end] .<= 1.0)
-        num_extinct_predators = count(predator_data[:, end] .<= 1.0)
-        println("$num_extinct_predators/$num_predators predator(s) went extinct.")
-    end
+    # Count extinct species
+    extinct_herbivores = findall(h -> h[end] <= EXTINCTION_THRESHOLD, eachrow(herbivore_data))
+    num_extinct_herbivores = length(extinct_herbivores)
+    num_survived_herbivores = num_herbivores - num_extinct_herbivores
+    println("$num_survived_herbivores/$num_herbivores herbivore(s) survived.")
+
+    extinct_predators = findall(p -> p[end] <= EXTINCTION_THRESHOLD, eachrow(predator_data))
+    num_extinct_predators = length(extinct_predators)
+    num_survived_predators = num_predators - num_extinct_predators
+    println("$num_survived_predators/$num_predators predator(s) survived.")
+
     println("Herbivore biomass ", herbivore_biomass)
     println("Predator biomass ", predator_biomass)
     println("Predator/herbivore ratio $pred_herb_ratio")
     println("Total_biomass/NPP = ", total_biomass/NPP)
 
     # Create a single figure
-    fig = MK.Figure(; size = (600, 500))
+    fig = Figure(; size = (600, 500))
 
-    ax = MK.Axis(fig[1, 1], xlabel = "Time", ylabel = "Density",
+    ax = Axis(fig[1, 1], xlabel = "Time", ylabel = "Density",
                  title = "Herbivore and Predator Dynamics Over Time")
 
     # Plot herbivore dynamics with solid lines
     for i in 1:length(herbivores_list)
-        MK.lines!(ax, times, herbivore_data[i, :], label = "Herbivore $(i)")
+        lines!(ax, times, herbivore_data[i, :], label = "Herbivore $(i)")
     end
 
     # Plot predator dynamics with dashed lines
     for k in 1:length(predator_list)
-        MK.lines!(ax, times, predator_data[k, :], label = "Predator $(k)", linestyle = :dash)
+        lines!(ax, times, predator_data[k, :], label = "Predator $(k)", linestyle = :dash)
     end
 
     # Add a legend
     if legend
-        MK.axislegend(ax; position = :rt)
+        axislegend(ax; position = :rt)
     end
 
     # Display the figure
