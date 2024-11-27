@@ -196,7 +196,31 @@ begin
 
     # Solve the ODE with PositiveDomain
     prob = ODEProblem(ecosystem_dynamics!, u_init, tspan, p)
-    sol = solve(prob, Tsit5(); callback=PositiveDomain(), reltol=1e-6, abstol=1e-6)
+    
+    # Define extinction callbacks and positive domain
+    callbacks = []
+    push!(callbacks, PositiveDomain())
+    # For herbivores
+    for i in 1:length(herbivores_list)
+        condition(u, t, integrator) = u[i] - EXTINCTION_THRESHOLD
+        affect!(integrator) = integrator.u[i] = 0.0
+        push!(callbacks, ContinuousCallback(condition, affect!))
+    end
+
+    # For predators
+    offset = length(herbivores_list)
+    for i in 1:length(predator_list)
+        idx = offset + i  # Adjust index for predators
+        condition(u, t, integrator) = u[idx] - EXTINCTION_THRESHOLD
+        affect!(integrator) = integrator.u[idx] = 0.0
+        push!(callbacks, ContinuousCallback(condition, affect!))
+    end
+
+    # Combine all callbacks
+    cb = CallbackSet(callbacks...)
+
+    # Solve the ODE with callbacks
+    sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
 
     # Extract time series data
     times = sol.t
