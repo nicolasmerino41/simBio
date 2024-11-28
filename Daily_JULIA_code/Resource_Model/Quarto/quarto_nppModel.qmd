@@ -1,7 +1,69 @@
 ---
-title: "quarto_nppModel"
+title: "Exploring the model"
+format: pdf
 ---
 
 ## Quarto
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+## Equations
+
+$$
+H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - S_\mu \, \bar{H} = (1 - \mu) H_i
+$$
+
+$$
+H_i^0 \left( \frac{g_i}{m_i} - 1 \right) = (1 + S_\mu - \mu) \, \bar{H}
+$$
+
+$$
+(1 - \mu) H_i = H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \frac{\mu}{1 + S_\mu - 1} \sum_j H_j^0 \left( \frac{g_j}{m_j} - 1 \right)
+$$
+
+$$
+(1 - \mu) \, \text{NPP} = \sum_i \left[ m_i H_i^0 \left( \frac{g_i^2}{m_i^2} - \frac{g_i}{m_i} \right) \right] 
++ \frac{\mu}{1 + S_\mu - 1} \sum_i \sum_j \left[ m_i H_i^0 \left( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) H_i^0 H_j^0 \right]
+$$
+
+Define:
+
+$$
+\ast = m_i H_i^0 \left( \frac{g_i^2}{m_i^2} - \frac{g_i}{m_i} \right)
+$$
+
+Plugging in \( g_i \) on both sides and knowing that:
+
+$$
+\text{NPP} = \sum_i g_i H_i
+$$
+
+We get:
+
+$$
+(1 - \mu) \, \text{NPP} = \sum_i \ast - \frac{\mu}{1 + S_\mu - 1} \sum_{i,j} m_i H_i^0 \left( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) H_j^0
+$$
+
+Assuming:
+
+$$
+\sum_i S p_i = 1
+$$
+
+So \( p_i \, NPP \) in the sum is equal to NPP, where \( p \) is a vector.
+
+Finally, with no competition \( \mu = 0 \), we have:
+
+$$
+\frac{g_i}{m_i} = 1 + \sqrt{\frac{4 p_i \, \text{NPP}}{F_i}}
+$$
+
+So you need:
+
+$$
+p_i \, \text{NPP} > \frac{F_i}{4}
+$$
+
+Where:
+
+$$
+F_i = m_i H_i^0
+$$
