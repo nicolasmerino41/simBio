@@ -15,7 +15,7 @@ begin
     connectivity = 0.4  # Connectivity for interaction matrix IM
     last_year = 200
     # Herbivores:
-    m_mean_h = 0.1  # Mean mortality rate
+    m_mean_h = 0.000001  # Mean mortality rate
     m_sd_h = 0.00000000000002  # Standard deviation of mortality rate
     g_mean_h = 10.0  # Mean growth rate
     g_sd_h = 0.000000001   # Standard deviation of growth rate

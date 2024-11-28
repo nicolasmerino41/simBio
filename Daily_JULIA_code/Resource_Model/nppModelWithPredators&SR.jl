@@ -3,6 +3,7 @@ using CairoMakie
 ########## NEW TRY WITH IM ############################
 begin
     
+    approximate = false
     plot = true
     # Set parameters
     legend = false
@@ -61,7 +62,11 @@ begin
         # Calculate gi for each herbivore
         for (i, sp) in enumerate(herbivores_list)
             Fi = F_list[i]
-            sp.g = sp.m * sqrt((competition_numerator / S_star) * (NPP / Fi))
+            if approximate
+                sp.g = sp.m * sqrt((competition_numerator / S_star) * (NPP / Fi)) # The approximation
+            elseif !approximate 
+                sp.g = sp.m * ((1+sqrt(1+((4*competition_numerator*NPP)/(S_star*Fi))))/2) # The exact
+            end
         end
     end
 
