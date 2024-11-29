@@ -23,58 +23,84 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Discussion
 
-\[
+$$
 H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - S\mu \, \bar{H} = (1 - \mu) H_i
-\]
+$$
 
-\[
+$$
 H_i^0 \left( \frac{g_i}{m_i} - 1 \right) = (1 + S\mu - \mu) \, \bar{H}
-\]
+$$
 
-\[
+$$
 (1 - \mu) H_i = H_i^0 \left( \frac{g_i}{m_i} - 1 \right) - \frac{\mu}{1 + S\mu - 1} \sum_j H_j^0 \left( \frac{g_j}{m_j} - 1 \right)
-\]
+$$
 
 Plugging in \( g_i \) on both sides and knowing that \( \text{NPP} = \sum_i g_i H_i \). We get:
 
-\[
+$$
 (1 - \mu) \, \text{NPP} = \sum_i \left[ m_i H_i^0 \left( \frac{g_i^2}{m_i^2} - \frac{g_i}{m_i} \right) \right] 
 - \frac{\mu}{1 + S\mu - 1} \sum_{i,j} \left[ m_i H_i^0 \left( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) \frac{H_i^0} {H_j^0} \right]
-\]
+$$
 
 Define:
 
-\[
+$$
 (\ast) = m_i H_i^0 \left( \frac{g_i^2}{m_i^2} - \frac{g_i}{m_i} \right)
-\]
+$$
 
 
-\[
+$$
 (1 - \mu) \, \text{NPP} = (1 - \frac{\mu}{1 + S\mu - 1}) \sum_i (\ast) - \frac{\mu}{1 + S\mu - 1} \sum_{i,j} m_i H_i^0 \left( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) \frac{H_i^0} {H_j^0}
-\]
+$$
 
 Or what is the same:
-\[
+$$
 (1 - \mu) \, \text{NPP} = (1 - \frac{\mu}{1 + S\mu - 1}) \sum_i (\ast) - \frac{\mu}{1 + S\mu - 1} \frac{g_j}{m_j} H_i^0 m_i \sum_{i,j} \left( \frac{g_j}{m_j} - 1 \right) \frac{H_i^0} {H_j^0}
-\]
+$$
 
 Assuming \( \sum_i S p_i = 1 \), then \( \sum p_i \, \text{NPP} \) is equal to NPP, where \( p \) is a vector.
 
 Finally, with no competition (\( \mu = 0 \)), we have:
 
-\[
+$$
 \frac{g_i}{m_i} = 1 + \sqrt{\frac{4 p_i \, \text{NPP}}{F_i}}
-\]
+$$
 
 So you need:
 
-\[
+$$
 p_i \, \text{NPP} > \frac{F_i}{4} \text{ } \text{where } F_i = m_i H_i^0
-\]
+$$
 
 \newpage
 
 # Continuation
+
+The key terms are \( \sum_i{(\ast)}\) because it contains \(\frac{g_i^2}{m_i^2}\).
+
+And \(\sum_{i,j} ( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) \frac{H_i^0} {H_j^0}\), which introduces coupling between species. For simplification, we focus on the case where this term is small compared to the quadratic contributions from \((\ast)\).
+
+Thus, we approximate:
+
+$$
+(1 - \mu) \, \text{NPP} \approx \left(1 - \frac{\mu}{1 + S\mu - 1}\right) \sum_i (\ast)
+$$
+
+And if:
+$$
+\sum_i (\ast) = m_i H_i^0 \left( \frac{g_i^2}{m_i^2} - \frac{g_i}{m_i} \right) = \sum_i{\frac{H_i^0}{m_i}g_i^2} - \sum{H_i^0g_i}
+$$
+
+We get:
+$$
+(1 - \mu) \, \text{NPP} \approx \left(1 - \frac{\mu}{1 + S\mu - 1}\right) \left(\sum_i{\frac{H_i^0}{m_i}g_i^2} - \sum{H_i^0g_i}\right)
+$$
+
+Dividing through by \(\frac{H_i^0}{m_i}\), we focus on the simplified equation for a single \(g_i\):
+$$
+\frac{g_i^2}{m_i} - gi = \frac{(1-\mu)\text{NPP}}{H_i^0}
+$$
+
 
 
 
