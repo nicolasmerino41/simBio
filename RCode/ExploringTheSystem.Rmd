@@ -4,8 +4,8 @@ author: "Jeff & Nico"
 date: "November 2024"
 output:
   pdf_document:
-    toc: false
-    toc_depth: '5'
+    toc: true
+    toc_depth: 5
   html_document:
     theme: flatly
     toc: true
@@ -50,56 +50,104 @@ $$
 
 
 $$
-(1 - \mu) \, \text{NPP} = (1 - \frac{\mu}{1 + S\mu - 1}) \sum_i (\ast) - \frac{\mu}{1 + S\mu - 1} \sum_{i,j} m_i H_i^0 \left( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) \frac{H_i^0} {H_j^0}
+(1 - \mu) \, \text{NPP} = (1 - \frac{\mu}{1 + S\mu - 1}) \sum_i (\ast) - \frac{\mu}{1 + S\mu - 1} \sum_{i,j} m_i H_i^0 \left( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) \frac{H_j^0} {H_i^0}
 $$
 
 Or what is the same:
 $$
-(1 - \mu) \, \text{NPP} = (1 - \frac{\mu}{1 + S\mu - 1}) \sum_i (\ast) - \frac{\mu}{1 + S\mu - 1} \frac{g_j}{m_j} H_i^0 m_i \sum_{i,j} \left( \frac{g_j}{m_j} - 1 \right) \frac{H_i^0} {H_j^0}
+(1 - \mu) \, \text{NPP} = (1 - \frac{\mu}{1 + S\mu - 1}) \sum_i (\ast) - \frac{\mu}{1 + S\mu - 1} g_i H_i^0 \sum_{i,j} \left( \frac{g_j}{m_j} - 1 \right) \frac{H_j^0} {H_i^0}
 $$
 
-Assuming \( \sum_i S p_i = 1 \), then \( \sum p_i \, \text{NPP} \) is equal to NPP, where \( p \) is a vector.
-
-Finally, with no competition (\( \mu = 0 \)), we have:
-
+## Scenarios
+### No competition
 $$
-\frac{g_i}{m_i} = 1 + \sqrt{\frac{4 p_i \, \text{NPP}}{F_i}}
+\text{NPP} = \sum_i{m_i H_i^0 \left( \frac{g_i^2}{m_i^2} - \frac{g_i}{m_i} \right)}
 $$
-
-So you need:
-
 $$
-p_i \, \text{NPP} > \frac{F_i}{4} \text{ } \text{where } F_i = m_i H_i^0
+\text{NPP} = \sum_i{\left(\frac{H_i^0g_i^2}{m_i}-H_i^0g_i\right)}
 $$
 
-\newpage
-
-# Continuation
-
-The key terms are \( \sum_i{(\ast)}\) because it contains \(\frac{g_i^2}{m_i^2}\).
-
-And \(\sum_{i,j} ( \frac{g_i g_j}{m_i m_j} - \frac{g_i}{m_i} \right) \frac{H_i^0} {H_j^0}\), which introduces coupling between species. For simplification, we focus on the case where this term is small compared to the quadratic contributions from \((\ast)\).
-
-Thus, we approximate:
-
+Since \( \sum_i{p_i} = 1\) and \(\text{NPP}_i = p_i\text{NPP}\):
 $$
-(1 - \mu) \, \text{NPP} \approx \left(1 - \frac{\mu}{1 + S\mu - 1}\right) \sum_i (\ast)
+\text{NPP}_i = \frac{H_i^0g_i^2}{m_i}-H_i^0g_i = H_i^0\left(\frac{g_i^2}{m_i}-g_i\right)
 $$
 
-And if:
+Rearranging into a quadratic equation:
+
 $$
-\sum_i (\ast) = m_i H_i^0 \left( \frac{g_i^2}{m_i^2} - \frac{g_i}{m_i} \right) = \sum_i{\frac{H_i^0}{m_i}g_i^2} - \sum{H_i^0g_i}
+H_i^0 \left( \frac{g_i^2}{m_i} - g_i - \frac{\text{NPP}_i}{H_i^0} \right) = 0.
 $$
 
-We get:
 $$
-(1 - \mu) \, \text{NPP} \approx \left(1 - \frac{\mu}{1 + S\mu - 1}\right) \left(\sum_i{\frac{H_i^0}{m_i}g_i^2} - \sum{H_i^0g_i}\right)
+H_i^0 \left( g_i^2 - m_i g_i - m_i \frac{\text{NPP}_i}{H_i^0} \right) = 0.
 $$
 
-Dividing through by \(\frac{H_i^0}{m_i}\), we focus on the simplified equation for a single \(g_i\):
+Since \( H_i^0 \neq 0 \):
+
 $$
-\frac{g_i^2}{m_i} - gi = \frac{(1-\mu)\text{NPP}}{H_i^0}
+g_i^2 - m_i g_i - m_i \frac{\text{NPP}_i}{H_i^0} = 0.
 $$
+
+Since \( g_i > 0 \), we select the positive root:
+$$
+g_i = \frac{m_i + \sqrt{m_i^2 + \frac{4m_i \, \text{NPP}_i}{H_i^0}}}{2}
+$$
+
+To express as \( \frac{g_i}{m_i} \). IMPORTANT! Factor out \(m_i^2\) from the square root
+$$
+g_i = \frac{m_i + m_i\sqrt{1 + \frac{4 \, \text{NPP}_i}{m_iH_i^0}}}{2}
+$$
+
+Hence, since \( \text{NPP}_i = p_i\text{NPP} \) & \( m_i H_i^0 = F_i\):
+$$
+\frac{g_i}{m_i} = \frac{1 + \sqrt{1 + \frac{4 p_i\text{NPP}}{F_i}}}{2}
+$$
+
+If we assume that \(4 p_i\text{NPP} \gg 1\) and then, the condition for \(\frac{g_i}{m_i} > 1 \) is:
+$$
+p_i \, \text{NPP} > \frac{F_i}{4} 
+$$
+
+#### No approximation
+
+But if we don't make the assumption \(4 p_i\text{NPP} \gg 1\), then for \( \frac{g_i}{m_i} \le 1 \):
+$$
+\frac{1 + \sqrt{1 + \frac{4 p_i\text{NPP}}{F_i}}}{2} \le 1
+$$
+Which leads to:
+$$
+\frac{4p_i\,\text{NPP}}{F_i} \le 0
+$$
+But given that \(p_i \ge 0\) and \(\text{NPP} \ge 0\) and \(F_i \ge 0 \), it's mathematically impossible that \( \frac{g_i}{m_i} \le 1\).
+
+### High \( g_i/m_i \) & No competition
+
+For simplification, we focus on the case where \( g_i \gg m_i \).
+
+$$
+(1 - \mu) \, \text{NPP} = (1 - \frac{\mu}{1 + S\mu - 1}) \sum_i{m_i H_i^0 \left( \frac{g_i^2}{m_i^2} \right)} - \frac{\mu}{1 + S\mu - 1} \sum_{i,j} m_i H_i^0 \left( \frac{g_i g_j}{m_i m_j} \right) \frac{H_j^0} {H_i^0}
+$$
+
+If no competition (\( \mu = 0 \)), we have:
+$$
+\text{NPP} = \sum_i{m_i H_i^0 \left( \frac{g_i^2}{m_i^2} \right)}
+$$
+Since \( \sum_i{p_i} = 1\) and \(\text{NPP}_i = p_i\text{NPP}\):
+
+$$
+\text{NPP}_i = m_i H_i^0 \left( \frac{g_i^2}{m_i^2} \right)
+$$
+$$
+\frac{g_i}{m_i} = \sqrt{\frac{\text{NPP}_i}{m_iH_i^0}} = \sqrt{\frac{\text{NPP}_i}{F_i}}
+$$
+$$
+\frac{g_i}{m_i} = \sqrt{\frac{p_i\text{NPP}}{F_i}}
+$$
+Thus, the condition is \( p_i \text{NPP} > F_i \) where \( F_i = m_i H_i^0 \)
+
+
+
+
 
 
 
