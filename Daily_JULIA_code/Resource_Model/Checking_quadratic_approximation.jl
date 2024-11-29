@@ -6,19 +6,20 @@ begin
     plot = true
     # Set parameters
     legend = false
-    num_herbivores = 5
+    num_herbivores = 2
     num_predators = 0
-    NPP = 1.0
-    mu = 0.0
-    H0_mean_aprox = 1000.0  # Average characteristic density
+    NPP = 10000.0
+    mu = 1.0
+    H0_mean_aprox = NPP/num_herbivores  # Average characteristic density
     H0_sd = 0.0000001  # Standard deviation of characteristic density
     connectivity = 0.9  # Connectivity for interaction matrix IM
-    last_year = 100000
+    last_year = 1000
     # Herbivores:
     m_mean_h = 0.1  # Mean mortality rate
-    m_sd_h = 0.22  # Standard deviation of mortality rate
-    # p_i_mean = m_mean_h*H0_mean_aprox
-    p_i_sd = 0.0000001  # Standard deviation of p_i
+    m_sd_h = 0.01  # Standard deviation of mortality rate
+    H_init = NPP/num_herbivores
+    p_i_mean = 0.1
+    p_i_sd = 0.0 # Standard deviation of p_i
     # Predator:
     m_mean_p = 0.1
     a_mean_p = 0.01
@@ -27,10 +28,11 @@ begin
     c_mean_p = 1.0  # Self-regulation coefficient mean
     P_init_mean = H0_mean_aprox
 
-    is_pi_NPP_larger_than_fi_over_4 = 1/num_herbivores*NPP > m_mean_h*H0_mean_aprox/4
+    is_pi_NPP_larger_than_fi_over_4 = p_i_mean*NPP > m_mean_h*H0_mean_aprox/4
     println("is_pi_NPP_larger_than_fi_over_4: ", is_pi_NPP_larger_than_fi_over_4)
-    println(1/num_herbivores*NPP, " Vs ", m_mean_h*H0_mean_aprox/4)
+    println(p_i_mean*NPP, " Vs ", m_mean_h*H0_mean_aprox/4)
     const EXTINCTION_THRESHOLD = 1e-6
+    ext_thr = 10.0
 
     # Define the Herbivores struct
     mutable struct Herbivores
@@ -179,7 +181,7 @@ begin
     end
 
     # Create herbivores_list and calculate growth rates
-    herbivores_list = create_herbivores_list(num_herbivores; m_mean=m_mean_h, H0_mean=H0_mean_aprox)
+    herbivores_list = create_herbivores_list(num_herbivores; m_mean=m_mean_h, H0_mean=H0_mean_aprox, H_init = H_init, p_i_mean=p_i_mean)
     calculate_growth_rates(herbivores_list, NPP, mu)  # Use positional arguments
     growth_rates = [sp.g for sp in herbivores_list]
     # Create beta_matrix
@@ -219,7 +221,7 @@ begin
     push!(callbacks, PositiveDomain())
     # For herbivores
     for i in 1:length(herbivores_list)
-        condition(u, t, integrator) = u[i] - EXTINCTION_THRESHOLD
+        condition(u, t, integrator) = u[i] - ext_thr
         affect!(integrator) = integrator.u[i] = 0.0
         push!(callbacks, ContinuousCallback(condition, affect!))
     end
@@ -228,7 +230,7 @@ begin
     offset = length(herbivores_list)
     for i in 1:length(predator_list)
         idx = offset + i  # Adjust index for predators
-        condition(u, t, integrator) = u[idx] - EXTINCTION_THRESHOLD
+        condition(u, t, integrator) = u[idx] - ext_thr
         affect!(integrator) = integrator.u[idx] = 0.0
         push!(callbacks, ContinuousCallback(condition, affect!))
     end
@@ -245,8 +247,8 @@ begin
     predator_data = sol[length(herbivores_list)+1:end, :]  # Predator dynamics
 
     # Calculate biomasses, excluding extinct species
-    herbivore_biomass = sum(herbivore_data[:, end][herbivore_data[:, end] .> EXTINCTION_THRESHOLD])
-    predator_biomass = sum(predator_data[:, end][predator_data[:, end] .> EXTINCTION_THRESHOLD])
+    herbivore_biomass = sum(herbivore_data[:, end][herbivore_data[:, end] .> ext_thr])
+    predator_biomass = sum(predator_data[:, end][predator_data[:, end] .> ext_thr])
 
     # Equation holding true?
     holding = (NPP/sum(growth_rates .* herbivore_data[:, end]) > 0.99) && (NPP/sum(growth_rates .* herbivore_data[:, end]) < 1.001)
@@ -255,10 +257,10 @@ begin
     total_biomass = herbivore_biomass + predator_biomass
 
     # Count surviving species
-    num_survived_herbivores = count(herbivore_data[:, end] .> EXTINCTION_THRESHOLD)
+    num_survived_herbivores = count(herbivore_data[:, end] .> ext_thr)
     println("$num_survived_herbivores/$num_herbivores herbivore(s) survived.")
 
-    num_survived_predators = count(predator_data[:, end] .> EXTINCTION_THRESHOLD)
+    num_survived_predators = count(predator_data[:, end] .> ext_thr)
     println("$num_survived_predators/$num_predators predator(s) survived.")
 
     println("Herbivore biomass ", round(herbivore_biomass, digits=2))
@@ -270,7 +272,7 @@ begin
     
     if plot
     # Create a single figure
-    fig = Figure(; size = (600, 500))
+    fig = Figure(; size = (500, 400))
 
     ax = Axis(fig[1, 1], xlabel = "Time", ylabel = "Density",
                  title = "Herbivore and Predator Dynamics Over Time")
@@ -299,7 +301,7 @@ end
 #######################################################################################################
 begin
     ########### Make the loop ############
-    const EXTINCTION_THRESHOLD = 1e-6
+    const ext_thr = 1e-6
 
     # Define the Herbivore struct
     mutable struct Herbivore
@@ -475,7 +477,7 @@ begin
 
             # For herbivores
             for i in 1:length(herbivore_list)
-                condition(u, t, integrator) = u[i] - EXTINCTION_THRESHOLD
+                condition(u, t, integrator) = u[i] - ext_thr
                 affect!(integrator) = integrator.u[i] = 0.0
                 push!(callbacks, ContinuousCallback(condition, affect!))
             end
@@ -484,7 +486,7 @@ begin
             offset = length(herbivore_list)
             for i in 1:length(predator_list)
                 idx = offset + i  # Adjust index for predators
-                condition(u, t, integrator) = u[idx] - EXTINCTION_THRESHOLD
+                condition(u, t, integrator) = u[idx] - ext_thr
                 affect!(integrator) = integrator.u[idx] = 0.0
                 push!(callbacks, ContinuousCallback(condition, affect!))
             end
@@ -494,7 +496,7 @@ begin
             sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
             H_array = sol[1:S_star, :]
             # Sum biomass excluding extinct species
-            total_biomass_end = sum(H_array[:, end][H_array[:, end] .> EXTINCTION_THRESHOLD])
+            total_biomass_end = sum(H_array[:, end][H_array[:, end] .> ext_thr])
             push!(results_mu, (NPP=NPP, total_biomass_end=total_biomass_end, mu=mu))
         end
     end
@@ -523,7 +525,7 @@ begin
 
             # For herbivores
             for i in 1:length(herbivore_list)
-                condition(u, t, integrator) = u[i] - EXTINCTION_THRESHOLD
+                condition(u, t, integrator) = u[i] - ext_thr
                 affect!(integrator) = integrator.u[i] = 0.0
                 push!(callbacks, ContinuousCallback(condition, affect!))
             end
@@ -532,7 +534,7 @@ begin
             offset = length(herbivore_list)
             for i in 1:length(predator_list)
                 idx = offset + i  # Adjust index for predators
-                condition(u, t, integrator) = u[idx] - EXTINCTION_THRESHOLD
+                condition(u, t, integrator) = u[idx] - ext_thr
                 affect!(integrator) = integrator.u[idx] = 0.0
                 push!(callbacks, ContinuousCallback(condition, affect!))
             end
@@ -542,7 +544,7 @@ begin
             sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
             H_array = sol[1:S_star, :]
             # Sum biomass excluding extinct species
-            total_biomass_end = sum(H_array[:, end][H_array[:, end] .> EXTINCTION_THRESHOLD])
+            total_biomass_end = sum(H_array[:, end][H_array[:, end] .> ext_thr])
             push!(results_species, (NPP=NPP, total_biomass_end=total_biomass_end, num_species=num_herbivores))
         end
     end
