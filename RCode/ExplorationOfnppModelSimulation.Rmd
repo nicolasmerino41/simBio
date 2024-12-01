@@ -1,8 +1,20 @@
 ---
 title: "ExplorationOfnppModelSimulation"
 author: "Nicolàs Merino"
-date: "2024-11-26"
-output: html_document
+date: "2024-12-01"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    bookdown: true
+    highlight: tango
+  pdf_document:
+    toc: true
+    toc_depth: '5'
 ---
 
 ```{r setup, include=FALSE}
@@ -25,9 +37,10 @@ library(here)
 # Data
 ```{r, warning=FALSE, message=FALSE}
 # Load the data
-df <- read_csv("Daily JULIA code/Resource Model/drago_results.csv")
+df_sample <- read_csv("C:/Users/nicol/OneDrive/PhD/GitHub/simBio/simulation_results_30_11.csv")
 # Sample 10,000 rows
-df_sample <- sample_n(df, 10000)
+# df_sample <- sample_n(df, 10000)
+df_sample <- subset(df_sample, total_biomass_vs_npp >= 0.0)
 ```
 
 
@@ -41,7 +54,7 @@ str(df_sample)
 ## For parameters
 ```{r}
 param_stats <- df_sample %>%
-  select(num_herbivores, num_predators, mu, NPP, m_mean_h, m_mean_p, H0_mean, connectivity, c_mean_p) %>%
+  select(num_herbivores, num_predators, mu, NPP, m_mean_h, m_mean_p, H0_mean, connectivity, c_mean_p, p_i) %>%
   summary()
 print(param_stats)
 ```
@@ -49,7 +62,7 @@ print(param_stats)
 ## For metrics
 ```{r}
 metric_stats <- df_sample %>%
-  select(total_biomass, num_extinct_herbivores, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, are_there_extinctions, prop_of_sp_extinct, total_biomass_vs_npp) %>%
+  select(total_biomass, num_extinct_herbivores, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, are_there_extinctions, prop_of_sp_extinct, total_biomass_vs_npp, holding, fi_over_4, NPP_vS_fi4) %>%
   summary()
 print(metric_stats)
 ```
@@ -72,8 +85,8 @@ for (param in param_names) {
 
 ## Histograms for metrics
 ```{r}
-metric_names <- c("total_biomass", "num_extinct_herbivores", "num_extinct_herbivores", "num_extinct_predators", "herbivore_biomass", "predator_biomass", "are_there_extinctions", "prop_of_sp_extinct", "total_biomass_vs_npp")
-for (metric in metric_names) {
+continuous_metric_names <- c("total_biomass", "num_extinct_herbivores", "num_extinct_predators", "herbivore_biomass", "predator_biomass", "prop_of_sp_extinct", "total_biomass_vs_npp",  "fi_over_4")
+for (metric in continuous_metric_names) {
   p <- ggplot(df_sample, aes(x = .data[[metric]])) +
     geom_histogram(
       binwidth = (max(df_sample[[metric]], na.rm = TRUE) - min(df_sample[[metric]], na.rm = TRUE)) / 30,
@@ -89,7 +102,7 @@ for (metric in metric_names) {
 ```{r}
 # Select numeric variables
 numeric_vars <- df_sample %>%
-  select(num_herbivores, num_predators, mu, NPP, m_mean_h, m_mean_p, H0_mean, connectivity, c_mean_p, total_biomass, num_extinct_herbivores, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, are_there_extinctions, prop_of_sp_extinct, total_biomass_vs_npp)
+  select(num_herbivores, num_predators, mu, NPP, m_mean_h, m_mean_p, H0_mean, connectivity, c_mean_p, p_i, total_biomass, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, prop_of_sp_extinct, total_biomass_vs_npp, fi_over_4, )
 
 # Compute correlation matrix
 cor_matrix <- cor(numeric_vars, use = "complete.obs")
@@ -120,26 +133,38 @@ if (nrow(high_corr) > 0) {
 ```
 # Scatter plots for key relationships
 ## Highly correlated
-### Average Competition Strength Vs Average BBP
 ```{r, warning=FALSE, message=FALSE}
-ggplot(df_sample, aes(x = connectivity, y = total_biomass_vs_npp, color = NPP)) +
+ggplot(df_sample, aes(x = connectivity, y = log(total_biomass_vs_npp), color = NPP)) +
   geom_point(alpha = 0.3, size = 0.8) +
   labs(title = "Connectivity VS total_biomass_vs_npp",
        x = "connectivity", y = "total_biomass_vs_npp") +
-  geom_smooth(method = "lm", color = "red") +
+  # geom_smooth(method = "lm", color = "red") +
+  geom_hline(yintercept = 0, linetype = "solid", colour = "red") +
+  # scale_y_log10() +
   theme_classic()
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-ggplot(df_sample, aes(x = mu, y = total_biomass_vs_npp, color = NPP)) +
+ggplot(df_sample, aes(x = mu, y = log(total_biomass_vs_npp), color = NPP)) +
   geom_point(alpha = 0.3, size = 0.8) +
   labs(title = "MU VS total_biomass_vs_npp",
-       x = "MU", y = "total_biomass_vs_npp") +
-  geom_smooth(method = "lm", color = "red") +
+       x = "MU", y = "Log-scaled total_biomass_vs_npp") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  # scale_y_log10() +
+  # ylim(c(0, 1e18)) +
   theme_classic()
 ```
 
-
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+ggplot(df_sample, aes(x = mu, y = sum_g_i_H_i_over_NPP, color = NPP)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  labs(title = "MU VS sum_gi_Hi_over_NPP",
+       x = "MU", y = "sum_g_i_H_i_over_NPP") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  # scale_y_log10() +
+  # ylim(c(0, 1e18)) +
+  theme_classic()
+```
 
 
 
