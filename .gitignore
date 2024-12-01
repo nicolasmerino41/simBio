@@ -1,5 +1,6 @@
 .vscode/settings.json
 .Rhistory
+*.xlsx
 BadEnvironment2/
 CHELSA/
 DFs/
@@ -31,6 +32,7 @@ NUTS/
 RCode/Theory.html
 RCode/nppFoodWeb.pdf
 RCode/nppFoodWeb.html
+RCode/ExplorationOfnppModelSimulation.html
 RCode/PredationTermJustification.html
 Daily_JULIA_code/Resource_Model/Quarto/
 RCode\ExploringTheSystem.pdf
