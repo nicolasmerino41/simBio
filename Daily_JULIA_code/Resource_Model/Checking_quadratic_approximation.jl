@@ -6,22 +6,22 @@ begin
     plot = true
     # Set parameters
     legend = false
-    num_herbivores = 2
+    num_herbivores = 1
     num_predators = 0
-    NPP = 10000.0
-    mu = 1.0
+    NPP = 1000.0
+    mu = 0.8
     H0_mean_aprox = NPP/num_herbivores  # Average characteristic density
     H0_sd = 0.0000001  # Standard deviation of characteristic density
-    connectivity = 0.9  # Connectivity for interaction matrix IM
+    connectivity = 0.75  # Connectivity for interaction matrix IM
     last_year = 1000
     # Herbivores:
     m_mean_h = 0.1  # Mean mortality rate
     m_sd_h = 0.01  # Standard deviation of mortality rate
     H_init = NPP/num_herbivores
-    p_i_mean = 0.1
+    p_i_mean = 1/num_herbivores
     p_i_sd = 0.0 # Standard deviation of p_i
     # Predator:
-    m_mean_p = 0.1
+    m_mean_p = 0.3
     a_mean_p = 0.01
     h_mean_p = 0.1
     e_mean_p = 0.1
@@ -269,6 +269,7 @@ begin
     println("Total_biomass/NPP = ", round(total_biomass/NPP, digits=2))
     println("Is NPP ≈ ∑g_iH_i? ", holding)
     println("NPP = $NPP & ∑g_iH_i = ", round(sum(growth_rates .* herbivore_data[:, end]), digits=2))
+    println("∑g_iH_i/NPP = ", round(sum(growth_rates .* herbivore_data[:, end])/NPP, digits=2))
     
     if plot
     # Create a single figure
