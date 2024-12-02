@@ -37,10 +37,10 @@ library(here)
 # Data
 ```{r, warning=FALSE, message=FALSE}
 # Load the data
-df_sample <- read_csv("C:/Users/nicol/OneDrive/PhD/GitHub/simBio/simulation_results_30_11.csv")
+df <- read_csv("C:/Users/nicol/OneDrive/PhD/GitHub/simBio/simulation_results_1_12.csv")
 # Sample 10,000 rows
 # df_sample <- sample_n(df, 10000)
-df_sample <- subset(df_sample, total_biomass_vs_npp >= 0.0)
+df_sample <- subset(df, total_biomass_vs_npp >= 0.0)
 ```
 
 
@@ -62,7 +62,7 @@ print(param_stats)
 ## For metrics
 ```{r}
 metric_stats <- df_sample %>%
-  select(total_biomass, num_extinct_herbivores, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, are_there_extinctions, prop_of_sp_extinct, total_biomass_vs_npp, holding, fi_over_4, NPP_vS_fi4) %>%
+  select(total_biomass, num_extinct_herbivores, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, pred_herb_ratio, are_there_extinctions, prop_of_sp_extinct, total_biomass_vs_npp, holding, fi_over_4, NPP_vS_fi4) %>%
   summary()
 print(metric_stats)
 ```
@@ -85,7 +85,7 @@ for (param in param_names) {
 
 ## Histograms for metrics
 ```{r}
-continuous_metric_names <- c("total_biomass", "num_extinct_herbivores", "num_extinct_predators", "herbivore_biomass", "predator_biomass", "prop_of_sp_extinct", "total_biomass_vs_npp",  "fi_over_4")
+continuous_metric_names <- c("total_biomass", "num_extinct_herbivores", "num_extinct_predators", "herbivore_biomass", "predator_biomass", "pred_herb_ratio", "prop_of_sp_extinct", "total_biomass_vs_npp",  "fi_over_4")
 for (metric in continuous_metric_names) {
   p <- ggplot(df_sample, aes(x = .data[[metric]])) +
     geom_histogram(
@@ -102,7 +102,7 @@ for (metric in continuous_metric_names) {
 ```{r}
 # Select numeric variables
 numeric_vars <- df_sample %>%
-  select(num_herbivores, num_predators, mu, NPP, m_mean_h, m_mean_p, H0_mean, connectivity, c_mean_p, p_i, total_biomass, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, prop_of_sp_extinct, total_biomass_vs_npp, fi_over_4, )
+  select(num_herbivores, num_predators, mu, NPP, m_mean_h, m_mean_p, H0_mean, connectivity, c_mean_p, p_i, total_biomass, num_extinct_herbivores, num_extinct_predators, herbivore_biomass, predator_biomass, pred_herb_ratio, prop_of_sp_extinct, total_biomass_vs_npp, fi_over_4, NPP_vS_fi4)
 
 # Compute correlation matrix
 cor_matrix <- cor(numeric_vars, use = "complete.obs")
@@ -147,6 +147,7 @@ ggplot(df_sample, aes(x = connectivity, y = log(total_biomass_vs_npp), color = N
 ```{r, warning=FALSE, message=FALSE}
 ggplot(df_sample, aes(x = mu, y = log(total_biomass_vs_npp), color = NPP)) +
   geom_point(alpha = 0.3, size = 0.8) +
+  facet_wrap(~as.factor(connectivity)) +
   labs(title = "MU VS total_biomass_vs_npp",
        x = "MU", y = "Log-scaled total_biomass_vs_npp") +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
@@ -155,19 +156,81 @@ ggplot(df_sample, aes(x = mu, y = log(total_biomass_vs_npp), color = NPP)) +
   theme_classic()
 ```
 
-```{r, warning=FALSE, message=FALSE, eval=FALSE}
-ggplot(df_sample, aes(x = mu, y = sum_g_i_H_i_over_NPP, color = NPP)) +
+```{r, warning=FALSE, message=FALSE}
+ggplot(df_sample, aes(x = mu, y = log(sum_g_i_H_i_over_NPP), color = NPP)) +
   geom_point(alpha = 0.3, size = 0.8) +
+  facet_wrap(~connectivity) +
   labs(title = "MU VS sum_gi_Hi_over_NPP",
-       x = "MU", y = "sum_g_i_H_i_over_NPP") +
+       x = "MU", y = "log(sum_g_i_H_i_over_NPP)") +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   # scale_y_log10() +
   # ylim(c(0, 1e18)) +
   theme_classic()
 ```
 
+```{r}
+ggplot(df_sample, aes(x = mu, y = sum_g_i_H_i_over_NPP, color = NPP)) +
+  stat_summary(
+    fun = mean, 
+    fun.min = function(y) mean(y) - sd(y) / sqrt(length(y)), 
+    fun.max = function(y) mean(y) + sd(y) / sqrt(length(y)), 
+    geom = "pointrange", 
+    size = 0.8
+  ) +
+  labs(
+    title = "MU VS sum_gi_Hi_over_NPP",
+    x = "MU", 
+    y = "sum_g_i_H_i_over_NPP"
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  theme_classic()
 
+```
+```{r}
+######## For sum_g_i_H_i_over_NPP ##########
+# Count values above 1
+above_1 <- sum(df_sample$sum_g_i_H_i_over_NPP > 1)
+# Count values below 1
+below_1 <- sum(df_sample$sum_g_i_H_i_over_NPP < 1)
+# Print results
+cat("###### sum_g_i_H_i_over_NPP", "\n")
+cat("Values above 1:", above_1, "\n")
+cat("Values below 1:", below_1, "\n", "\n")
 
+######### For NPP == sum(g_iH_i) ##########
+trues <- sum(df_sample$holding == TRUE)
+# Count values below 1
+falses <- sum(df_sample$holding == FALSE)
+# Print results
+cat("###### NPP == sum(g_iH_i)", "\n")
+cat("TRUES:", trues, "\n")
+cat("FALSES:", falses, "\n")
+
+```
+```{r, warning=FALSE, message=FALSE}
+ggplot(df_sample, aes(x = NPP_vS_fi4, y = log(sum_g_i_H_i_over_NPP), color = NPP)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  # facet_wrap(~connectivity) +
+  labs(title = "NPP_vS_fi4 VS sum_gi_Hi_over_NPP",
+       x = "NPP_vs_fi4", y = "sum_g_i_H_i_over_NPP") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  # scale_y_log10() +
+  # ylim(c(0, 1e18)) +
+  theme_classic()
+```
+
+```{r}
+df_sample$NPP_vS_fi4_ratio = df_sample$fi_over_4 / df_sample$NPP
+ggplot(df_sample, aes(x = NPP_vS_fi4_ratio, y = sum_g_i_H_i_over_NPP, color = NPP)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  # facet_wrap(~connectivity) +
+  labs(title = "NPP_vS_fi4_ratio VS sum_gi_Hi_over_NPP",
+       x = "NPP_vs_fi4", y = "sum_g_i_H_i_over_NPP") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  # scale_y_log10() +
+  # ylim(c(0, 1e18)) +
+  theme_classic()
+```
 
 
 
