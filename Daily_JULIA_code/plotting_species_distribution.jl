@@ -16,10 +16,12 @@ function plot_species_distribution(species_name::String)
     
     # Plot the species distribution using map_plot
     map_plot(species_matrix; type = "heatmap", palette = :greys, title = "Distribution of $species_name")
+    # count_ones = count(x -> x == 1.0, species_matrix)
+    # println("Proportion of presence: ", count_ones / 5976)
 end
 
 # Example usage
-plot_species_distribution("Alytes cisternasii");
+plot_species_distribution("Sus scrofa")
 
 # Define the function to plot species distribution from simulation result
 function plot_simulation_species_distribution(array_output, species_name::String)
@@ -265,4 +267,10 @@ output_dir = "C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\simBio\\theoretical output
 load_and_plot_results(sigmas, alpha_values, connectances, herbivore_proportions, output_dir, 500)
 
 
-
+matrixx = zeros(Float64, 125, 76)
+for i in idx
+    if DA_with_abundances[i].a[70] > 0.0
+        matrixx[i] = 1.0
+    end
+end
+MK.heatmap(matrixx, colormap = :inferno)
