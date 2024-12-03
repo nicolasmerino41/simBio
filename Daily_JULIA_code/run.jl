@@ -1,11 +1,11 @@
 PC = "nicol"
-end_true = true
+end_true = false
 num_species = 256
 @time include("HerpsVsBirmmals.jl")
-include("kernels.jl")
-include("One-click code.jl")
-include("human_footprint.jl")
-include("Implicit competition for herbivores.jl")
+@time include("kernels.jl")
+@time include("One-click code.jl")
+@time include("human_footprint.jl")
+@time include("Implicit competition for herbivores.jl")
 # include("2010-2100 RasterSeries.jl")
 
 # pepe = (
@@ -144,8 +144,8 @@ makie_output = MakieOutput(pepe_state, tspan = 1:200;
     for (ax, key, title) in zip(axes, plot_keys, titles)
         if key == :biomass
             Makie.heatmap!(ax, frame[:state]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
-        elseif key == :simulated_richness
-            Makie.image!(ax, frame[:state], lambda_DA.multiplicative; colormap=custom_palette, colorrange = (0, 256))
+        # elseif key == :simulated_richness
+        #     Makie.image!(ax, frame[:state], lambda_DA.multiplicative; colormap=custom_palette, colorrange = (0, 256))
         elseif key == :npp
             Makie.heatmap!(ax, frame[:npp_DA]; interpolate=false, colormap=custom_palette, colorrange = (0, m))
         elseif key == :real_richness
