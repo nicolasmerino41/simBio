@@ -291,6 +291,7 @@ function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation, beta)
     return adjacency
 end
 iberian_interact_NA = NamedArray(Matrix(iberian_interact_df), (names(iberian_interact_df), names(iberian_interact_df)))
+fill_diagonal!(iberian_interact_NA, 0.0)
 # serialize("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Networks\\DFs\\iberian_interact_NA.jls", iberian_interact_NA)
 ############ DESERIALIZING DATA ############################
 ############################################################
@@ -342,7 +343,7 @@ end
 # WITH LAMBDA
 # For MyStructs
 function Makie.convert_arguments(t::Type{<:Makie.Image}, A::AbstractArray{<:MyStructs256, 2}, lambda_grid::AbstractArray{<:AbstractFloat, 2})
-    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] * lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
+    richness = map((mystruct, lambda_value) -> count(i -> (mystruct.a[i] .* lambda_value) > body_mass_vector[i], 1:length(mystruct.a)), A, lambda_grid)
     return Makie.convert_arguments(t, richness)
 end
 # PLOT
@@ -640,6 +641,7 @@ npp_raster = deserialize("Objects\\npp_raster.jls")
 ####################################################################
 ####################################################################
 ####################################################################
+if true # I don't know why I did this but I think it messes things up
 # Load a DataFrame from a serialized file ('.jls' format).
 iberian_interact_df = deserialize("Objects\\iberian_interact_df.jls")
 iberian_interact_df = CSV.File("Objects1_9/iberian_interact_df.csv") |> DataFrame
@@ -654,6 +656,7 @@ iberian_interact_NA = NamedArray(
     ("Species", "Species")
 )
 iberian_interact_NA = iberian_interact_NA[spain_names, spain_names]
+end
 # iberian_interact_NA_herps = deepcopy(iberian_interact_NA)
 # iberian_interact_NA_birmmals = deepcopy(iberian_interact_NA)
 
