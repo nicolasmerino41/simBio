@@ -1,0 +1,170 @@
+---
+title: "Predator-Prey Analysis"
+author: "Nicolàs Merino"
+format: html
+---
+
+## Introduction
+
+This document analyzes predator-prey relationships using various visualizations. I process data on predators and prey, calculate metrics, and visualize key relationships.
+
+---
+
+## Loading data
+
+```{julia, warnings=false, echo = false}
+PC = "nicol"
+num_species = 256
+@time include("../HerpsVsBirmmals.jl")
+@time include("Daily_JULIA_code/kernels.jl")
+@time include("Daily_JULIA_code/One-click code.jl")
+@time include("Daily_JULIA_code/human_footprint.jl")
+@time include("Daily_JULIA_code/Implicit competition for herbivores.jl")
+predator_names = setdiff(spain_names, herbivore_names)
+```
+
+--- 
+
+## Predator-to-Prey Dictionary
+
+We construct a dictionary where each predator is associated with the prey species it eats.
+```{julia, warnings=false}
+using DataStructures
+
+# Create the predator-to-prey dictionary
+predator_prey_dict = OrderedDict{String, Vector{String}}()
+
+# Iterate over all species in `spain_names`
+for i in 1:length(spain_names)
+    if herb_carv_vector[i] == 1e-8
+        prey_indices = findall(x -> x == 1, iberian_interact_NA[i, :])
+        prey_names = spain_names[prey_indices]
+        predator_prey_dict[spain_names[i]] = prey_names
+    end
+end
+
+# Print the resulting dictionary
+# println(predator_prey_dict)
+```
+```{julia, warnings=false}
+# Create the predator-to-prey dictionary with counts
+predator_prey_count = OrderedDict{String, Tuple{Int, Int, Int}}()
+
+for i in 1:length(spain_names)
+    if herb_carv_vector[i] == 1e-8
+        total_prey = 0
+        herbivore_prey = 0
+        predator_prey = 0
+
+        for j in 1:length(spain_names)
+            if iberian_interact_NA[i, j] == 1
+                total_prey += 1
+                if herb_carv_vector[j] == 1.0
+                    herbivore_prey += 1
+                elseif herb_carv_vector[j] == 1e-8
+                    predator_prey += 1
+                end
+            end
+        end
+
+        predator_prey_count[spain_names[i]] = (total_prey, herbivore_prey, predator_prey)
+    end
+end
+
+# Print the resulting dictionary
+# println(predator_prey_count)
+```
+```{julia, warnings=false}
+# Extract data for plotting
+predators = collect(keys(predator_prey_count))
+total_prey = [predator_prey_count[p][1] for p in predators]
+herbivores_eaten = [predator_prey_count[p][2] for p in predators]
+predators_eaten = [predator_prey_count[p][3] for p in predators]
+
+begin
+    # Sort the predators by total prey eaten
+    sorted_indices = sortperm(total_prey, rev=true)
+    sorted_predators = predators[sorted_indices]
+    sorted_herbivores_eaten = herbivores_eaten[sorted_indices]
+    sorted_predators_eaten = predators_eaten[sorted_indices]
+
+    fig1 = Figure(resolution=(800, 400))
+    ax1 = Axis(fig1[1, 1], title="Prey Composition by Predator", xlabel="Predators", ylabel="Number of Prey")
+
+    # Stacked bars
+    bar_positions = 1:length(sorted_predators)
+    barplot!(ax1, bar_positions, sorted_herbivores_eaten, label="Herbivores Eaten", color=:blue)
+    barplot!(ax1, bar_positions, sorted_predators_eaten, offset=sorted_herbivores_eaten, label="Predators Eaten", color=:orange)
+
+    # ax1.xticks = (bar_positions, sorted_predators)
+    Legend(fig1[1, 2], ax1)
+    fig1
+end
+```
+```{julia, warnings=false}
+# Proportion of herbivores in the diet
+proportion_herbivores = [herbivores_eaten[i] / total_prey[i] for i in 1:length(predators)]
+
+begin
+    
+    fig2 = Figure(resolution=(800, 400))
+    ax2 = Axis(fig2[1, 1], title="Predator Diversity and Dominance",
+               xlabel="Total Prey Eaten", ylabel="Proportion of Herbivores in Diet")
+
+    # Scatterplot
+    scatter!(ax2, total_prey, proportion_herbivores, 
+             markersize=0.2 .* predators_eaten, color=:green, label="Predators")
+
+    fig2
+end
+```
+```{julia, warnings=false}
+cut = true
+begin 
+    fig3 = Figure(resolution=(800, 400))
+    ax3 = Axis(fig3[1, 1], title="Prey Availability per Predator", xlabel="Prey Species", ylabel="Predators")
+    names_herb_pred = vcat(herbivore_names, predator_names)
+    ibe = iberian_interact_NA[names_herb_pred, names_herb_pred]
+    if cut == true
+        ibe = ibe[156:256, :]
+    end
+    # Create heatmap with filtered matrix
+    heatmap!(ax3, ibe', colormap=:viridis, interpolate=false)
+        
+    fig3
+end
+```
+```{julia, warnings=false}
+# Compute overlap matrix
+overlap_matrix = [
+    length(intersect(predator_prey_dict[p1], predator_prey_dict[p2])) for p1 in predators, p2 in predators
+]
+
+# Plot predator overlap heatmap
+begin
+    fig4 = Figure(resolution=(800, 400))
+    ax4 = Axis(fig4[1, 1], title="Predator Overlap (Shared Prey Species)", xlabel="Predators", ylabel="Predators")
+    heatmap!(ax4, overlap_matrix, colormap=:blues, colorrange=(0, maximum(overlap_matrix)))
+
+    fig4
+end
+```
+```{julia, warnings=false}
+# Compute relative overlap matrix
+relative_overlap_matrix = [
+    length(intersect(predator_prey_dict[p1], predator_prey_dict[p2])) /
+    max(length(predator_prey_dict[p1]), length(predator_prey_dict[p2])) for p1 in predators, p2 in predators
+]
+
+# Plot relative predator overlap heatmap
+begin
+    fig4 = Figure(resolution=(800, 400))
+    ax4 = Axis(fig4[1, 1], title="Relative Predator Overlap (Shared Prey Species)", 
+               xlabel="Predators", ylabel="Predators")
+    
+    # Plot the relative overlap heatmap
+    heatmap!(ax4, relative_overlap_matrix, colormap=:blues, colorrange=(0, 1))
+
+    dispfig4
+end
+```
