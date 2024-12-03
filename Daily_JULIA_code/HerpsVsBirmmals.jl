@@ -10,12 +10,12 @@ using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization, StatsBase, JLD2
 using ColorSchemes, Colors #Crayons, 
 using Makie, WGLMakie # ImageMagick
-using OrdinaryDiffEq
-if end_true
-    using DifferentialEquations # EcologicalNetworksDynamics, 
-end
-using Plots
-const DG, MK, AG, RS, Disp, DF, PL = DynamicGrids, Makie, ArchGDAL, Rasters, Dispersal, DataFrames, Plots
+# using OrdinaryDiffEq
+# if end_true
+#     using DifferentialEquations # EcologicalNetworksDynamics, 
+# end
+# using Plots
+const DG, MK, AG, RS, Disp, DF = DynamicGrids, Makie, ArchGDAL, Rasters, Dispersal, DataFrames
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 ######################## COMPLEX RULES #############################
 ####################################################################
