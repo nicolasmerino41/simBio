@@ -159,11 +159,11 @@ relative_overlap_matrix = [
 # Plot relative predator overlap heatmap
 begin
     fig5 = Figure(resolution=(800, 400))
-    ax4 = Axis(fig4[1, 1], title="Relative Predator Overlap (Shared Prey Species)", 
+    ax5 = Axis(fig5[1, 1], title="Relative Predator Overlap (Shared Prey Species)", 
                xlabel="Predators", ylabel="Predators")
     
     # Plot the relative overlap heatmap
-    heatmap!(ax4, relative_overlap_matrix, colormap=:blues, colorrange=(0, 1))
+    heatmap!(ax5, relative_overlap_matrix, colormap=:blues, colorrange=(0, 1))
 
     display(fig5)
 end
