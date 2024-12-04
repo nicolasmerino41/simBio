@@ -43,7 +43,7 @@ The interaction matrix \( V \) represents the effects of species interactions on
 Assuming equal characteristic densities for all species:
 
 $$
-h_j = \frac{1}{S} \quad \text{and} \quad H_i^0 = \bar{H}
+h_j = \frac{1}{S} \quad \text{where} \quad H_i^0 \equiv \bar{H}
 $$
 
 - \( h_j \): Relative characteristic density of species \( j \)
@@ -91,7 +91,7 @@ $$
 Ensuring that the total resource allocation sums to 1:
 
 $$
-p_i = \frac{\hat{p}_i}{\sum_{k=1}^S \hat{p}_k}
+p_i = \frac{\hat{p}_i}{\sum \hat{p}_i}
 $$
 
 ### Growth Rate Definition
