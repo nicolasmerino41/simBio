@@ -1,0 +1,55 @@
+---
+title: "Spliting g_i"
+author: "Jeff & Nico"
+date: "December 2024"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    bookdown: true
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Main equation:
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left[ \left( \frac{g_i}{m_i} - 1 \right) - \frac{H_i + \sum \mu_{ij} H_j}{H_i^0} \right]
+$$
+
+### "Alone" case:
+$$
+H_i^* = \left[ \frac{g_i}{m_i} - 1 \right] H_i^0
+$$
+and approximately:
+$$
+H_i^* \approx \frac{g_i}{m_i} H_i^0
+$$
+
+### Definitions:
+$$
+\text{let: } p_i = \frac{g_i}{\sum g_j}, \quad G = \sum g_j
+$$
+
+$$
+\text{and: }V = (1 + \mu)^{-1} \quad \text{(for surviving species)}
+$$
+
+### Interaction equation:
+$$
+H_i \approx G \sum_j V_{ij} p_j \frac{H_j^0}{m_j}
+$$
+
+### Net Primary Production (NPP):
+$$
+\text{NPP} \approx G^2 \sum_{ij} p_i V_{ij} p_j \left[ \frac{H_j}{m_j} \right]
+$$

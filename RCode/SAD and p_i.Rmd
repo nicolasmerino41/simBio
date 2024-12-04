@@ -1,0 +1,295 @@
+---
+title: "SAD and p_i"
+author: "Jeff & Nico"
+date: "November 2024"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+---
+
+# Introduction
+
+In this document, we present a theoretical framework for modeling species dynamics in an ecosystem. The framework involves defining species abundance distributions, resource allocations, and interaction effects. The goal is to determine if all species can coexist given the specified parameters and constraints.
+
+# Theoretical Framework
+
+## Definitions
+
+### Species Abundance Distribution
+
+We consider a set of \( S \) species in an ecosystem. Each species \( i \) has a characteristic abundance \( \hat{H}_i \), which represents its relative abundance in the community.
+
+### Resource Allocation (\( p_i \))
+
+The proportion of resources (e.g., Net Primary Production, NPP) allocated to species \( i \) is denoted by \( p_i \). This allocation is derived from the species abundances and interactions.
+
+### Interaction Matrix (\( V \))
+
+The interaction matrix \( V \) represents the effects of species interactions on abundances. Each element \( V_{ij} \) quantifies the influence of species \( j \) on species \( i \).
+
+## Equations
+
+### Characteristic Density (\( h_j \))
+
+Assuming equal characteristic densities for all species:
+
+$$
+h_j = \frac{1}{S} \quad \text{and} \quad H_i^0 = \bar{H}
+$$
+
+- \( h_j \): Relative characteristic density of species \( j \)
+- \( H_i^0 \): Characteristic density (set to the mean \( \bar{H} \))
+
+### Approximation for \( \hat{H}_i \)
+
+The approximate abundance for species \( i \) considering interactions:
+
+$$
+\hat{H}_i \approx \sum_{j=1}^S V_{ij} p_j
+$$
+
+### Relationship in Matrix Form
+
+Expressing the relationship between \( \hat{H} \) and \( p \):
+
+$$
+\hat{H} = V p
+$$
+
+- \( \hat{H} \): Vector of species abundances \( \hat{H}_i \)
+- \( p \): Vector of resource allocations \( p_i \)
+
+### Inversion to Find \( p \)
+
+Solving for \( p \) using the inverse of \( V \):
+
+$$
+p = V^{-1} \hat{H}
+$$
+
+### Definition of \( \hat{p}_i \)
+
+Including interaction effects to compute \( \hat{p}_i \):
+
+$$
+\hat{p}_i = \hat{H}_i + \sum_{j=1}^S \mu_{ij} \hat{H}_j
+$$
+
+- \( \mu_{ij} \): Interaction coefficient between species \( i \) and \( j \)
+
+### Normalization of \( p_i \)
+
+Ensuring that the total resource allocation sums to 1:
+
+$$
+p_i = \frac{\hat{p}_i}{\sum_{k=1}^S \hat{p}_k}
+$$
+
+### Growth Rate Definition
+
+The growth rate of species \( i \) is related to its mortality rate \( m_i \):
+
+$$
+\frac{g_i}{m_i} = r_i
+$$
+
+- \( r_i \): Dimensionless growth rate ratio
+
+### Persistence Condition
+
+For species \( i \) to persist in the ecosystem:
+
+$$
+r_i > 1
+$$
+
+### Relationship Between \( r_i \) and \( p_i \)
+
+Assuming a proportional relationship:
+
+$$
+r_i = x p_i
+$$
+
+- \( x \): Scaling factor for growth rates
+
+### Definition of \( x \)
+
+Since \( \sum_{i=1}^S p_i = 1 \):
+
+$$
+x = \sum_{i=1}^S r_i = x \sum_{i=1}^S p_i = x \cdot 1 = x
+$$
+
+### Growth Rate in Terms of \( p_i \)
+
+Expressing \( g_i \) using \( x \) and \( p_i \):
+
+$$
+g_i = x m_i p_i
+$$
+
+### Scaling Definitions
+
+Defining mortality rates and characteristic densities:
+
+$$
+m_i = S \bar{M} q_i \quad \text{(units: [1/time])}
+$$
+
+$$
+H_i^0 = S \bar{H} h_i \quad \text{(units: [mass])}
+$$
+
+- \( \bar{M} \): Mean mortality rate
+- \( q_i \): Relative mortality rate for species \( i \)
+- \( \bar{H} \): Mean characteristic density
+- \( h_i \): Relative characteristic density for species \( i \)
+
+### Alone Case Approximation
+
+In the absence of interactions:
+
+$$
+H_i^* \approx r_i H_i^0
+$$
+
+### Normalization Conditions
+
+Ensuring that proportions sum to 1:
+
+$$
+\sum_{i=1}^S p_i = 1, \quad p_i > \frac{1}{x}
+$$
+
+$$
+\sum_{i=1}^S h_i = 1, \quad h_i > 0
+$$
+
+$$
+\sum_{i=1}^S q_i = 1, \quad q_i > 0
+$$
+
+### Interaction Equation for \( H_i \)
+
+Accounting for interactions in species abundance:
+
+$$
+H_i = H \sum_{j=1}^S V_{ij} h_j \left( x p_j - 1 \right) \approx x H \sum_{j=1}^S h_j V_{ij} p_j
+$$
+
+- \( H \): Total abundance in the ecosystem
+
+### Net Primary Production (NPP)
+
+Expressing NPP in terms of species parameters:
+
+$$
+\text{NPP} = \sum_{i=1}^S g_i H_i = \sum_{i=1}^S x m_i p_i H_i
+$$
+
+# Plan for Implementing the Framework
+
+## Step 1: Setting Up Parameters
+
+- **Number of Species (\( S \))**: Choose a suitable number for the simulation (e.g., \( S = 5 \)).
+- **Mean Mortality Rate (\( \bar{M} \))**: Assign a positive value representing the average mortality rate across species.
+- **Mean Characteristic Density (\( \bar{H} \))**: Assign a positive value representing the average characteristic density.
+- **Net Primary Production (NPP)**: Set a specific value for the total NPP in the ecosystem.
+
+### Relative Rates and Densities
+
+- **Relative Mortality Rates (\( q_i \))**: Assume equal values for simplicity (\( q_i = \frac{1}{S} \)).
+- **Relative Characteristic Densities (\( h_i \))**: Assume equal values (\( h_i = \frac{1}{S} \)).
+
+### Calculating Mortality and Density
+
+- **Mortality Rates (\( m_i \))**:
+
+  $$
+  m_i = S \bar{M} q_i
+  $$
+
+- **Characteristic Densities (\( H_i^0 \))**:
+
+  $$
+  H_i^0 = S \bar{H} h_i
+  $$
+
+## Step 2: Defining the Interaction Matrix (\( V \))
+
+- **Interaction Strength (\( \mu \))**: Choose a value representing the average interaction effect between species.
+- **Interaction Matrix (\( V \))**:
+
+  - \( V_{ii} = 1 \): Self-interaction terms.
+  - \( V_{ij} = (1 + \mu)^{-1} \): Interaction between different species.
+
+## Step 3: Computing \( \hat{H}_i \) and \( p_i \)
+
+- **Initial Guess for \( \hat{H} \)**: Start with an initial estimate (e.g., \( \hat{H}_i = 1 \) for all \( i \)).
+- **Computing \( \hat{p} \)**:
+
+  $$
+  \hat{p}_i = \hat{H}_i + \sum_{j=1}^S \mu_{ij} \hat{H}_j
+  $$
+
+- **Normalizing \( p_i \)**:
+
+  $$
+  p_i = \frac{\hat{p}_i}{\sum_{k=1}^S \hat{p}_k}
+  $$
+
+## Step 4: Calculating \( r_i \) and \( g_i \)
+
+- **Scaling Factor (\( x \))**: Initially unknown, to be determined to satisfy the NPP constraint.
+- **Dimensionless Growth Rates (\( r_i \))**:
+
+  $$
+  r_i = x p_i
+  $$
+
+- **Growth Rates (\( g_i \))**:
+
+  $$
+  g_i = x m_i p_i
+  $$
+
+## Step 5: Adjusting \( x \) to Match NPP
+
+- **NPP Function**: Define a function that computes NPP given \( x \):
+
+  $$
+  \text{NPP}(x) = \sum_{i=1}^S g_i H_i = \sum_{i=1}^S x m_i p_i H_i
+  $$
+
+- **Objective**: Find \( x \) such that \( \text{NPP}(x) \) equals the specified NPP.
+- **Method**: Use a root-finding algorithm to solve \( \text{NPP}(x) - \text{NPP}_\text{given} = 0 \).
+
+## Step 6: Running the Dynamics
+
+- **Species Initialization**: With the computed parameters (\( g_i \), \( m_i \), \( H_i^0 \)), set up the initial conditions for each species.
+- **Differential Equations**: Define the dynamics of species abundances over time:
+
+  $$
+  \frac{dH_i}{dt} = H_i m_i \left( \frac{g_i}{m_i} - 1 - \frac{H_i + \sum_{j=1}^S \mu_{ij} H_j}{H_i^0} \right)
+  $$
+
+- **Simulation**: Run the model over a specified time span to observe the dynamics.
+- **Analysis**: Examine if all species survive and reach equilibrium.
+
+# Conclusion
+
+This framework provides a systematic approach to modeling species dynamics in an ecosystem by linking resource allocation, species interactions, and growth rates. By adjusting the scaling factor \( x \) to satisfy the NPP constraint, we ensure that the energy flow in the system is balanced. Running the dynamics allows us to study the conditions under which species coexist and how interactions influence community structure.
+
+---
+
+**Note**: This document outlines the theoretical foundation and the plan for implementing the framework. Actual numerical simulations and code implementation are necessary to explore specific scenarios and obtain quantitative results.
