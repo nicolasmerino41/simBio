@@ -45,7 +45,7 @@ end
 
 
 begin
-    fig = Figure(resolution = (1000, 500))
+    fig = Figure(resolution = (500,300))
 
     ax = Axis(fig[1, 1])
     ax2 = Axis(fig[1, 2])
@@ -88,7 +88,7 @@ for i in 1:length(spain_names)
 end
 
 # Print the ordered dictionary
-println(predator_prey_dict)
+# println(predator_prey_dict)
 
 ################## PREDATOR NUMBER OF PREY ############################
 # Create the predator-to-prey dictionary with counts of total prey, herbivores, and predators
@@ -121,4 +121,4 @@ for i in 1:length(spain_names)
 end
 
 # Print the resulting dictionary
-println(predator_prey_count)
+# println(predator_prey_count)
