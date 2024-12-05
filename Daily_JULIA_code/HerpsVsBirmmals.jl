@@ -9,7 +9,7 @@ using Rasters, RasterDataSources #, DimensionalData
 using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization, StatsBase, JLD2
 using ColorSchemes, Colors #Crayons, 
-using Makie, WGLMakie # ImageMagick
+using Makie, CairoMakie # ImageMagick
 # using OrdinaryDiffEq
 # if end_true
 #     using DifferentialEquations # EcologicalNetworksDynamics, 
