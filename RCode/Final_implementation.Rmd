@@ -1,0 +1,245 @@
+---
+title: "Final implementation"
+author: "Jeff & Nico"
+date: "December 2024"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\newpage
+# \(p_i\), SAD and \(x\)
+
+## Introduction
+
+In this part, we aim to generalize the model by allowing species-specific values for mortality rates \( m_i \) and characteristic densities \( H_i^0 \) instead of assuming they are constants across all species. The goal is to derive the resource allocation proportions \( p_i \) based on a given species abundance distribution (SAD), leading to an expression for the scaling parameter \( x \) that ensures that NPP is conserved.
+
+
+## Explanation
+
+### Condition
+
+\[
+\text{If} \quad H_i^0 = S \bar{H} h_i, \quad m_i = S \bar{M} q_i
+\]
+
+- \( H_i^0 \) is the characteristic density of species \( i \).
+- \( m_i \) is the mortality rate of species \( i \).
+- \( S \) is the total number of species in the community.
+- \( \bar{H} \) is the mean characteristic density across all species.
+- \( \bar{M} \) is the mean mortality rate across all species.
+- \( h_i \) and \( q_i \) are dimensionless scaling factors for species \( i \), normalized such that:
+\[
+\sum_i h_i = 1, \quad h_i > 0; \quad \sum_i q_i = 1, \quad q_i > 0
+\]
+
+By expressing \( H_i^0 \) and \( m_i \) in terms of \( h_i \) and \( q_i \), we allow for species-specific variations while maintaining the overall scaling with \( S \), \( \bar{H} \), and \( \bar{M} \).
+
+### Definition of \( \hat{p}_i \)
+
+\[
+\hat{p}_i h_i = \hat{H}_i + \sum_j \mu_{ij} \hat{H}_j
+\]
+    
+\[
+\hat{p}_i = \frac{\hat{H}_i + \sum_j \mu_{ij} \hat{H}_j}{h_i}
+\]
+
+Explanation:
+
+- \( \hat{H}_i \) is the initial (or estimated) abundance of species \( i \).
+- \( \mu_{ij} \) represents the interaction coefficient between species \( i \) and \( j \).
+- \( \hat{p}_i \) is an intermediate variable proportional to the resource allocation \( p_i \), adjusted by \( h_i \).
+- The right-hand side accounts for the species' own abundance (\( \hat{H}_i \)) and the cumulative effects of interactions with other species (\( \sum_j \mu_{ij} \hat{H}_j \)).
+
+### Normalizing to Obtain \( p_i \)
+
+\[
+p_i = \frac{\hat{p}_i}{\sum_j \hat{p}_j}
+\]
+
+Explanation:
+
+- We normalize \( \hat{p}_i \) so that the sum of all \( p_i \) equals 1:
+
+\[
+\sum_i p_i = 1
+\]
+
+- This ensures that \( p_i \) represents the proportion of total resources allocated to species \( i \).
+
+
+### Approximation for \( H_i \)
+
+\[
+H_i \approx \sum_j V_{ij} h_j p_j S \bar{H} x
+\]
+
+- \( V_{ij} \) is the element of the interaction matrix \( V \) between species \( i \) and \( j \).
+-  \( x \) is a scaling parameter to be determined.
+
+### Definitions for \( g_i H_i \) and \( \dfrac{g_i}{m_i} \)
+
+\[
+g_i H_i = x p_i q_i S \bar{M} H_i, \quad \frac{g_i}{m_i} = x p_i
+\]
+
+### Net Primary Production (NPP)
+
+\[
+\text{NPP} \approx \sum_i g_i H_i \approx x^2 \bar{H} \bar{M} \sum_{i,j} p_i \left( S q_i V_{ij} S h_j \right) p_j
+\]
+
+### Interaction Term \( \tilde{V}_{ij} \)
+
+\[
+\tilde{V}_{ij} = S q_i V_{ij} S h_j
+\]
+
+### Scaling Parameter \( x \)
+
+\[
+x = \sqrt{ \dfrac{\text{NPP}}{ \bar{H} \bar{M} } \cdot \frac{1}{ \langle p | \tilde{V} p \rangle }}
+\]
+
+Explanation:
+
+- \( \langle p | \tilde{V} p \rangle \) denotes the inner product of the vector \( p \) with \( \tilde{V} p \):
+\[
+\langle p | \tilde{V} p \rangle = \sum_{i,j} p_i \tilde{V}_{ij} p_j
+\]
+- The expression for \( x \) ensures that the calculated NPP matches the given NPP, conserving energy in the system.
+ 
+\newpage
+
+# Inclusion of Predators
+## Apparent Competition
+
+### Introduction
+
+In this section, we extend the model by incorporating predators and exploring how they induce apparent competition among herbivore species. We derive the modified equations for herbivore dynamics in the presence of predators and define the implications on interaction coefficients and growth rates.
+
+### Herbivore Dynamics with Predation
+
+The differential equation governing the dynamics of herbivore species \( i \) is modified to include predation effects:
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i}{m_i} - 1 \right] - \frac{H_i + \sum_j \mu_{ij} H_j}{H_i^0} \right) - \sum_{\alpha} a_{i\alpha} P_\alpha
+$$
+
+Where:
+
+\begin{itemize}
+    \item \( a_{i\alpha} \): Predation rate coefficient of predator \( \alpha \) on herbivore \( i \).
+    \item \( P_\alpha \): Abundance of predator species \( \alpha \).
+\end{itemize}
+
+### Predator Dynamics
+
+Predator species \( \alpha \) equation is:
+
+$$
+\frac{1}{P_\alpha} \frac{dP_\alpha}{dt} = \epsilon \sum_j a_{j\alpha} H_j - m_\alpha + \sum_{\beta} A_{\alpha\beta} P_\beta
+$$
+
+Where:
+
+\begin{itemize}
+    \item \( \epsilon \): Assimilation efficiency (fraction of consumed biomass converted into predator biomass).
+    \item \( m_\alpha \): Mortality rate of predator \( \alpha \).
+    \item \( A_{\alpha\beta} \): Interaction coefficient between predator \( \alpha \) and \( \beta \) (e.g., trophic interactions).
+\end{itemize}
+
+### Predator Abundance at Equilibrium
+
+Assuming that all predator populations reach equilibrium, we solve for \( P_\alpha \):
+
+$$
+0 = \epsilon \sum_{j} a_{j\alpha} H_j - m_\alpha + \sum_{\beta} A_{\alpha\beta} P_\beta
+$$
+
+Rewriting:
+
+$$
+P_\alpha = \sum_{\beta} {A^{-1}_{\alpha\beta} \left(\epsilon \sum_j a_{j\beta}H_j - m_\beta\right)}
+$$
+
+### Total Predation Effect on Herbivores
+
+The total predation mortality on herbivore species \( i \) is:
+
+$$
+\sum_{\alpha} a_{i\alpha} P_\alpha = \sum_j \left( \sum_{\alpha,\beta}\epsilon a_{i\alpha} A^{-1}_{\alpha\beta}a_{j\beta} \right)H_j - \sum_\beta a_{i\beta}A^{-1}_{\alpha\beta}m_\beta
+$$
+
+
+Define:
+
+$$
+C_{ij} = \sum_{\alpha,\beta}\epsilon a_{i\alpha} A^{-1}_{\alpha\beta}a_{j\beta}
+$$
+$$
+G_i = \sum_\beta a_{i\beta}A^{-1}_{\alpha\beta}m_\beta
+$$
+
+Therefore:
+
+$$
+\sum_{\alpha} a_{i\alpha} P_\alpha = \sum_j C_{ij} H_j - G_i
+$$
+
+Explanation:
+
+\begin{itemize}
+    \item \( C_{ij} \) quantifies the indirect effect of herbivore \( j \) on herbivore \( i \) through shared predators (apparent competition).
+    \item \( G_i \) represents the effect of predator mortality on herbivore \( i \).
+\end{itemize}
+
+### Modified Herbivore Dynamics
+
+Substituting the total predation effect back into the herbivore equation:
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i}{m_i} - 1 \right] - \frac{H_i + \sum_j \mu_{ij} H_j}{H_i^0} \right) + G_i - \sum_j C_{ij} H_j
+$$
+
+Simplify:
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i + G_i}{m_i} - 1 \right] - \frac{H_i + \sum_j \left( \mu_{ij} + \dfrac{C_{ij} H_i^0}{m_i} \right) H_j }{H_i^0} \right)
+$$
+
+**Interpretation:**
+
+- Adjusted Growth Rate:
+
+$$
+\dfrac{g_i}{m_i} \rightarrow \dfrac{g_i + G_i}{m_i}
+$$
+
+The term \( G_i \) adjusts the intrinsic growth rate due to predator mortality effects.
+
+- Effective Interaction Coefficient:
+
+$$
+\mu_{ij} \rightarrow \mu_{ij} + \dfrac{C_{ij} H_i^0}{m_i}
+$$
+
+Predation introduces an additional term to the interaction coefficient, representing apparent competition.
+
+
+
