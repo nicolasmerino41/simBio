@@ -1,43 +1,30 @@
 using LinearAlgebra
 using DifferentialEquations
-using CairoMakie 
-using Roots
+using CairoMakie  # For plotting
 using Distributions
 
 begin
     
     # Parameters to be decided
-    S = 5  # Number of species
-    bar_M = 0.1  # Mean mortality rate
-    bar_H = 100.0  # Mean characteristic density
+    legend = false
+    S = 9  # Number of species
+    M = 0.1  # Common mortality rate (M)
+    H = 100.0  # Common characteristic density (H)
     NPP = 1000.0  # Net Primary Production
-    mu = 0.5  # Average interaction strength
+    mu = 0.0  # Average interaction strength
+    ext_thr = 1.0
+    final_time = 1000
 
     # Asymmetry parameters (between 0 and 1)
-    asymmetry_qi_hi = 1.0  # Asymmetry for q_i and h_i (0: random, 1: uniform)
-    asymmetry_competition = 0.5  # Asymmetry for competition coefficients
-    exponent_abundance = 1.0  # Exponent for species abundance distribution (power law)
+    asymmetry_qi_hi = 0.0  # Asymmetry for q_i and h_i (not used since m_i and H_i^0 are constants)
+    asymmetry_competition = 1.0  # Asymmetry for competition coefficients
+    exponent_abundance = 0.0  # (0 = even, 1 = strong power law) Exponent for species abundance distribution (power law)
 
-    # Step 1: Generate q_i and h_i with asymmetry
-    function generate_qi_hi(S, asymmetry)
-        if asymmetry == 1.0
-            qi = fill(1.0 / S, S)
-            hi = fill(1.0 / S, S)
-        else
-            alpha = asymmetry * 10.0  # Scale alpha to control concentration
-            if asymmetry == 0.0
-                alpha = 0.1  # Small value to allow variability
-            end
-            dirichlet_dist = Dirichlet(alpha * ones(S))
-            qi = rand(dirichlet_dist)
-            hi = rand(dirichlet_dist)
-        end
-        return qi, hi
-    end
+    # Since m_i and H_i^0 are constants, we set:
+    m_i = fill(M, S)
+    H_i0 = fill(H, S)
 
-    q_i, h_i = generate_qi_hi(S, asymmetry_qi_hi)
-    
-    # Step 2: Generate species abundance distribution hat_H_i
+    # Step 1: Generate p_i using species abundance distribution hat_H_i
     function generate_hat_Hi(S, exponent)
         ranks = collect(1:S)
         abundances = ranks .^ (-exponent)
@@ -47,11 +34,13 @@ begin
 
     hat_H = generate_hat_Hi(S, exponent_abundance)
 
-    # Step 3: Compute m_i and H_i0
-    m_i = S * bar_M * q_i
-    H_i0 = S * bar_H * h_i
+    # Compute hat_p_i
+    function compute_hat_p_i(hat_H, mu_matrix)
+        hat_p = hat_H + mu_matrix * hat_H
+        return hat_p
+    end
 
-    # Step 4: Generate competition matrix V with asymmetry
+    # Step 2: Generate competition matrix V with asymmetry
     function generate_competition_matrix(S, mu, asymmetry)
         # Symmetric competition matrix
         V_symmetric = ones(S, S)
@@ -95,7 +84,7 @@ begin
 
     V = generate_competition_matrix(S, mu, asymmetry_competition)
 
-    # Step 5: Compute hat_p_i
+    # Since V = (I + μ)^{-1}, we can compute μ_matrix accordingly
     mu_matrix = zeros(S, S)
     for i in 1:S
         for j in 1:S
@@ -107,51 +96,27 @@ begin
         end
     end
 
-    hat_p = hat_H + mu_matrix * hat_H
+    # Compute hat_p_i
+    hat_p = compute_hat_p_i(hat_H, mu_matrix)
 
     # Normalize p_i
     p_i = hat_p / sum(hat_p)
 
-    # # Step 6: Define a function to compute NPP given x
-    # function compute_NPP(x)
-    #     # Compute r_i and g_i
-    #     r_i = x * p_i
-    #     g_i = x * m_i .* p_i
+    # Compute ⟨p | V p⟩
+    Vp = V * p_i
+    inner_product = dot(p_i, Vp)
 
-    #     # Compute H_i
-    #     H_i = x * sum(H_i0) * (V * (h_i .* p_i))
+    # Compute x using the analytical expression
+    x = sqrt(NPP / (M * H * inner_product))
 
-    #     # Compute NPP
-    #     NPP_computed = sum(g_i .* H_i)
+    println("Computed x: ", x)
 
-    #     return NPP_computed
-    # end
-
-    # # Function to compute residual between computed NPP and given NPP
-    # function NPP_residual(x)
-    #     return compute_NPP(x) - NPP
-    # end
-
-    # NEW
-    x = r_i = x * p_i
-    g_i = x * m_i .* p_i
-    f = 
-    x = sqrt((NPP/(bar_M*bar_H))* 1/f)
-    
-    
-    # Find x that makes NPP_residual(x) = 0
-    x_initial = 1.0
-    x_solution = find_zero(NPP_residual, x_initial, method=Roots.Brent())
-
-    println("Found x: ", x_solution)
-
-    # Step 7: Compute final parameters
-    x = x_solution
+    # Compute r_i and g_i
     r_i = x * p_i
-    g_i = x * m_i .* p_i
+    g_i = x * M .* p_i
 
     # Compute H_i
-    H_i = x * sum(H_i0) * (V * (h_i .* p_i))
+    H_i = x * H * (V * p_i)
 
     # Set up Species struct
     mutable struct Species
@@ -163,25 +128,26 @@ begin
         g::Float64        # Growth rate (g_i)
         p::Float64        # Proportion of resources allocated to species i (p_i)
     end
-    # Outer constructor to accept keyword arguments
-    Species(; id::Int, name::String, m::Float64, H0::Float64, H_init::Float64, g::Float64=0.0, p::Float64=0.0) = 
-        Species(id, name, m, H0, H_init, g, p)
+
+    # Constructor for Species
+    Species(; id, name, m, H0, H_init, g, p) = Species(id, name, m, H0, H_init, g, p)
+
     # Create species list
     species_list = Species[]
     for i in 1:S
         sp = Species(
             id = i,
             name = "Species $i",
-            m = m_i[i],
-            H0 = H_i0[i],
-            H_init = 100.0,
+            m = M,
+            H0 = H,
+            H_init = 100.0, # H_i[i],
             g = g_i[i],
             p = p_i[i]
         )
         push!(species_list, sp)
     end
 
-    # Step 8: Define the ecosystem dynamics function
+    # Step 3: Define the ecosystem dynamics function
     function ecosystem_dynamics!(du, u, p, t)
         species_list, V = p
         S = length(species_list)
@@ -207,11 +173,24 @@ begin
         end
     end
 
+    # Define extinction callbacks and positive domain
+    callbacks = []
+    push!(callbacks, PositiveDomain())
+    # For herbivores
+    for i in 1:length(species_list)
+        condition(u, t, integrator) = u[i] - ext_thr
+        affect!(integrator) = integrator.u[i] = 0.0
+        push!(callbacks, ContinuousCallback(condition, affect!))
+    end
+
+    # Combine all callbacks
+    cb = CallbackSet(callbacks...)
+
     # Initial abundances
     u0 = [sp.H_init for sp in species_list]
 
     # Time span for the simulation
-    tspan = (0.0, 100.0)
+    tspan = (0.0, final_time)
 
     # Parameters for the ODEProblem
     p = (species_list, V)
@@ -219,23 +198,28 @@ begin
     # Define the ODE problem
     prob = ODEProblem(ecosystem_dynamics!, u0, tspan, p)
 
-    # Solve the ODE
-    sol = solve(prob, Tsit5(); reltol=1e-6, abstol=1e-6)
+    # Solve the ODE with callbacks
+    sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
 
     # Extract times and solutions
     times = sol.t
     u_array = hcat(sol.u...)  # Each column is the state at a time point
-
+    surviving_species = length(findall(u_array[:, end] .> 0.0))
+    println(surviving_species, " / ", S, " species survived.")
+    
     # Plot the abundances over time
-    fig = Figure()
+    fig = Figure(; size = (500, 400))
     ax = Axis(fig[1, 1], xlabel = "Time", ylabel = "Abundance", title = "Species Abundances")
 
     # Plot each species
     for i in 1:S
         lines!(ax, times, u_array[i, :], label = species_list[i].name)
     end
-
-    axislegend(ax)
+    lines!(ax, times, fill(0.0, length(times)), color = :red, linewidth = 0.5)
+    if legend
+        axislegend(ax)
+    end
 
     display(fig)
 end
+
