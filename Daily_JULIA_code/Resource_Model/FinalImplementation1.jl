@@ -259,7 +259,7 @@ end
 #
 #############################
 V_inv = inv(V)
-mu_matrix = V_inv .- I
+mu_matrix = V_inv - I
 
 #############################
 # 8. Modified interaction due to predators:
