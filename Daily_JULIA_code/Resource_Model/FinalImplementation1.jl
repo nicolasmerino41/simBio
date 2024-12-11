@@ -1,12 +1,14 @@
 using Statistics, Distributions, LinearAlgebra
-
+using DifferentialEquations, DiffEqCallbacks
+using CairoMakie
 #############################
 # Parameters
 #############################
+begin
 S = 5   # Number of herbivore species
-R = 3   # Number of predator species
+R = 2   # Number of predator species
 
-exponent_abundance = 0.5  # exponent for SAD (power law)
+exponent_abundance = 0.0  # exponent for SAD (power law)
 H0_mean = 100.0
 M_mean = 0.1
 H0_sd = H0_mean/10
@@ -17,15 +19,15 @@ NPP = 1000.0
 # We will compute bar(H) and bar(M) as the averages of H_i^0 and m_i after we draw them.
 
 # Interaction strengths
-mu = 0.1                 # average herbivore-herbivore interaction strength
-mu_pred = -0.05           # average predator-predator interaction strength (negative for stable)
-mu_predation = 0.001      # average herbivore-predator interaction strength
-asymmetry_competition = 0.8
+mu = 0.0                 # average herbivore-herbivore interaction strength
+mu_pred = 0.01          # average predator-predator interaction strength (negative for stable)
+mu_predation = 0.1      # average herbivore-predator interaction strength
+asymmetry_competition = 1.0
 asymmetry_predators = 0.7
-asymmetry_predation = 0.5
-epsilon = 0.1             # assimilation efficiency of predators
+asymmetry_predation = 1.0
+epsilon = 0.01 # assimilation efficiency of predators
 
-connectivity_hp = 0.7     # Herbivore-Predator connectivity
+connectivity_hp = 1.0    # Herbivore-Predator connectivity
 connectivity_pp = 0.4     # Predator-Predator connectivity
 
 #############################
@@ -75,7 +77,7 @@ function generate_competition_matrix(S, mu, asymmetry)
         if i == j
             V_symmetric[i, j] = 1.0
         else
-            V_symmetric[i, j] = 1/(1+mu)
+            V_symmetric[i, j] = mu #originally it was 1/(1+mu)
         end
     end
 
@@ -169,40 +171,29 @@ A = generate_interaction_matrix_pred(R, mu_pred, asymmetry_predators, connectivi
 #    We'll create a SxR matrix with connectivity_hp chance of feeding link.
 #    Mean interaction = mu_predation
 #############################
-function generate_predation_matrix(S, R, mu_predation, asymmetry, connectivity)
-    # Similar approach: we want diagonal doesn't matter here, just off-diag meaning i-th herb feeds predator α
-    # Actually, there's no diagonal concept here since it's SxR.
-    # We'll create a baseline with mean mu_predation and random variation.
+function generate_predator_herbivore_matrix(rows::Int, cols::Int, connectivity::Float64, mu::Float64, asymmetry::Float64)
+    @assert 0.0 ≤ connectivity ≤ 1.0 "connectivity must be between 0 and 1"
+    @assert 0.0 ≤ asymmetry ≤ 1.0 "asymmetry must be between 0 and 1"
+    @assert mu ≥ 0 "mu should be non-negative for this setup"
 
-    # Baseline: everything = mu_predation
-    A_symmetric = fill(mu_predation, S, R)
-
-    A_random = Matrix{Float64}(undef, S, R)
-    for i in 1:S, α in 1:R
-        if rand() < connectivity
-            A_random[i, α] = rand() # random 0 to 1
-        else
-            A_random[i, α] = 0.0
-        end
-    end
-
-    # Scale A_random off elements to have mean = mu_predation
-    vals = [A_random[i, α] for i in 1:S, α in 1:R if A_random[i, α] != 0.0]
-    if !isempty(vals)
-        current_mean = mean(vals)
-        if current_mean != 0.0
-            scaling_factor = mu_predation / current_mean
-            for i in 1:S, α in 1:R
-                A_random[i, α] *= scaling_factor
+    mat = zeros(rows, cols)
+    dist = Uniform(0, 2*mu)  # distribution with mean mu
+    for i in 1:rows
+        for j in 1:cols
+            if rand() < connectivity
+                # Realize this interaction
+                # If asymmetry=1, value=mu. If 0, value~Uniform(0,2*mu).
+                # Otherwise a combination:
+                random_part = rand(dist) # mean mu
+                value = asymmetry*mu + (1-asymmetry)*random_part
+                mat[i, j] = value
             end
         end
     end
-
-    a_matrix = asymmetry * A_symmetric .+ (1.0 - asymmetry)*A_random
-    return a_matrix
+    return mat
 end
 
-a_matrix = generate_predation_matrix(S, R, mu_predation, asymmetry_predation, connectivity_hp)
+a_matrix = generate_predator_herbivore_matrix(S, R, connectivity_hp, mu_predation, asymmetry_predation)
 
 #############################
 # 6. Compute C_ij and G_i from doc:
@@ -367,9 +358,144 @@ g_i = [x_final * p[i] * m_i[i] for i in 1:S]
 #############################
 # Print results
 #############################
-println("p: ", p)
-println("Sum p: ", sum(p))
-println("x: ", x_final)
-println("g_i: ", g_i)
-println("G_i: ", G)
-println("C_ij: ", C)
+# println("p: ", p)
+# println("Sum p: ", sum(p))
+# println("x: ", x_final)
+# println("g_i: ", g_i)
+# println("G_i: ", G)
+println("g_i/m_i: ", g_i./m_i)
+println("g_i/m_i: ", (g_i.+G)./m_i)
+# println("C_ij: ", C)
+
+# Initial conditions (example):
+H_init = [H_i0[i] for i in 1:S] # start at characteristic density
+P_init = fill(10.0, R)          # initial predator densities
+u0 = vcat(H_init, P_init)
+
+# Time span
+tspan = (0.0, 500.0)
+
+# Extinction threshold
+EXTINCTION_THRESHOLD = 1e-6
+
+#############################
+# Define the ODE system
+#############################
+function ecosystem_dynamics!(du, u, p, t)
+    # p holds all parameters, we destructure them:
+    S, R, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = p
+
+    H = @view u[1:S]
+    P = @view u[S+1:S+R]
+
+    duH = zeros(S)
+    duP = zeros(R)
+
+    # Herbivore dynamics
+    # dH_i/dt = H_i m_i [ ((g_i+G_i)/m_i -1 ) - (H_i + Σ_j M_ij H_j)/H_i^0 ]
+    for i in 1:S
+        if H[i] > 0.0
+            m_ii = m_i[i]
+            numerator = (g_i[i] + G[i])/m_ii - 1.0
+            interaction_sum = H[i]
+            for j in 1:S
+                interaction_sum += M_modified[i,j]*H[j]
+            end
+            duH[i] = H[i]*m_ii*(numerator - interaction_sum/H_i0[i])
+        else
+            duH[i] = 0.0
+        end
+    end
+
+    # Predator dynamics
+    # dP_α/dt = P_α [ ε Σ_j a_{jα} H_j - m_α + Σ_β A_{αβ} P_β ]
+    # Compute predation terms
+    for α in 1:R
+        if P[α] > 0.0
+            predation_sum = 0.0
+            for j in 1:S
+                predation_sum += a_matrix[j, α]*H[j]
+            end
+            predator_interactions = 0.0
+            for β in 1:R
+                predator_interactions += A[α, β]*P[β]
+            end
+            duP[α] = P[α]*(epsilon*predation_sum - m_alpha[α] + predator_interactions)
+        else
+            duP[α] = 0.0
+        end
+    end
+
+    du[1:S] = duH
+    du[S+1:S+R] = duP
+end
+
+#############################
+# Set up ODE problem
+#############################
+params = (S, R, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha)
+prob = ODEProblem(ecosystem_dynamics!, u0, tspan, params)
+
+#############################
+# Define callbacks for extinction and positivity
+#############################
+callbacks = []
+push!(callbacks, PositiveDomain())
+
+# Herbivores extinction callback
+for i in 1:S
+    condition(u, t, integrator) = u[i] - EXTINCTION_THRESHOLD
+    affect!(integrator) = (integrator.u[i] = 0.0)
+    push!(callbacks, ContinuousCallback(condition, affect!))
+end
+
+# Predators extinction callback
+offset = S
+for α in 1:R
+    idx = offset + α
+    condition(u, t, integrator) = u[idx] - EXTINCTION_THRESHOLD
+    affect!(integrator) = (integrator.u[idx] = 0.0)
+    push!(callbacks, ContinuousCallback(condition, affect!))
+end
+
+cb = CallbackSet(callbacks...)
+
+#############################
+# Solve the system
+#############################
+sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
+
+#############################
+# Extract and plot results
+#############################
+times = sol.t
+H_data = sol[1:S, :]
+P_data = sol[S+1:S+R, :]
+
+fig = Figure(resolution=(600,400))
+ax = Axis(fig[1,1], xlabel="Time", ylabel="Density", title="Dynamics")
+for i in 1:S
+    lines!(ax, times, H_data[i, :], label="H$i")
+end
+for α in 1:R
+    lines!(ax, times, P_data[α, :], label="P$α", linestyle=:dash)
+end
+axislegend(ax, position=:rt)
+display(fig)
+
+#############################
+# Summary statistics
+#############################
+herb_survivors = count(H_data[:, end] .> EXTINCTION_THRESHOLD)
+pred_survivors = count(P_data[:, end] .> EXTINCTION_THRESHOLD)
+
+println("Herbivores survived: $herb_survivors/$S")
+println("Predators survived: $pred_survivors/$R")
+
+H_biomass = sum(H_data[:, end][H_data[:, end] .> EXTINCTION_THRESHOLD])
+P_biomass = sum(P_data[:, end][P_data[:, end] .> EXTINCTION_THRESHOLD])
+println("Herbivore biomass at end: ", H_biomass)
+println("Predator biomass at end: ", P_biomass)
+println("Total biomass: ", H_biomass + P_biomass)
+
+end
