@@ -242,4 +242,45 @@ $$
 Predation introduces an additional term to the interaction coefficient, representing apparent competition.
 
 
+## Updated Calculation of \( p_i \) with Predators
+
+When predators are included, the effective interaction matrix for herbivores changes from \( \mu_{ij} \) to:
+
+$$
+M_{ij} = \mu_{ij} + \frac{C_{ij} H_i^0}{m_i}.
+$$
+
+This modified matrix \( M = [M_{ij}] \) captures both direct competition (\( \mu_{ij} \)) and indirect predator-mediated effects (\( C_{ij} \)). Hence, the equation that defined \( \hat{p}_i \) must now use \( M_{ij} \):
+
+### Updated \( \hat{p}_i \) with Predators
+
+Originally, we had:
+
+$$
+\hat{p}_i h_i = \hat{H}_i + \sum_j \mu_{ij} \hat{H}_j.
+$$
+
+With predators:
+
+$$
+\hat{p}_i h_i = \hat{H}_i + \sum_j \left( \mu_{ij} + \frac{C_{ij} H_i^0}{m_i} \right) \hat{H}_j.
+$$
+
+Rewriting:
+
+$$
+\hat{p}_i = \frac{\hat{H}_i + \sum_j \left( \mu_{ij} + \frac{C_{ij} H_i^0}{m_i} \right) \hat{H}_j}{h_i}.
+$$
+
+This \( \hat{p}_i \) incorporates the additional terms from predation. The presence of \( C_{ij} \) and \( G_i \) means that the effective growth and interaction structure is altered.
+
+### Normalizing to Find \( p_i \)
+
+As before, we normalize:
+
+$$
+p_i = \frac{\hat{p}_i}{\sum_k \hat{p}_k}.
+$$
+
+The main difference is that \( \hat{p}_i \) now includes the predator-mediated terms. Once \( p_i \) is found, the scaling parameter \( x \) and growth rates \( g_i \) can be recalculated using the updated interactions, ensuring that the NPP condition is still met.
 
