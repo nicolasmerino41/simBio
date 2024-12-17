@@ -5,29 +5,32 @@ using CairoMakie
 # Parameters
 #############################
 begin
-S = 5   # Number of herbivore species
-R = 2   # Number of predator species
+legend = false
+S = 6   # Number of herbivore species
+R = 3  # Number of predator species
 
 exponent_abundance = 0.0  # exponent for SAD (power law)
-H0_mean = 100.0
-M_mean = 0.1
-H0_sd = H0_mean/10
-M_sd = M_mean/10
-NPP = 1000.0
 
+NPP = 1000.0
+H0_mean = NPP / S
+M_mean = 1.5
+H0_sd = 0.0 #H0_mean/10
+M_sd = 0.0 #M_mean/10
+
+condition_limit_number = 100.0
 # For dimensionless scaling:
 # We will compute bar(H) and bar(M) as the averages of H_i^0 and m_i after we draw them.
 
 # Interaction strengths
-mu = 0.0                 # average herbivore-herbivore interaction strength
+mu = 0.5                # average herbivore-herbivore interaction strength
 mu_pred = 0.01          # average predator-predator interaction strength (negative for stable)
-mu_predation = 0.1      # average herbivore-predator interaction strength
-asymmetry_competition = 1.0
+mu_predation = 0.01      # average herbivore-predator interaction strength
+asymmetry_competition = false # Very low assyemtries will lead to unstable solutions
 asymmetry_predators = 0.7
 asymmetry_predation = 1.0
-epsilon = 0.01 # assimilation efficiency of predators
+epsilon = 0.1 # assimilation efficiency of predators
 
-connectivity_hp = 1.0    # Herbivore-Predator connectivity
+connectivity_hp = 1.0  # Herbivore-Predator connectivity
 connectivity_pp = 0.4     # Predator-Predator connectivity
 
 #############################
@@ -71,41 +74,111 @@ q_i = q_i ./ q_sum
 #############################
 # 3. Generate herbivore-herbivore competition matrix V
 #############################
-function generate_competition_matrix(S, mu, asymmetry)
-    V_symmetric = ones(S, S)
+function generate_competition_matrix(S::Int, mu::Float64, symmetric::Bool; check_condition=true)
+    # This function returns (V, μ_matrix) given S, mu, and whether we want a symmetric scenario or not.
+    #
+    # If symmetric=true:
+    #   (I+μ) has diagonal = 1.0, off-diagonal = μ (perfectly uniform scenario).
+    #
+    # If symmetric=false:
+    #   (I+μ) has diagonal = 1.0, off-diagonal random in [0,1], then scaled so mean=μ.
+    #   If condition number > condition_limit_number, reduce asymmetry by blending off-diagonal values towards μ.
+    #
+    # After constructing (I+μ), we invert it to get V, and compute μ_matrix = (I+μ)-I.
+    # Check condition number if requested.
+
+    I_plus_mu = Matrix{Float64}(undef, S, S)
+
+    if symmetric
+        # Symmetric scenario: diagonal=1.0, off-diagonal=μ
+        for i in 1:S, j in 1:S
+            I_plus_mu[i,j] = (i == j) ? 1.0 : mu
+        end
+    else
+        # Asymmetric scenario:
+        # diagonal=1.0
+        # off-diagonal: random values scaled to have mean=μ
+        for i in 1:S, j in 1:S
+            if i == j
+                I_plus_mu[i,j] = 1.0
+            else
+                I_plus_mu[i,j] = rand()
+            end
+        end
+
+        # Scale off-diagonal to have mean=μ
+        off_diag_vals = [I_plus_mu[i,j] for i in 1:S, j in 1:S if i!=j]
+        current_mean = mean(off_diag_vals)
+        if current_mean != 0.0
+            scaling_factor = mu / current_mean
+            for i in 1:S, j in 1:S
+                if i != j
+                    I_plus_mu[i,j] *= scaling_factor
+                end
+            end
+        else
+            # If current_mean=0 (extremely unlikely), set all off-diag to μ
+            for i in 1:S, j in 1:S
+                if i != j
+                    I_plus_mu[i,j] = mu
+                end
+            end
+        end
+    end
+
+    if check_condition
+        # Check condition number and if too large, reduce asymmetry if not symmetric
+        max_attempts = 5
+        attempts = 0
+        while attempts < max_attempts
+            cnum = cond(I_plus_mu)
+            println("Condition number of (I+μ): ", cnum)
+            if cnum <= condition_limit_number
+                break
+            end
+
+            if symmetric
+                # If symmetric and condition is large, there's not much we can do without changing parameters.
+                println("Warning: Condition number still high in symmetric scenario. Consider changing μ or S.")
+                break
+            else
+                # Reduce asymmetry by bringing off-diagonal values closer to μ
+                # e.g., blend each off-diag value with μ: new_val = (val + μ)/2
+                println("Condition > $condition_limit_number, reducing asymmetry by blending towards μ...")
+                for i in 1:S, j in 1:S
+                    if i != j
+                        I_plus_mu[i,j] = (I_plus_mu[i,j] + mu)/2
+                    end
+                end
+            end
+
+            attempts += 1
+        end
+    end
+
+    println("Final condition number of (I+μ): ", cond(I_plus_mu))
+    if cond(I_plus_mu) > condition_limit_number && !symmetric
+        println("Warning!!!!!!!!!: Condition number still high in asymmetric scenario. Consider changing μ or S.")
+    end
+
+    # Invert I+μ
+    # Compute V = (I+μ)^{-1}
+    V = inv(I_plus_mu)
+
+    # Compute μ_matrix = (I+μ)-I
+    μ_matrix = Matrix{Float64}(undef, S, S)
     for i in 1:S, j in 1:S
         if i == j
-            V_symmetric[i, j] = 1.0
+            μ_matrix[i,j] = I_plus_mu[i,j] - 1.0
         else
-            V_symmetric[i, j] = mu #originally it was 1/(1+mu)
+            μ_matrix[i,j] = I_plus_mu[i,j]
         end
     end
 
-    V_random = ones(S, S)
-    for i in 1:S, j in 1:S
-        if i != j
-            V_random[i, j] = rand()
-        else
-            V_random[i, j] = 1.0
-        end
-    end
-
-    off_diag_values = [V_random[i,j] for i in 1:S, j in 1:S if i != j]
-    current_mean = mean(off_diag_values)
-    desired_mean = 1/(1+mu)
-    scaling_factor = desired_mean / current_mean
-
-    for i in 1:S, j in 1:S
-        if i != j
-            V_random[i,j] *= scaling_factor
-        end
-    end
-
-    V = asymmetry * V_symmetric + (1.0 - asymmetry)*V_random
-    return V
+    return V, μ_matrix
 end
 
-V = generate_competition_matrix(S, mu, asymmetry_competition)
+V, mu_matrix = generate_competition_matrix(S, mu, asymmetry_competition)
 
 #############################
 # 4. Generate predator-predator matrix A
@@ -249,9 +322,14 @@ end
 # μ_ij = (V^{-1})_ij - δ_ij
 #
 #############################
-V_inv = inv(V)
-mu_matrix = V_inv - I
-
+# WE DON'T DO THIS ANYMORE SINCE WE FIXED THE COMPETITION MATRIX BUILDER ABOVE
+# V_inv = inv(V)
+# mu_matrix = V_inv - I
+# for i in axes(mu_matrix, 1), j in axes(mu_matrix, 2)
+#     if i == j
+#         mu_matrix[i, j] = 0.0
+#     end
+# end
 #############################
 # 8. Modified interaction due to predators:
 #    μ_ij -> μ_ij + (C_ij * H_i^0)/m_i
@@ -472,7 +550,7 @@ times = sol.t
 H_data = sol[1:S, :]
 P_data = sol[S+1:S+R, :]
 
-fig = Figure(resolution=(600,400))
+fig = Figure()
 ax = Axis(fig[1,1], xlabel="Time", ylabel="Density", title="Dynamics")
 for i in 1:S
     lines!(ax, times, H_data[i, :], label="H$i")
@@ -480,7 +558,9 @@ end
 for α in 1:R
     lines!(ax, times, P_data[α, :], label="P$α", linestyle=:dash)
 end
-axislegend(ax, position=:rt)
+if legend 
+    axislegend(ax, position=:rt)
+end
 display(fig)
 
 #############################
@@ -497,5 +577,7 @@ P_biomass = sum(P_data[:, end][P_data[:, end] .> EXTINCTION_THRESHOLD])
 println("Herbivore biomass at end: ", H_biomass)
 println("Predator biomass at end: ", P_biomass)
 println("Total biomass: ", H_biomass + P_biomass)
-
+println("herb_pred_ratio: ", P_biomass/H_biomass)
+println("NPP == ∑g_iH_i? ", isapprox(NPP, sum(g_i.*H_data[:, end]), atol=50.0))
+println("∑g_iH_i = ", sum(g_i.*H_data[:, end]))
 end
