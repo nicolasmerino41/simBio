@@ -1,4 +1,4 @@
-PC = "nicol"
+PC = "MM-1"
 end_true = false
 num_species = 256
 @time include("HerpsVsBirmmals.jl")
