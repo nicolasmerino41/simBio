@@ -6,14 +6,14 @@ using CairoMakie
 #############################
 begin
 legend = false
-S = 6   # Number of herbivore species
+S = 4   # Number of herbivore species
 R = 3  # Number of predator species
 
 exponent_abundance = 0.0  # exponent for SAD (power law)
 
 NPP = 1000.0
 H0_mean = NPP / S
-M_mean = 1.5
+M_mean = 0.15
 H0_sd = 0.0 #H0_mean/10
 M_sd = 0.0 #M_mean/10
 
@@ -28,9 +28,9 @@ mu_predation = 0.01      # average herbivore-predator interaction strength
 asymmetry_competition = false # Very low assyemtries will lead to unstable solutions
 asymmetry_predators = 0.7
 asymmetry_predation = 1.0
-epsilon = 0.1 # assimilation efficiency of predators
+epsilon = 1.0 # assimilation efficiency of predators
 
-connectivity_hp = 1.0  # Herbivore-Predator connectivity
+connectivity_hp = 0.56  # Herbivore-Predator connectivity
 connectivity_pp = 0.4     # Predator-Predator connectivity
 
 #############################
