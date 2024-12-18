@@ -53,3 +53,5 @@ for i in axes(birmmals_biomass, 1)
 end
 
 println(birmmals_biomass_fixed)
+
+DA_birmmals
