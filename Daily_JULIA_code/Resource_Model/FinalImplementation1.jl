@@ -581,3 +581,140 @@ println("herb_pred_ratio: ", P_biomass/H_biomass)
 println("NPP == ∑g_iH_i? ", isapprox(NPP, sum(g_i.*H_data[:, end]), atol=50.0))
 println("∑g_iH_i = ", sum(g_i.*H_data[:, end]))
 end
+
+##############################################################################################
+##############################################################################################
+############################ SAME CODE BUT INSIDE A FUNCTION #################################
+
+# Assuming the following globals:
+# - birmmals_biomass_fixed::DataFrame with columns:
+#   species (String), mean_density (Float64), bodyMass (Float64), biomass (Float64)
+# - herbivore_names::Vector{String} containing names of herbivores
+# - predator_names::Vector{String} containing names of predators
+# - DA_birmmals::Matrix{MyBirmmals} containing the DA cells
+# - MyBirmmals is a struct with a field 'a' that indicates presence/absence (or abundance)
+#   of each species (length matches rows in birmmals_biomass_fixed)
+
+# Example:
+# struct MyBirmmals
+#     a::SVector{207,Float64}
+# end
+
+function extract_species_names_from_a_cell(cell::MyBirmmals)
+    names = birmmals_biomass_fixed[:, :species]
+    species_names = String[]
+    for i in 1:length(cell.a)
+        if !iszero(cell.a[i])
+            push!(species_names, names[i])
+        end
+    end
+    return species_names
+end
+
+function identify_n_of_herbs_and_preds(species_names::Vector{String})
+    S = 0
+    R = 0
+    for name in species_names
+        if name in herbivore_names
+            S += 1
+        elseif name in predator_names
+            R += 1
+        end
+    end
+    return S, R
+end
+
+function parametrise_the_community(S::Int, R::Int, spu::Vector{String}; M_mean = 0.1)
+    # We will create vectors:
+    # H_i0::Vector{Float64} for herbivores (length S)
+    # m_i::Vector{Float64} for herbivores
+    # g_i::Vector{Float64} and G::Vector{Float64} for herbivores (initially G=0)
+    # For predators, we do a simple parametrization
+    # M_modified, a_matrix, A, epsilon, m_alpha we will leave as placeholders
+    # since the actual code to build them wasn't fully provided.
+    # We assume we just return placeholders or simple defaults for demonstration.
+
+    # Filter herbivores and predators from species_names
+    herbivore_list = [n for n in spu if n in herbivore_names]
+    predator_list = [n for n in spu if n in predator_names]
+
+    if length(herbivore_list) != S || length(predator_list) != R
+        error("Mismatch in herbivore/predator count.")
+    end
+
+    H_i0 = zeros(S)
+    m_i = zeros(S)
+    g_i = zeros(S)
+    G = zeros(S)
+
+    # Assign parameters for herbivores:
+    # We assume that for herbivores, mean_density and bodyMass are in columns 2 and 3 of birmmals_biomass_fixed
+    # and biomass in col 4. Let's define:
+    # mean_density = col2, bodyMass=col3, biomass=col4
+    # For initial guess: H_i0 from mean_density, m_i from bodyMass, g_i from biomass (or a function of it)
+    # This is a choice; you can adapt as needed.
+
+    # Build a dict for easy access:
+    species_dict = Dict(row[:species] => (row[:mean_density], row[:bodyMass], row[:biomass]) for row in eachrow(birmmals_biomass_fixed))
+
+    for i in 1:S
+        name = herbivore_list[i]
+        if haskey(species_dict, name)
+            (md, bm, bio) = species_dict[name]
+            # Let's define:
+            # H_i0[i] = md (mean_density as a proxy for characteristic density)
+            # m_i[i] = bm (bodyMass as a proxy for mortality or growth scaling)
+            # g_i[i] = bio (using biomass as a proxy for growth initially)
+            H_i0[i] = md
+            m_i[i] = bm
+            g_i[i] = bio
+        else
+            # If species not found in dict, assign defaults or error
+            H_i0[i] = 1.0
+            m_i[i] = 0.1
+            g_i[i] = 1.0
+        end
+    end
+
+    # For now, G = zeros(S)
+
+    # Predators:
+    # For simplicity, we assign uniform parameters for predators,
+    # say A, epsilon, m_alpha and a_matrix as placeholders.
+    # In a real scenario, you would retrieve similar info from data.
+
+    # We can return placeholders:
+    A = Matrix{Float64}(I,R,R) # simple stable matrix with -1.0 on diag maybe:
+    for α in 1:R
+        A[α,α] = -1.0
+    end
+    epsilon = fill(1.0, R)   # all predators same epsilon
+    m_alpha = fill(M_mean, R) # all predators same mortality
+    a_matrix = zeros(S, R)    # predation from herbivores to predators?
+    # M_modified is derived after we build M - for now let's return mu_matrix as M_modified.
+    # Actually M_modified is μ_ij + (C_ij*H_i0[i]/m_i[i]), 
+    # We'll just return an SxS zero matrix for demonstration:
+    M_modified = zeros(S,S)
+
+    return H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha
+end
+
+function setup_community_from_cell(i::Int, j::Int)
+    # 1) Extract species from cell
+    cell = DA_birmmals[i,j]
+    species_names = extract_species_names_from_a_cell(cell)
+    # 2) Identify S,R
+    S, R = identify_n_of_herbs_and_preds(species_names)
+    # 3) Parametrise community
+    H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community(S, R, species_names)
+
+    # Return all parameters, so the calling code can build the ODE problem
+    return (S, R, species_names, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha)
+end
+
+# With these functions, you can now pick any cell (i,j) from DA_birmmals and quickly build the model parameters:
+# (S, R, names, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha) = setup_community_from_cell(20,20)
+CELL = idx[20]
+spu = extract_species_names_from_a_cell(DA_birmmals[CELL])
+S, R = identify_n_of_herbs_and_preds(spu)
+H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community(S, R, spu)
