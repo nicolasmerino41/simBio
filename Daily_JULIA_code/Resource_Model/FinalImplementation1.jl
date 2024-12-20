@@ -600,6 +600,8 @@ end
 #     a::SVector{207,Float64}
 # end
 
+predator_names = setdiff(spain_names, herbivore_names)
+
 function extract_species_names_from_a_cell(cell::MyBirmmals)
     names = birmmals_biomass_fixed[:, :species]
     species_names = String[]
@@ -718,3 +720,121 @@ CELL = idx[20]
 spu = extract_species_names_from_a_cell(DA_birmmals[CELL])
 S, R = identify_n_of_herbs_and_preds(spu)
 H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community(S, R, spu)
+
+##############################################################################################
+# Now we apply the dynamics as done before, but using the parameters from a chosen cell.
+##############################################################################################
+
+# Choose a cell, for example (20,20)
+i, j = 20, 20
+S, R, species_names, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = setup_community_from_cell(i, j)
+
+# Here you can define NPP and other parameters if needed, or assume they are global or computed before
+NPP = 1000.0
+
+# ODE definition:
+function ecosystem_dynamics!(du, u, p, t)
+    S, R, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = p
+
+    H = @view u[1:S]
+    P = @view u[S+1:S+R]
+
+    duH = zeros(S)
+    duP = zeros(R)
+
+    # Herbivore dynamics
+    for i in 1:S
+        if H[i] > 0.0
+            m_ii = m_i[i]
+            numerator = (g_i[i] + G[i])/m_ii - 1.0
+            interaction_sum = H[i]
+            for x in 1:S
+                interaction_sum += M_modified[i,x]*H[x]
+            end
+            duH[i] = H[i]*m_ii*(numerator - interaction_sum/H_i0[i])
+        else
+            duH[i] = 0.0
+        end
+    end
+
+    # Predator dynamics
+    for α in 1:R
+        if P[α] > 0.0
+            predation_sum = 0.0
+            for j in 1:S
+                predation_sum += a_matrix[j, α]*H[j]
+            end
+            predator_interactions = 0.0
+            for β in 1:R
+                predator_interactions += A[α, β]*P[β]
+            end
+            duP[α] = P[α]*(epsilon[α]*predation_sum - m_alpha[α] + predator_interactions)
+        else
+            duP[α] = 0.0
+        end
+    end
+
+    du[1:S] = duH
+    du[S+1:S+R] = duP
+end
+
+params = (S, R, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha)
+H_init = H_i0
+P_init = fill(10.0, R)
+u0 = vcat(H_init, P_init)
+tspan = (0.0, 500.0)
+EXTINCTION_THRESHOLD = 1e-6
+
+# Callbacks
+callbacks = []
+push!(callbacks, PositiveDomain())
+
+for x in 1:S
+    condition(u, t, integrator) = u[x] - EXTINCTION_THRESHOLD
+    affect!(integrator) = (integrator.u[x] = 0.0)
+    push!(callbacks, ContinuousCallback(condition, affect!))
+end
+
+offset = S
+for α in 1:R
+    idx = offset + α
+    condition(u, t, integrator) = u[idx] - EXTINCTION_THRESHOLD
+    affect!(integrator) = (integrator.u[idx] = 0.0)
+    push!(callbacks, ContinuousCallback(condition, affect!))
+end
+
+cb = CallbackSet(callbacks...)
+
+prob = ODEProblem(ecosystem_dynamics!, u0, tspan, params)
+sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
+
+times = sol.t
+H_data = sol[1:S, :]
+P_data = sol[S+1:S+R, :]
+
+fig = Figure()
+ax = Axis(fig[1,1], xlabel="Time", ylabel="Density", title="Dynamics")
+for x in 1:S
+    lines!(ax, times, H_data[x, :], label="H$x")
+end
+for α in 1:R
+    lines!(ax, times, P_data[α, :], label="P$α", linestyle=:dash)
+end
+# axislegend(ax; position=:rt)
+display(fig)
+
+# Summary stats
+herb_survivors = count(H_data[:, end] .> EXTINCTION_THRESHOLD)
+pred_survivors = count(P_data[:, end] .> EXTINCTION_THRESHOLD)
+
+println("Herbivores survived: $herb_survivors/$S")
+println("Predators survived: $pred_survivors/$R")
+
+H_biomass = sum(H_data[:, end][H_data[:, end] .> EXTINCTION_THRESHOLD])
+P_biomass = sum(P_data[:, end][P_data[:, end] .> EXTINCTION_THRESHOLD])
+println("Herbivore biomass at end: ", H_biomass)
+println("Predator biomass at end: ", P_biomass)
+println("Total biomass: ", H_biomass + P_biomass)
+println("herb_pred_ratio: ", P_biomass/H_biomass)
+println("NPP == ∑g_iH_i? ", isapprox(NPP, sum(g_i.*H_data[:, end]), atol=50.0))
+println("∑g_iH_i = ", sum(g_i.*H_data[:, end]))
