@@ -15,6 +15,7 @@ num_species = 256
 #     birmmals_richness = Matrix(DA_richness_birmmals),
 #     herps_richness = Matrix(DA_richness_herps)
 # )
+
 DA_with_abundances = deepcopy(DA_birmmals_with_abundances) + deepcopy(DA_herps_with_abundances)
 pepe_state = (
     state = Matrix(DA_with_abundances),
