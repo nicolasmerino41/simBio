@@ -56,11 +56,11 @@ println(birmmals_biomass_fixed)
 
 DA_birmmals_with_pi = deepcopy(DA_birmmals)
 for i in idx
-    vect = DA_birmmals[idx[1]].a
+    vect = DA_birmmals[i].a
     vect1 = Vector(DA_birmmals[i].a)
     for j in 1:length(vect)
-        if !iszero(vect[j])
-            vect1[j] = birmmals_biomass_fixed[j, 4]
+        if isone(vect[j])
+            vect1[j] = birmmals_biomass_fixed[j, :biomass]
         end
     end
     DA_birmmals_with_pi[i] = MyBirmmals(SVector{207, Float64}(vect1))
@@ -68,3 +68,4 @@ end
 
 map_plot(DA_birmmals_with_pi; type = "heatmap", palette = :thermal)
 
+DA_birmmals_with_pi[idx[20]].a
