@@ -42,23 +42,20 @@ function identify_n_of_herbs_and_preds(species_names::Vector{String})
     return S, R
 end
 
-function parametrise_the_community(;
-    species_names::Vector{String}, 
-    cell::CartesianIndex,
-    # Basic arguments for the "virtual species" approach:
+function parametrise_the_community(
+    species_names::Vector{String};
     NPP::Float64 = 1000.0,
-    M_mean::Float64 = 0.1,     # Mean mortality for herbivores
-    mu::Float64 = 0.5,         # average herbivore-herbivore interaction strength
+    M_mean::Float64 = 0.1,
+    mu::Float64 = 0.5,
     asymmetry_competition::Bool = false,
-    # Predator parameters:
-    mean_m_alpha::Float64 = 0.1,  # predator mortality
+    mean_m_alpha::Float64 = 0.1,
     epsilon_val::Float64 = 1.0,
-    mu_predation::Float64 = 0.01, # average herb-pred feeding strength
-    # Interactions from iberian_interact_NA
-    iberian_interact_NA::Matrix{Int},      # global matrix of size total_species x total_species
-    species_dict::Dict{String,Int},        # species-> row/col in iberian_interact_NA
-    # Additional connectivity if needed
-    connectivity_hp::Float64 = 1.0
+    mu_predation::Float64 = 0.01,
+    iberian_interact_NA::NamedMatrix{Float64}=iberian_interact_NA,   # Accept NamedMatrix{Float64} here
+    species_dict::Dict{String,Int}=species_dict,
+    connectivity_hp::Float64 = 1.0,
+    m_standard_deviation::Float64 = 0.1,
+    h_standard_deviation::Float64 = 10.0
 )
 
     ############################################################################
@@ -72,8 +69,11 @@ function parametrise_the_community(;
     # We assume you want all herbivores to get H_i^0 = NPP/S, m_i = M_mean
     # and your standard approach to competition among herbivores.
     if S>0
-        H_i0 = fill(NPP / S, S)  
-        m_i  = fill(M_mean, S)
+        H0_mean = NPP / S
+        # H_i0 = fill(NPP / S, S)  
+        # m_i  = fill(M_mean, S)
+        H_i0 = [abs(rand(Normal(H0_mean, h_standard_deviation))) for _ in 1:S]
+        m_i = [abs(rand(Normal(M_mean, m_standard_deviation))) for _ in 1:S]
     else
         H_i0 = Float64[]
         m_i  = Float64[]
@@ -213,6 +213,13 @@ function parametrise_the_community(;
     IplusM = I + M_modified
     IM_inv = inv(IplusM)
 
+    # Now define h_i with length S
+    h_i = zeros(S)
+    for i in 1:S
+        # According to the doc formula: H_i^0 = S*bar(H)*h_i => h_i = H_i^0 / (S*bar(H))
+        h_i[i] = H_i0[i] / (S * barH)
+    end
+
     # define A_vec, B_vec
     A_vec = zeros(S)
     B_vec = zeros(S)
@@ -267,6 +274,7 @@ function parametrise_the_community(;
     return (
         S, R, # for clarity
         H_i0, m_i,
+        h_i,
         x_final, g_i,
         G, # from pred interactions
         M_modified,
@@ -278,17 +286,33 @@ function parametrise_the_community(;
 end
 
 
-function setup_community_from_cell(i::Int, j::Int)
+function setup_community_from_cell(i::Int, j::Int; 
+    NPP::Float64 = 1000.0,
+    M_mean::Float64 = 0.1,
+    mu::Float64 = 0.5,
+    asymmetry_competition::Bool = false,
+    mean_m_alpha::Float64 = 0.1,
+    epsilon_val::Float64 = 1.0,
+    mu_predation::Float64 = 0.01,
+    iberian_interact_NA::NamedMatrix{Float64}=iberian_interact_NA,   # Accept NamedMatrix{Float64} here
+    species_dict::Dict{String,Int}=species_dict,
+    connectivity_hp::Float64 = 1.0,
+    m_standard_deviation::Float64 = 0.1,
+    h_standard_deviation::Float64 = 10.0
+    )
+
     # 1) Extract species from cell
     cell = DA_birmmals[i,j]
     species_names = extract_species_names_from_a_cell(cell)
     # 2) Identify S,R
     S, R = identify_n_of_herbs_and_preds(species_names)
     # 3) Parametrise community
-    H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community(S, R, species_names)
+    S, R, H_i0, m_i, h_i, x_final, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community(species_names; 
+        NPP, M_mean, mu, asymmetry_competition, mean_m_alpha, epsilon_val, mu_predation, 
+        iberian_interact_NA, species_dict, connectivity_hp, m_standard_deviation, h_standard_deviation)
 
     # Return all parameters, so the calling code can build the ODE problem
-    return (S, R, species_names, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha)
+    return S, R, species_names, H_i0, m_i, h_i, x_final, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha
 end
 
 # With these functions, you can now pick any cell (i,j) from DA_birmmals and quickly build the model parameters:
@@ -296,15 +320,16 @@ end
 CELL = idx[20]
 spu = extract_species_names_from_a_cell(DA_birmmals[CELL])
 S, R = identify_n_of_herbs_and_preds(spu)
-H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community(S, R, spu)
+H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community()
 
 ##############################################################################################
 # Now we apply the dynamics as done before, but using the parameters from a chosen cell.
 ##############################################################################################
-
+begin
+    
 # Choose a cell, for example (20,20)
-i, j = 20, 20
-S, R, species_names, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = setup_community_from_cell(i, j)
+i, j = 22, 3
+S, R, species_names, H_i0, m_i, h_i, x_final, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = setup_community_from_cell(i, j; epsilon_val=0.01)
 
 # Here you can define NPP and other parameters if needed, or assume they are global or computed before
 NPP = 1000.0
@@ -415,3 +440,4 @@ println("Total biomass: ", H_biomass + P_biomass)
 println("herb_pred_ratio: ", P_biomass/H_biomass)
 println("NPP == ∑g_iH_i? ", isapprox(NPP, sum(g_i.*H_data[:, end]), atol=50.0))
 println("∑g_iH_i = ", sum(g_i.*H_data[:, end]))
+end
