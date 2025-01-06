@@ -10,7 +10,9 @@ using DynamicGrids, Dispersal
 using Dates, Distributions, Serialization, StatsBase, JLD2
 using ColorSchemes, Colors #Crayons, 
 using Makie, CairoMakie # ImageMagick
-# using OrdinaryDiffEq
+if ode_true
+    using DifferentialEquations, DiffEqCallbacks, LinearAlgebra
+end
 # if end_true
 #     using DifferentialEquations # EcologicalNetworksDynamics, 
 # end

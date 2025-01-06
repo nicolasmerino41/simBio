@@ -1,4 +1,4 @@
-function generate_competition_matrix(S::Int, mu::Float64, symmetric::Bool; check_condition=true)
+function generate_competition_matrix(S::Int, mu::Float64, symmetric::Bool; check_condition=true, condition_limit_number=50.0)
     # This function returns (V, μ_matrix) given S, mu, and whether we want a symmetric scenario or not.
     #
     # If symmetric=true:

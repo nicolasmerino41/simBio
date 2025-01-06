@@ -1,5 +1,6 @@
 PC = "nicol"
 end_true = false
+ode_true = true
 num_species = 256
 @time include("HerpsVsBirmmals.jl")
 @time include("kernels.jl")

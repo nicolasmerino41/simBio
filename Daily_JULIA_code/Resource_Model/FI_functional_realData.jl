@@ -213,6 +213,9 @@ function parametrise_the_community(
     IplusM = I + M_modified
     IM_inv = inv(IplusM)
 
+
+    barH = mean(H_i0)
+    
     # Now define h_i with length S
     h_i = zeros(S)
     for i in 1:S
