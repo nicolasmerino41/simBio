@@ -2,7 +2,7 @@ cell = idx[1]
 
 DA[cell]
 
-average_densities = CSV.File("C:/Users/nicol/OneDrive/PhD/GitHub/Networks/DFs/average_densities.csv") |> DataFrame
+average_densities = CSV.File(joinpath("C:/Users", PC, "OneDrive/PhD/GitHub/Networks/DFs/average_densities.csv")) |> DataFrame
 santini_names = average_densities[:, 2]
 
 # Assuming `spain_names` and `santini_names` are vectors
@@ -69,3 +69,15 @@ end
 map_plot(DA_birmmals_with_pi; type = "heatmap", palette = :thermal)
 
 DA_birmmals_with_pi[idx[20]].a
+
+#### INVESTIGATING BIG BIOMASS DIFFERENCES ####
+birmmals_biomass_only_herbivores = 
+    birmmals_biomass_fixed[map(s -> s in herbivore_names, birmmals_biomass_fixed[:, :species]), :]
+
+# valueee = 0
+# for i in birmmals_biomass_only_herbivores[:, 1]
+#     if i in herbivore_names
+#         valueee += 1
+#     end
+#     println(valueee)
+# end
