@@ -52,7 +52,7 @@ function parametrise_the_community(
     NPP::Float64 = 1000.0,
     M_mean::Float64 = 0.1,
     mu::Float64 = 0.5,
-    asymmetry_competition::Bool = false,
+    symmetrical_competition::Bool = true,
 
     # Predator parameters:
     mean_m_alpha::Float64 = 0.1,
@@ -95,7 +95,7 @@ function parametrise_the_community(
     # (C) Baseline competition among herbivores => mu_matrix
     ############################################################################
     if S > 0
-        V, mu_matrix = generate_competition_matrix(S, mu, asymmetry_competition; check_condition=true)
+        V, mu_matrix = generate_competition_matrix(S, mu, symmetrical_competition; check_condition=true)
     else
         V          = zeros(0,0)
         mu_matrix  = zeros(0,0)
@@ -297,14 +297,15 @@ function setup_community_from_cell(
     NPP::Float64 = 1000.0,
     M_mean::Float64 = 0.1,
     mu::Float64 = 0.5,
-    asymmetry_competition::Bool = false,
+    symmetrical_competition::Bool = true,
     mean_m_alpha::Float64 = 0.1,
     epsilon_val::Float64 = 1.0,
     mu_predation::Float64 = 0.01,
     iberian_interact_NA::NamedMatrix{Float64}=iberian_interact_NA,
     species_dict::Dict{String,Int}=species_dict,
     m_standard_deviation::Float64 = 0.1,
-    h_standard_deviation::Float64 = 10.0
+    h_standard_deviation::Float64 = 10.0,
+    artificial_pi = false
 )
 
     # 1) Grab the cell => find which species are present
@@ -328,7 +329,11 @@ function setup_community_from_cell(
             push!(cell_abundance_herbs, val)
             push!(herbivore_list_cell, sp)
         end
-    end  
+    end
+    
+    if artificial_pi
+        cell_abundance_herbs = ones(length(cell_abundance_herbs))
+    end
 
     # 3) Parametrise the community => pass "cell_abundance_herbs"
     S, R,
@@ -342,7 +347,7 @@ function setup_community_from_cell(
             NPP=NPP,
             M_mean=M_mean,
             mu=mu,
-            asymmetry_competition=asymmetry_competition,
+            symmetrical_competition=symmetrical_competition,
             mean_m_alpha=mean_m_alpha,
             epsilon_val=epsilon_val,
             mu_predation=mu_predation,
