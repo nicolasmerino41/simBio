@@ -68,7 +68,10 @@ function parametrise_the_community(
     h_standard_deviation::Float64 = 10.0,
 
     # Cell-level herbivore abundance (length S) to build hat_H
-    cell_abundance::Vector{Float64} = Float64[]
+    cell_abundance::Vector{Float64} = Float64[],
+
+    real_H0::Bool = false,
+    H0_vector::Vector{Float64} = nothing
 )
 
     ############################################################################
@@ -83,10 +86,35 @@ function parametrise_the_community(
     # (B) Build H_i^0 and m_i from random draws, if herbivores exist
     ############################################################################
     if S > 0
-        H0_mean = NPP / S
-        H_i0 = [abs(rand(Normal(H0_mean, h_standard_deviation))) for _ in 1:S]
-        m_i  = [abs(rand(Normal(M_mean,   m_standard_deviation))) for _ in 1:S]
+        if !real_H0
+            # fallback approach: random draws
+            H0_mean = NPP / S
+            H_i0 = [abs(rand(Normal(H0_mean, h_standard_deviation))) for _ in 1:S]
+            m_i  = [abs(rand(Normal(M_mean,   m_standard_deviation))) for _ in 1:S]
+        else
+            # real_H0 == true => must get from H0_vector
+            if isnothing(H0_vector)
+                error("H0_vector must be provided if real_H0 is true")
+            end
+            # We'll build a temporary array of length S to store the herbivores' H0
+            H_i0_temp = Float64[]  # will hold the subset from H0_vector
+    
+            # For each herbivore 'sp' in herbivore_list, find its index in species_dict_herbivores_in_birmmals
+            for sp in herbivore_list
+                local_idx = species_dict_herbivores_in_birmmals[sp]
+                push!(H_i0_temp, H0_vector[local_idx])
+            end
+    
+            # Then scale by baseline factor (NPP / S)
+            H_i0_baseline = NPP / S
+            # e.g. multiply each value in H_i0_temp by H_i0_baseline
+            H_i0 = H_i0_baseline .* H_i0_temp
+    
+            # for mortality, just do random draws or do something else
+            m_i  = [abs(rand(Normal(M_mean, m_standard_deviation))) for _ in 1:S]
+        end
     else
+        # No herbivores => empty arrays
         H_i0 = Float64[]
         m_i  = Float64[]
     end
@@ -305,7 +333,9 @@ function setup_community_from_cell(
     species_dict::Dict{String,Int}=species_dict,
     m_standard_deviation::Float64 = 0.1,
     h_standard_deviation::Float64 = 10.0,
-    artificial_pi = false
+    artificial_pi = false,
+    real_H0::Bool = false,
+    H0_vector::Vector{Float64} = nothing
 )
 
     # 1) Grab the cell => find which species are present
@@ -317,6 +347,7 @@ function setup_community_from_cell(
     #    so that param. function can interpret it as hat_H
     #    We'll do it in the same order as herbivore_list => only length S
     herbivore_list = [sp for sp in species_names if sp in herbivore_names]
+    predator_list  = [sp for sp in species_names if sp in predator_names]
 
     cell_abundance_herbs = Float64[]
     herbivore_list_cell = String[]  # if you also want the names in parallel
@@ -355,12 +386,14 @@ function setup_community_from_cell(
             species_dict=species_dict,
             m_standard_deviation=m_standard_deviation,
             h_standard_deviation=h_standard_deviation,
-            cell_abundance=cell_abundance_herbs
+            cell_abundance=cell_abundance_herbs,
+            real_H0=real_H0,
+            H0_vector=H0_vector
         )
 
     return (
         S, R,
-        species_names,
+        species_names, herbivore_list, predator_list,
         H_i0, m_i,
         p_vec, x_final, g_i,  # final resource allocation & growth
         G,
