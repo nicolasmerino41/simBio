@@ -306,7 +306,8 @@ function parametrise_the_community(
     return (
         S, R,
         H_i0, m_i,
-        p_vec,       # final resource allocation proportions
+        p_vec,
+        localHatH,       # final resource allocation proportions
         x_final, g_i,
         G,           # from predator feedback
         M_modified,
@@ -369,7 +370,9 @@ function setup_community_from_cell(
     # 3) Parametrise the community => pass "cell_abundance_herbs"
     S, R,
     H_i0, m_i,
-    p_vec, x_final, g_i,
+    p_vec, 
+    localHatH,
+    x_final, g_i,
     G, M_modified,
     a_matrix, A,
     epsilon, m_alpha =
@@ -396,18 +399,9 @@ function setup_community_from_cell(
         species_names, herbivore_list, predator_list,
         H_i0, m_i,
         p_vec, x_final, g_i,  # final resource allocation & growth
+        localHatH,
         G,
         M_modified, a_matrix, A,
         epsilon, m_alpha
     )
-end
-
-
-if false
-# With these functions, you can now pick any cell (i,j) from DA_birmmals and quickly build the model parameters:
-# (S, R, names, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha) = setup_community_from_cell(20,20)
-CELL = idx[20]
-spu = extract_species_names_from_a_cell(DA_birmmals[CELL])
-S, R = identify_n_of_herbs_and_preds(spu)
-H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = parametrise_the_community()
 end
