@@ -229,7 +229,7 @@ function parametrise_the_community(
         for i in 1:S
             localHatH[i] = cell_abundance[i]
         end
-        println("good")
+        # println("good")
     else
         # fallback => uniform
         for i in 1:S
