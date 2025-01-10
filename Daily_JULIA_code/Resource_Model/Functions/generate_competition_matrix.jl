@@ -56,19 +56,19 @@ function generate_competition_matrix(S::Int, mu::Float64, symmetric::Bool; check
         attempts = 0
         while attempts < max_attempts
             cnum = cond(I_plus_mu)
-            println("Condition number of (I+μ): ", cnum)
+            # println("Condition number of (I+μ): ", cnum)
             if cnum <= condition_limit_number
                 break
             end
 
             if symmetric
                 # If symmetric and condition is large, there's not much we can do without changing parameters.
-                println("Warning: Condition number still high in symmetric scenario. Consider changing μ or S.")
+                # println("Warning: Condition number still high in symmetric scenario. Consider changing μ or S.")
                 break
             else
                 # Reduce asymmetry by bringing off-diagonal values closer to μ
                 # e.g., blend each off-diag value with μ: new_val = (val + μ)/2
-                println("Condition > $condition_limit_number, reducing asymmetry by blending towards μ...")
+                # println("Condition > $condition_limit_number, reducing asymmetry by blending towards μ...")
                 for i in 1:S, j in 1:S
                     if i != j
                         I_plus_mu[i,j] = (I_plus_mu[i,j] + mu)/2
@@ -80,9 +80,9 @@ function generate_competition_matrix(S::Int, mu::Float64, symmetric::Bool; check
         end
     end
 
-    println("Final condition number of (I+μ): ", cond(I_plus_mu))
+    # println("Final condition number of (I+μ): ", cond(I_plus_mu))
     if cond(I_plus_mu) > condition_limit_number && !symmetric
-        println("Warning!!!!!!!!!: Condition number still high in asymmetric scenario. Consider changing μ or S.")
+        # println("Warning!!!!!!!!!: Condition number still high in asymmetric scenario. Consider changing μ or S.")
     end
 
     # Invert I+μ
