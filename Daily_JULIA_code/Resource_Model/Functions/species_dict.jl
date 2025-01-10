@@ -1,9 +1,11 @@
-using NamedArrays
-
 # Suppose iberian_interact_NA is a NamedMatrix, dimension (num_species x num_species).
 # The row/column names might be accessible via:
 row_species = names(iberian_interact_NA, 1)  # row names as a Vector{String}
 col_species = names(iberian_interact_NA, 2)  # col names as a Vector{String}
+spain_names = row_species
+# herbivore_csv = CSV.read("DFs/herbivore_names.csv", DataFrame)
+# herbivore_names = herbivore_csv.value
+
 # In a well-formed NamedMatrix, row_species == col_species.
 
 # We'll define a dictionary that maps each species name to its integer index.
