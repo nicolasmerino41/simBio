@@ -128,21 +128,26 @@ Threads.@threads for cell in 1:7
             local local_A = A,
             local local_epsilon_vector = epsilon_vector,
             local local_m_alpha = m_alpha
-
+            println("Thread $(Threads.threadid()): Configuration $p_idx for cell $cell (i=$local_i, j=$local_j) was successful.")
         catch e
             # If an error occurred inside `setup_community_from_cell`, skip
+            println("Thread $(Threads.threadid()): Configuration $p_idx for cell $cell (i=$local_i, j=$local_j) failed with error: $e")
             continue
         end
 
         # If S=0 (no herbivores), or R=0, can skip or continue as needed
         if local_S + local_R == 0
+            println("Thread $(Threads.threadid()): Configuration $p_idx for cell $cell (i=$local_i, j=$local_j) has no herbivores or predators, skipping...")
             continue
         end
 
         # Construct initial conditions
         H_init = local_H_i0
+        println("H_init: ", H_init)
         # If local_R > length(H_i0), handle it or skip
         if local_R > length(H_init)
+            println("Thread $(Threads.threadid()): Configuration $p_idx for cell $cell (i=$local_i, j=$local_j) has more predators than herbivores, skipping...")
+            println("local_R: $local_R, length(H_init): $(length(H_init))")
             # means more predators than size of H_i0 => skip
             continue
         end
@@ -166,11 +171,12 @@ Threads.@threads for cell in 1:7
         # Solve ODE
         prob = ODEProblem(ecosystem_dynamics!, u0, tspan, params)
         sol  = solve(prob, Tsit5(); reltol=1e-6, abstol=1e-6) #callback=cb, reltol=1e-6, abstol=1e-6)
-
+        println("Break1")
         if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
+            println("Thread $(Threads.threadid()): Configuration $p_idx for cell $cell (i=$local_i, j=$local_j) has unstable solution, skipping...")
             continue
         end
-
+        
         # Evaluate survivors
         H_end = sol[1:local_S, end]
         P_end = sol[local_S+1:local_S+local_R, end]
