@@ -15,7 +15,7 @@ it will save all of them =#
 mu_vals = range(0.1, 0.9, length=10)
 mu_predation_vals = range(0.0, 0.1, length=100)
 epsilon_vals = range(0.1, 1.0, length=50)
-sym_competition_vals = [true, false]
+sym_competition_vals = [true]
 EXTINCTION_THRESHOLD = 1e-6
 T_ext = 250.0
 
@@ -57,7 +57,7 @@ global_lock = ReentrantLock()
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext = 250.0
 
-Threads.@threads for cell in 1:8
+for cell in 2
     local_i, local_j = idx[cell][1], idx[cell][2]
     @info "Processing cell $cell (i=$local_i, j=$local_j)..."
 
@@ -90,8 +90,8 @@ Threads.@threads for cell in 1:8
 
     cb_no_trigger, cb_trigger = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
 
-    for (p_idx, combo) in enumerate(param_combinations)
-        println("vaig fent")
+    Threads.@threads for combo in param_combinations
+        # println("vaig fent")
         mu_val, mu_pred_val, eps_val, sym_competition = combo
 
         # Try to set up the community
@@ -221,7 +221,7 @@ Threads.@threads for cell in 1:8
 end  # end @threads
 
 # Save final
-CSV.write("best_params_per_cell.csv", best_params_all_cells)
-@info "Done! Best parameter configurations for each cell have been saved."
+# CSV.write("best_params_per_cell_9to50.csv", best_params_all_cells)
+# @info "Done! Best parameter configurations for each cell have been saved."
 
 # perro = CSV.File("best_params_per_cell.csv") |> DataFrame
