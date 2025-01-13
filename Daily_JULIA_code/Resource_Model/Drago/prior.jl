@@ -16,6 +16,7 @@ using DifferentialEquations, DiffEqCallbacks, LinearAlgebra
 ####################################################################
 ######################## DEFINING BASIC MYSTRUCTS256 METHODS ####################################
 #################################################################################################
+num_species = 256
 struct MyStructs256{T <: AbstractFloat} <: FieldVector{2, T}
     a::SVector{num_species, T}
     b::T
@@ -174,17 +175,8 @@ function Base.zeros(dims::NTuple{2, Int}, type = nothing)
         return [MyBirmmals(fill(0.0, 207)) for _ in 1:dims[1], _ in 1:dims[2]]
     elseif type == MyStructs256{AbstractFloat}
         return [MyStructs256(fill(0.0, 256)) for _ in 1:dims[1], _ in 1:dims[2]]
-    elseif type == MyHerps{AbstractFloat}
-        return [MyHerps(fill(0.0, 49)) for _ in 1:dims[1], _ in 1:dims[2]]
     else
         return [0.0 for _ in 1:dims[1], _ in 1:dims[2]]
     end
 end
 
-import Base.Broadcast: broadcastable
-
-broadcastable(x::MyBirmmals) = Ref(x)
-broadcastable(x::MyHerps) = Ref(x)
-
-Base.:+(x::MyHerps, y::MyBirmmals) = MyStructs256(SVector{256, typeof(x.b)}(vcat(x.a, y.a)), x.b + y.b)
-Base.:+(x::MyBirmmals, y::MyHerps) = MyStructs256(SVector{256, typeof(x.b)}(vcat(y.a, x.a)), y.b + x.b)
