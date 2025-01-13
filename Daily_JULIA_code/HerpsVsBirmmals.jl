@@ -7,7 +7,7 @@ using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Rasters, RasterDataSources #, DimensionalData
 using DynamicGrids, Dispersal
-using Dates, Distributions, Serialization, StatsBase, JLD2
+using Dates, Distributions, Serialization, StatsBase, JLD2, Random
 using ColorSchemes, Colors #Crayons, 
 using Makie, CairoMakie # ImageMagick
 if ode_true
