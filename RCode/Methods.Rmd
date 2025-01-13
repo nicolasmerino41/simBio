@@ -1,0 +1,74 @@
+---
+title: "Methods"
+author: "Nico"
+date: "January 2025"
+output:
+  pdf_document:
+    # toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Our community model is built upon a generalized Lotka–Volterra framework that explicitly couples net primary production (NPP) with species‐level resource allocation and trophic interactions. For herbivores, population dynamics are governed by
+
+$$
+\frac{1}{H_i} \frac{dH_i}{dt} = m_i \left( \left[ \frac{g_i + G_i}{m_i} - 1 \right] - \frac{H_i + \sum_j \left( \mu_{ij} + \dfrac{C_{ij} H_i^0}{m_i} \right) H_j }{H_i^0} \right)
+$$
+
+where \( H_i \) represents the density of herbivore species \(i\) and \(m_i\) is its species‐specific mortality rate. The parameter \(H_i^0\) is the characteristic density, defined as
+$$
+H_i^0 = S \bar{H} h_i
+$$
+
+with \(S\) being the total number of herbivore species, \( \bar{H} \) the mean characteristic density, and \(h_i\) a dimensionless niche‐derived scaling factor (with \( \sum_i{h_i}=1 \) ). In our model, the niche of a species—as determined by its position relative to its climatic optimum—is used to define \(h_i\), thereby allowing environmental gradients to affect the inherent abundance of each species.
+
+Resource allocation among species is captured by the vector \(p = (p_i,...., p_s)\). Following an initial species abundance distribution \(\hat{H}\) (which, for herbivores, derives from field‐measured values), an intermediate variable \(\hat{p}_i\) is defined by
+$$
+\hat{p}_i = \frac{\hat{H}_i + \sum_j M_{ij} \hat{H}_j}{h_i}
+$$
+The final resource shares are given by normalizing these values \(p_i = \frac{\hat{p}_i}{\sum_j \hat{p}_j}\)
+
+\(M_{ij} = \mu_{ij} + \dfrac{C_{ij} H_i^0}{m_i}\), where \(\mu_{ij}\) represents the baseline interaction (competition) between herbivore species \(i\) and \(j\), and \(\dfrac{C_{ij} H_i^0}{m_i}\) arises from predator effects. Specifically, predation is incorporated by defining
+$$
+C_{ij} = \sum_{\alpha,\beta}\epsilon a_{i\alpha} A^{-1}_{\alpha\beta}a_{j\beta}
+$$
+and
+$$
+G_i = \sum_\beta a_{i\beta}A^{-1}_{\alpha\beta}m_\beta
+$$
+
+where \(a_{i\alpha}\) denotes the feeding rate of predator \(\alpha\) on herbivore \(i\), \(\epsilon\) is the predator assimilation efficiency, and \(A\) is the predator interaction matrix (with self-regulation imposed on the diagonal and off-diagonal coefficients reflecting trophic interactions).
+
+In parallel, predator dynamics are modeled according to 
+$$
+\frac{1}{P_\alpha} \frac{dP_\alpha}{dt} = \epsilon \sum_j a_{j\alpha} H_j - m_\alpha + \sum_{\beta} A_{\alpha\beta} P_\beta
+$$
+
+
+A scaling parameter \(x\) ensures that the total consumption of NPP matches the available resources, with herbivore growth rate determined by
+$$
+g_i = xp_im_i
+$$
+
+and the NPP balance approximated by
+$$
+\text{NPP} \approx \sum_i g_i H_i \approx x^2 \bar{H} \bar{M} \langle p | \tilde{V} p \rangle
+$$
+
+
+where \(\tilde{V}_{ij} = S q_i V_{ij} S h_j\) and \(V\) is a matrix arising from the inversion of \((I+M)\), with \(q_i\) similarly defined for mortality scaling. For a more complete derivation and discussion of the scaling relationships, including the adjustment of \(x\) to ensure NPP conservation, see the Supplementary Information.
+
+In our framework, some key parameters are treated as free parameters: the average competitive strength \(\mu\); the predation coefficients, \(a_{i\alpha}\); and the predator assimilation efficiency \(\epsilon\). Other parameters, such as the resource allocation fractions \(p_i\) and the characteristic densities  (\(H_i^0\), determined via the niche-derived scaling factors \(h_i\)), are derived from pseudoempirical abundance distributions and sdm-derived niches, respectively. Additionally, species-specific mortality rates \(m_i\) and \(m_{\alpha}\) are assumed constant at \(M_{mean}\). Together these parameters govern the balance between resource uptake, intra- and interspecific interactions, and trophic transfers, and are calibrated such that the simulated community attains stable coexistence.
+
