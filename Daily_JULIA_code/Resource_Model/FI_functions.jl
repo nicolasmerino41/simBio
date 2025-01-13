@@ -64,8 +64,8 @@ function parametrise_the_community(
     species_dict::Dict{String,Int} = species_dict,
 
     # Standard deviations for random draws:
-    m_standard_deviation::Float64 = 0.1,
-    h_standard_deviation::Float64 = 10.0,
+    m_standard_deviation::Float64 = 0.0,
+    h_standard_deviation::Float64 = 0.0,
 
     # Cell-level herbivore abundance (length S) to build hat_H
     cell_abundance::Vector{Float64} = Float64[],
@@ -332,8 +332,8 @@ function setup_community_from_cell(
     mu_predation::Float64 = 0.01,
     iberian_interact_NA::NamedMatrix{Float64}=iberian_interact_NA,
     species_dict::Dict{String,Int}=species_dict,
-    m_standard_deviation::Float64 = 0.1,
-    h_standard_deviation::Float64 = 10.0,
+    m_standard_deviation::Float64 = 0.0,
+    h_standard_deviation::Float64 = 0.0,
     artificial_pi = false,
     real_H0::Bool = false,
     H0_vector::Vector{Float64} = nothing
