@@ -51,10 +51,7 @@ else
        results.a_matrix, results.A, results.epsilon_vector,
        results.m_alpha
    )
-   if (S2 + R2) == 0 || R2 > length(H_i0)
-    continue
-    end
-
+   
     # Build initial conditions
     H_init = H_i0
     P_init = H_init[1:R2] ./ 10.0
@@ -70,10 +67,10 @@ else
     if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
         survival_rate = 0.0
         herb_pred_ratio = 0.0
-        break
-    end
-
+        return survival_rate, herb_pred_ratio
+    else
     # Evaluate
+    EXTINCTION_THRESHOLD = 1e-6
     H_end          = sol[1:S2, end]
     P_end          = sol[S2+1:S2+R2, end]
     survived_herb  = count(H_end .> EXTINCTION_THRESHOLD)
@@ -85,4 +82,11 @@ else
     H_biomass      = sum(H_end[H_end .> EXTINCTION_THRESHOLD])
     herb_pred_ratio = (H_biomass == 0.0) ? NaN : (P_biomass / H_biomass)
     return survival_rate, herb_pred_ratio
+    end
+
 end
+
+# ---------------------------------------------------------------------------
+# 5) Final outputs: these variables will be read by OpenMole.
+# ---------------------------------------------------------------------------
+@info "Final outputs: survival_rate = $survival_rate, herb_pred_ratio = $herb_pred_ratio"

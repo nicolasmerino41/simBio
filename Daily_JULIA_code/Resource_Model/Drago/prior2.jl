@@ -11,12 +11,15 @@ DA_richness = deserialize("Objects/DA_richness.jls")::DimArray{Float64,2}
 ########################## IDX #####################################
 idx = findall(x -> x == 1.0, DA_sum)
 
-npp_DA = deserialize("Objects/npp_DA.jls")
+# npp_DA = deserialize("Objects/npp_DA.jls")
 
 ################### iberian_interact_NA #####################
 ####################################################################
 ####################################################################
 ####################################################################
+# CSV.write("DFs/spain_names.csv", DataFrame(spain_names = spain_names))
+spain_names = CSV.read("DFs/spain_names.csv", DataFrame)[:, :spain_names]
+spain_names = convert(Vector{String}, spain_names)
 
 if true # I don't know why I did this but I think it messes things up
 # Load a DataFrame from a serialized file ('.jls' format).

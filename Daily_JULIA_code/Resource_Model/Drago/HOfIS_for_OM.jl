@@ -1,17 +1,15 @@
 # ---------------------------------------------------------------------------
 # 1) Load necessary modules and source scripts
 # ---------------------------------------------------------------------------
-include("prior.jl")                # If needed
-include("prior2.jl")               # If needed
-include("DA_birmmals_with_pi.jl")
-include("generate_competition_matrix.jl")
-include("species_dict.jl")
-include("ecosystem_dynamics!.jl")
-include("FI_functions.jl")
-include("extract_H0_DA.jl")
-include("Functions/attempt_setup_community.jl")
-include("Functions/Callbacks_function.jl")
-
+include("DFs/prior.jl")                  # If needed
+include("DFs/prior2.jl")                 # If needed
+include("DFs/DA_birmmals_with_pi.jl")
+include("DFs/generate_competition_matrix.jl")
+include("DFs/species_dict.jl")
+include("DFs/ecosystem_dynamics!.jl")
+include("DFs/FI_functions.jl")
+include("DFs/extract_H0_DA.jl")
+include("attempt_setup_community.jl")
 # ---------------------------------------------------------------------------
 # 2) Set parameters from environment (or hardcode for testing)
 # In a production OpenMole run these would be provided externally.
@@ -98,17 +96,17 @@ try
     survived_pred = count(P_end .> EXTINCTION_THRESHOLD)
     total_surv = survived_herb + survived_pred
     total_species = S + R
-    survival_rate = (total_species > 0) ? total_surv / total_species : 0.0
+    global survival_rate = (total_species > 0) ? total_surv / total_species : 0.0
 
     H_biomass = sum(H_end[H_end .> EXTINCTION_THRESHOLD])
     P_biomass = sum(P_end[P_end .> EXTINCTION_THRESHOLD])
     herb_pred_ratio = (H_biomass > 0) ? (P_biomass / H_biomass) : 0.0
-
+    @info "hey, the try worked"
 catch e
     @error "Error in simulation: $e. Returning 0.0 outputs."
     @info "shit happened"
-    survival_rate = 0.0
-    herb_pred_ratio = 0.0
+    global survival_rate = 0.0
+    global herb_pred_ratio = 0.0
 end
 
 # ---------------------------------------------------------------------------
@@ -116,6 +114,6 @@ end
 # ---------------------------------------------------------------------------
 @info "Final outputs: survival_rate = $survival_rate, herb_pred_ratio = $herb_pred_ratio"
 
-# Optionally, assign them as global variables for OpenMole to retrieve:
-global FINAL_SURVIVAL_RATE = survival_rate
-global FINAL_HERB_PRED_RATIO = herb_pred_ratio
+# # Optionally, assign them as global variables for OpenMole to retrieve:
+# global survival_rate = survival_rate
+# global herb_pred_ratio = herb_pred_ratio
