@@ -11,7 +11,7 @@ using Dates, Distributions, Serialization, StatsBase, JLD2, Random
 using ColorSchemes, Colors #Crayons, 
 using Makie, CairoMakie # ImageMagick
 if ode_true
-    using DifferentialEquations, DiffEqCallbacks, LinearAlgebra
+    using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging
 end
 # if end_true
 #     using DifferentialEquations # EcologicalNetworksDynamics, 
