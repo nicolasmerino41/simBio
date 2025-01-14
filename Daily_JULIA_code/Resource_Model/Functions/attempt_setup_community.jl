@@ -42,7 +42,7 @@ function attempt_setup_community(
         )
     catch e
         # If anything fails, we log it or ignore it, then return nothing
-        @warn "Failed inside attempt_setup_community: $e"
+        # @warn "Failed inside attempt_setup_community: $e"
         return nothing
     end
 end
