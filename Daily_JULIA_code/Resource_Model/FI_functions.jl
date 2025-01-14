@@ -42,10 +42,56 @@ function identify_n_of_herbs_and_preds(species_names::Vector{String})
     return S, R
 end
 
+function check_predator_has_prey(species_names::Vector{String})
+    # Determine the predators present in this cell
+    cell_predators = [sp for sp in species_names if sp in predator_names]
+    
+    # Initialize the output dictionary
+    predator_has_prey = Dict{String,Bool}()
+    
+    # Iterate over each predator in the cell
+    for pred in cell_predators
+        # Get the global index of the predator from species_dict
+        global_pred_idx = species_dict[pred]
+        found_prey = false
+
+        # Check among all species in the cell whether there is at least one prey
+        # (Here we consider both herbivores and predators as potential prey.)
+        for candidate in species_names
+            # Skip checking self-predation if desired
+            if candidate == pred
+                continue
+            end
+
+            # Get the global index for the candidate prey
+            global_candidate_idx = species_dict[candidate]
+            # Check if the interaction matrix indicates that `pred` eats `candidate`
+            if iberian_interact_NA[global_pred_idx, global_candidate_idx] == 1
+                found_prey = true
+                break  # Stop checking once we find a prey
+            end
+        end
+
+        predator_has_prey[pred] = found_prey
+    end
+
+    # Check if all predators have at least one prey
+    allHavePrey = all(values(predator_has_prey))
+    
+    if allHavePrey
+        # All predators have prey: Return true along with 0 and an empty vector
+        return (true, 0, String[])
+    else
+        # Identify predators that do not have any prey
+        predators_without_prey = [pred for (pred, hasprey) in predator_has_prey if !hasprey]
+        num_without_prey = length(predators_without_prey)
+        return (false, num_without_prey, predators_without_prey)
+    end
+end
+
 ###############################################################################
 # 1) PARAMETRISE THE COMMUNITY
 ###############################################################################
-
 function parametrise_the_community(
     species_names::Vector{String};
     # Basic arguments:
