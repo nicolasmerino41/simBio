@@ -12,6 +12,12 @@ include("extract_H0_DA.jl")
 include("Functions/attempt_setup_community.jl")
 include("Functions/Callbacks_function.jl")
 
+# const iberian_interact_NA = iberian_interact_NA
+# const species_dict = species_dict
+# const predator_names = predator_names
+# const herbivore_names = herbivore_names
+# const spain_names = spain_names
+
 # 1) Define your parameter ranges
 mu_vals               = range(0.1, 0.9, length=10)
 mu_predation_vals     = range(0.0, 0.1, length=100)
@@ -36,7 +42,7 @@ param_combinations = Random.shuffle!(param_combinations)
 param_combinations = param_combinations[1:2000]
 
 # 3) Prepare DataFrame for storing best results
-best_params_all_cells = DataFrame(
+best_params_all_cells_limited_to_2000 = DataFrame(
     cell_id                 = Int[],
     i                       = Int[],
     j                       = Int[],
@@ -65,19 +71,25 @@ global_lock = ReentrantLock()
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
 MAX_ITERS                  = 2000      # Up to 2000 combos
-SURVIVAL_THRESHOLD         = 0.75      # We'll store the best if it reaches at least 0.75
+SURVIVAL_THRESHOLD         = 0.0      # We'll store the best if it reaches at least 0.75
 
-Threads.@threads for cell in 1:8  # or whichever cells you want
+@time Threads.@threads for cell in 1:24  # or whichever cells you want
     local_i, local_j = idx[cell][1], idx[cell][2]
     @info "Processing cell $cell (i=$local_i, j=$local_j)..."
 
     # Gather cell data
     sp_nm                 = extract_species_names_from_a_cell(DA_birmmals_with_pi[local_i, local_j])
     local_S, local_R      = identify_n_of_herbs_and_preds(sp_nm)
+    predator_has_prey     = check_predator_has_prey(sp_nm)
+    if !predator_has_prey[1]
+       local_R -= predator_has_prey[2]
+       filter!(name -> !(name in predator_has_prey[3]), sp_nm)
+       @info("In cell $cell, we removed $(predator_has_prey[2]) predators without prey.")
+    end
+    
     localNPP              = 1000.0
     localH0_vector        = Vector{Float64}(H0_DA[local_i, local_j].a)
     cb_no_trigger, cb_trg = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
-
 
     # We'll track the best result so far in local variables
     best_survival_rate  = 0.0
@@ -119,9 +131,16 @@ Threads.@threads for cell in 1:8  # or whichever cells you want
 
         params = (S2, R2, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon_vector, m_alpha)
         prob   = ODEProblem(ecosystem_dynamics!, u0, (0.0, 500.0), params)
-        sol  = solve(prob, Tsit5();
-                    #  callback = cb_no_trigger, # or cb_trigger if you want forced extinction
-                     reltol=1e-6, abstol=1e-6)
+        
+        #### THIS APPROACH ELIMINATES THE WARNING ####
+        # Create a logger that only shows errors (i.e. skips warnings)
+        logger = SimpleLogger(stderr, Logging.Error)
+
+        # Wrap the solver call in the logging context:
+        sol = with_logger(logger) do
+            solve(prob, Tsit5(); callback=cb_no_trigger, abstol=1e-8, reltol=1e-6)
+        end
+        ###############################################
 
         # If it didn't integrate to 500 or is inf/nan, skip
         if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
@@ -185,13 +204,13 @@ Threads.@threads for cell in 1:8  # or whichever cells you want
     if found_full_survival
         # best_result *should* be 1.0
         @lock global_lock begin
-            push!(best_params_all_cells, best_result)
+            push!(best_params_all_cells_limited_to_2000, best_result)
         end
     else
         # If not found full survival, check if best >= 0.75
         if best_survival_rate >= SURVIVAL_THRESHOLD  # e.g. 0.75
             @lock global_lock begin
-                push!(best_params_all_cells, best_result)
+                push!(best_params_all_cells_limited_to_2000, best_result)
             end
         else
             @info "Cell $cell: best survival was $(round(best_survival_rate, digits=2)) < 0.75 => Not storing."
@@ -200,5 +219,5 @@ Threads.@threads for cell in 1:8  # or whichever cells you want
 end  # end Threads.@threads
 
 # done
-CSV.write("best_results_per_cell1.csv", best_params_all_cells)
+CSV.write("best_results_per_cell_limited_to_2000.csv", best_params_all_cells_limited_to_2000)
 @info "Finished. We stored combos with survival >= 0.75, or full survival."
