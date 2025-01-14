@@ -10,13 +10,13 @@ include("extract_H0_DA.jl")
 ##############################################################################################
 total_biomass_df = DataFrame(herbivore_biomass = Float64[], predator_biomass = Float64[], total_biomass = Float64[], i_star = Float64[])
 
-# for i_star_idx in 1:10 
+i_star_idx = 1
 begin
 
     ## NOTE, COMMENT THE include(callbacks.jl) IF YOU'VE ALREADY RUN IT ONCE FOR THAT CELL
-    extinction_trigger = true
+    extinction_trigger = false
     # Choose a cell
-    aco = 417
+    aco = 1
     i, j = idx[aco][1], idx[aco][2]
 
     # Extract the NPP from the cell
@@ -28,11 +28,11 @@ begin
         i, j;
         NPP = NPP,
         M_mean = 0.1,
-        mu = 0.5,
+        mu = 0.54,
         symmetrical_competition = true,
         mean_m_alpha = 0.1,
-        epsilon_val = 1.0,
-        mu_predation = 0.01,
+        epsilon_val = 0.853061,
+        mu_predation = 0.028282828,
         iberian_interact_NA=iberian_interact_NA,
         species_dict=species_dict,
         m_standard_deviation = 0.0,
@@ -49,7 +49,7 @@ begin
     P_init = H_i0[1:R] ./ 10 # fill(10.0, R)
     u0 = vcat(H_init, P_init)
     tspan = (0.0, 500.0)
-    EXTINCTION_THRESHOLD = 1e-6
+    EXTINCTION_THRESHOLD = 1e-59
     T_ext = 250.0
     i_star = i_star_idx
 
@@ -104,8 +104,8 @@ begin
     # -------------------------------------------------------------------------
     # 0) Set parameters
     # -------------------------------------------------------------------------
-    include_predators   = false  
-    sort_by_abundance   = true  # Sort by abundance true or sort by biomass false
+    include_predators   = true  
+    sort_by_abundance   = false  # Sort by abundance true or sort by biomass false
     log                 = false  # Choose log scale
 
     # -------------------------------------------------------------------------
@@ -257,6 +257,7 @@ begin
             title="Predators: Biomass",
             yscale=log ? log10 : identity
         )
+        pred_indices = 1:length(pred_species_sorted)
         barplot!(ax_biomass_pred, pred_indices, pred_biomass_sorted)
         ax_biomass_pred.xticks = (pred_indices, pred_species_sorted)
         ax_biomass_pred.xticklabelrotation = π/2.5
