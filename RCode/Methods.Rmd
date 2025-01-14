@@ -40,7 +40,7 @@ $$
 $$
 The final resource shares are given by normalizing these values \(p_i = \frac{\hat{p}_i}{\sum_j \hat{p}_j}\)
 
-\(M_{ij} = \mu_{ij} + \dfrac{C_{ij} H_i^0}{m_i}\), where \(\mu_{ij}\) represents the baseline interaction (competition) between herbivore species \(i\) and \(j\), and \(\dfrac{C_{ij} H_i^0}{m_i}\) arises from predator effects. Specifically, predation is incorporated by defining
+\(M_{ij} = \mu_{ij} + \dfrac{C_{ij} H_i^0}{m_i}\), where \(\mu_{ij}\) represents the baseline interaction (competition) between herbivore species \(i\) and \(j\), and \(\dfrac{C_{ij} H_i^0}{m_i}\) arises from predator effects (apparent competition). Specifically, predation is incorporated by defining
 $$
 C_{ij} = \sum_{\alpha,\beta}\epsilon a_{i\alpha} A^{-1}_{\alpha\beta}a_{j\beta}
 $$
@@ -70,5 +70,5 @@ $$
 
 where \(\tilde{V}_{ij} = S q_i V_{ij} S h_j\) and \(V\) is a matrix arising from the inversion of \((I+M)\), with \(q_i\) similarly defined for mortality scaling. For a more complete derivation and discussion of the scaling relationships, including the adjustment of \(x\) to ensure NPP conservation, see the Supplementary Information.
 
-In our framework, some key parameters are treated as free parameters: the average competitive strength \(\mu\); the predation coefficients, \(a_{i\alpha}\); and the predator assimilation efficiency \(\epsilon\). Other parameters, such as the resource allocation fractions \(p_i\) and the characteristic densities  (\(H_i^0\), determined via the niche-derived scaling factors \(h_i\)), are derived from pseudoempirical abundance distributions and sdm-derived niches, respectively. Additionally, species-specific mortality rates \(m_i\) and \(m_{\alpha}\) are assumed constant at \(M_{mean}\). Together these parameters govern the balance between resource uptake, intra- and interspecific interactions, and trophic transfers, and are calibrated such that the simulated community attains stable coexistence.
+In our framework, some key parameters are treated as free parameters: the average competitive strength \(\mu\); the predation coefficients \(a_{i\alpha}\); and the predator assimilation efficiency \(\epsilon\). Other parameters, such as the resource allocation fractions \(p_i\) and the characteristic densities  (\(H_i^0\), determined via the niche-derived scaling factors \(h_i\)), are derived from pseudoempirical abundance distributions and sdm-derived niches, respectively. Additionally, species-specific mortality rates \(m_i\) and \(m_{\alpha}\) are assumed constant at \(M_{mean}\). Together these parameters govern the balance between resource uptake, intra- and interspecific interactions, and trophic transfers, and are calibrated such that the simulated community attains stable coexistence.
 
