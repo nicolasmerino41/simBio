@@ -11,6 +11,7 @@ include("FI_functions.jl")
 include("extract_H0_DA.jl")
 include("Functions/attempt_setup_community.jl")
 include("Functions/Callbacks_function.jl")
+include("npp_DA_relative_to_1000.jl")
 
 # const iberian_interact_NA = iberian_interact_NA
 # const species_dict = species_dict
@@ -19,7 +20,7 @@ include("Functions/Callbacks_function.jl")
 # const spain_names = spain_names
 
 # 1) Define your parameter ranges
-mu_vals               = range(0.1, 0.9, length=10)
+mu_vals               = [0.5]
 mu_predation_vals     = range(0.0, 0.1, length=100)
 epsilon_vals          = range(0.1, 1.0, length=50)
 sym_competition_vals  = [true]
@@ -42,7 +43,7 @@ param_combinations = Random.shuffle!(param_combinations)
 param_combinations = param_combinations[1:2000]
 
 # 3) Prepare DataFrame for storing best results
-best_params_all_cells_limited_to_2000 = DataFrame(
+best_params_24_cells_fixed_mu05_nppDA1000 = DataFrame(
     cell_id                 = Int[],
     i                       = Int[],
     j                       = Int[],
@@ -87,7 +88,7 @@ SURVIVAL_THRESHOLD         = 0.0      # We'll store the best if it reaches at le
        @info("In cell $cell, we removed $(predator_has_prey[2]) predators without prey.")
     end
     
-    localNPP              = 1000.0
+    localNPP              = Float64(npp_DA_relative_to_1000[local_i, local_j]) 
     localH0_vector        = Vector{Float64}(H0_DA[local_i, local_j].a)
     cb_no_trigger, cb_trg = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
 
@@ -204,13 +205,13 @@ SURVIVAL_THRESHOLD         = 0.0      # We'll store the best if it reaches at le
     if found_full_survival
         # best_result *should* be 1.0
         @lock global_lock begin
-            push!(best_params_all_cells_limited_to_2000, best_result)
+            push!(best_params_24_cells_fixed_mu05_nppDA1000, best_result)
         end
     else
         # If not found full survival, check if best >= 0.75
         if best_survival_rate >= SURVIVAL_THRESHOLD  # e.g. 0.75
             @lock global_lock begin
-                push!(best_params_all_cells_limited_to_2000, best_result)
+                push!(best_params_24_cells_fixed_mu05_nppDA1000, best_result)
             end
         else
             @info "Cell $cell: best survival was $(round(best_survival_rate, digits=2)) < 0.75 => Not storing."
@@ -219,5 +220,28 @@ SURVIVAL_THRESHOLD         = 0.0      # We'll store the best if it reaches at le
 end  # end Threads.@threads
 
 # done
-CSV.write("best_results_per_cell_limited_to_2000.csv", best_params_all_cells_limited_to_2000)
+CSV.write("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/best_params_24_cells_fixed_mu05_nppDA1000.csv", best_params_24_cells_fixed_mu05_nppDA1000)
 @info "Finished. We stored combos with survival >= 0.75, or full survival."
+best_params_24_cells_fixed_mu05 = CSV.read("best_results_per_cell_limited_to_2000.csv", DataFrame)
+
+# Plot total biomass vs mu
+fig = Figure(resolution = (600, 500))
+ax = Axis(fig[1, 1], xlabel = "mu", ylabel = "Total Biomass", title = "Total Biomass vs mu")
+
+# Get unique mu values and assign colors
+unique_mu = sort(unique(best_params_all_cells_limited_to_2000.mu))
+num_colors_mu = length(unique_mu)
+
+# Plot data and regression line for each mu value
+for (i, mu_value) in enumerate(unique_mu)
+    mask = best_params_all_cells_limited_to_2000.mu .== mu_value
+    mu_data = best_params_all_cells_limited_to_2000.mu[mask]
+    biomass_data = best_params_all_cells_limited_to_2000.biomass_at_the_end[mask]
+
+    # Scatter plot
+    MK.scatter!(
+        ax, mu_data, biomass_data,
+        label = "mu = $(mu_value)", markersize = 10
+    )
+end
+display(fig)
