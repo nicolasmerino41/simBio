@@ -110,7 +110,7 @@ begin
     # --------------------------
     # 5) Prepare DataFrame for removal experiments
     # --------------------------
-    results_df = DataFrame(cell = Int[], sp_removed = String[],
+    AAA = DataFrame(cell = Int[], sp_removed = String[],
         sp_id_removed = Int[],
         survival_rate = Float64[], total_biomass = Float64[],
         h_biomass = Float64[], p_biomass = Float64[],
@@ -127,17 +127,17 @@ begin
     )
 
     # Save the full simulation results as baseline (sp_removed = "none")
-    push!(results_df, (
+    push!(AAA, (
         cell = cell,
         sp_removed = "none",
         sp_id_removed = 0,
-        survival_rate = full_survival_rate,
-        total_biomass = full_total_biomass,
-        h_biomass = full_H_biomass,
-        p_biomass = full_P_biomass,
-        herb_pred_ratio = full_herb_pred_ratio,
-        herbivore_survival_rate = S_full > 0 ? full_surv_herb / S_full : 0.0,
-        predator_survival_rate = R_full > 0 ? full_surv_pred / R_full : 0.0,
+        survival_rate = round(full_survival_rate, digits=3),
+        total_biomass = round(full_total_biomass, digits=3),
+        h_biomass = round(full_H_biomass, digits=3),
+        p_biomass = round(full_P_biomass, digits=3),
+        herb_pred_ratio =  round(full_herb_pred_ratio, digits=3),
+        herbivore_survival_rate = S_full > 0 ? round(full_surv_herb / S_full, digits=3) : 0.0,
+        predator_survival_rate = R_full > 0 ? round(full_surv_pred / R_full, digits=3) : 0.0,
         delta_total_biomass = 0.0,
         H_biomass_vector = join(string.(H_end_full), ","),
         P_biomass_vector = join(string.(P_end_full), ","),
@@ -195,7 +195,7 @@ begin
         collateral_indices = [i for i in 1:S_full+R_full if full_ext_mask[i] == 0 && ext_mask[i] == 1 && i != i_sp]
         collateral_names = isempty(collateral_indices) ? "none" : join([sp_nm[i] for i in collateral_indices], ",")
         ind_ext_num_str = isempty(collateral_indices) ? "none" : join(string.(collateral_indices), ",")
-        push!(results_df, (
+        push!(AAA, (
             cell = cell,
             sp_removed = sp,
             sp_id_removed = i_sp,
@@ -234,10 +234,10 @@ begin
         P_biomass_vector = join(string.(P_end), ",")
         # For predators, we consider collateral extinctions only in the predator compartment.
         # In the full community, the predator indices are S_full+1:S_full+R_full.
-        collateral_pred_indices = [S_full + i for i in 1:R_full if full_ext_mask_pred[i] == 0 && ext_mask[S_full+i] == 1 && i != i_sp]
-        collateral_pred_names = isempty(collateral_pred_indices) ? "none" : join([predator_list_full[i] for i in 1:R_full if full_ext_mask_pred[i] == 0 && ext_mask[S_full+i] == 1 && i != i_sp], ",")
+        collateral_pred_indices = [S_full + i for i in 1:R_full if full_ext_mask[i] == 0 && ext_mask[S_full+i] == 1 && i != i_sp]
+        collateral_pred_names = isempty(collateral_pred_indices) ? "none" : join([predator_list_full[i] for i in 1:R_full if full_ext_mask[i] == 0 && ext_mask[S_full+i] == 1 && i != i_sp], ",")
         ind_ext_num_pred_str = isempty(collateral_pred_indices) ? "none" : join(string.(collateral_pred_indices), ",")
-        push!(results_df, (
+        push!(AAA, (
             cell = cell,
             sp_removed = sp,
             sp_id_removed = sp_number,
@@ -263,5 +263,5 @@ begin
     # --------------------------
     @info "Removal experiments finished for cell $cell."
     # @info "Results:"
-    # println(results_df)
+    # println(AAA)
 end
