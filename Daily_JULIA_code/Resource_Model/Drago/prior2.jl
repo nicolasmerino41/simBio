@@ -11,7 +11,7 @@ DA_richness = deserialize("Objects/DA_richness.jls")::DimArray{Float64,2}
 ########################## IDX #####################################
 idx = findall(x -> x == 1.0, DA_sum)
 
-# npp_DA = deserialize("Objects/npp_DA.jls")
+npp_DA = deserialize("Objects/npp_DA.jls")
 
 ################### iberian_interact_NA #####################
 ####################################################################
