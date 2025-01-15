@@ -1,4 +1,8 @@
-
+################################################################################
+# Instead of storing the best configurations (max survivors) in a global DataFrame,
+# we write each cell's best result (i.e. the line of best configuration) directly
+# to a CSV file immediately after processing that cell.
+################################################################################
 include("prior.jl")
 include("prior2.jl")
 include("DA_birmmals_with_pi.jl")
@@ -8,218 +12,215 @@ include("species_dict.jl")
 include("ecosystem_dynamics!.jl")
 include("FI_functions.jl")
 include("extract_H0_DA.jl")
-#= This script will iterate over all iberian cells and save the parameter configuration 
-that maximises the number of survived species in the cell. If there is more than one configuration, 
-it will save all of them =#
+include("attempt_setup_community.jl")
+include("Callbacks_function.jl")
+include("npp_DA_relative_to_1000.jl")
+
+# (If not already declared in your module, you might declare the following globals as const)
+# const iberian_interact_NA = iberian_interact_NA
+# const species_dict = species_dict
+# const predator_names = predator_names
+# const herbivore_names = herbivore_names
+# const spain_names = spain_names
 
 # Define your parameter ranges
-mu_vals = range(0.1, 0.9, length=2)
-mu_predation_vals = range(0.0, 0.1, length=100)
-epsilon_vals = range(0.1, 1.0, length=2)
-sym_competition_vals = [true, false]
-EXTINCTION_THRESHOLD = 1e-6
-T_ext = 250.0
+mu_vals               = range(0.1, 0.9, length=10)
+mu_predation_vals     = range(0.0, 0.1, length=100)
+epsilon_vals          = range(0.1, 1.0, length=50)
+sym_competition_vals  = [true]
 
-# Build all parameter combinations
+# Optionally, for testing:
+# mu_vals = [0.811111111]
+# mu_predation_vals = [0.012121212]
+# epsilon_vals = [0.8897959]
+# sym_competition_vals = [true]
+
+# 2) Build the parameter combinations and shuffle them 
 param_combinations = [
-    (mu, mu_predation, epsilon_val, sym_comp)
+    (mu, mu_predation, epsilon_val, sym_comp) 
     for mu in mu_vals
     for mu_predation in mu_predation_vals
     for epsilon_val in epsilon_vals
     for sym_comp in sym_competition_vals
 ]
+param_combinations = Random.shuffle!(param_combinations)
+param_combinations = param_combinations[1:50000]
 
-# Prepare a DataFrame to store the best configurations for each cell
-best_params_all_cells = DataFrame(
-    cell_id                 = Int[],
-    i                       = Int[],
-    j                       = Int[],
-    mu                      = Float64[],
-    mu_predation            = Float64[],
-    epsilon_val             = Float64[],
-    symmetrical_competition = Bool[],
-    NPP                     = Float64[],
-    g_iH_i                  = Float64[],
-    survived_herbivores     = Int[],
-    survived_predators      = Int[],
-    total_survivors         = Int[],
-    total_species           = Int[],
-    survival_rate           = Float64[],
-    herbivore_survival_rate = Float64[],
-    predator_survival_rate  = Float64[],
-    H_biomass               = Float64[],
-    P_biomass               = Float64[],
-    biomass_at_the_end      = Float64[],
-    herb_pred_ratio         = Float64[]
-)
+# Define constants
+const EXTINCTION_THRESHOLD = 1e-6
+const T_ext               = 250.0
+const MAX_ITERS           = 50000      # Up to 2000 combos
+const SURVIVAL_THRESHOLD  = 0.0       # For example, store best if survival rate >= threshold
 
-# A global lock for pushing results in a threadsafe way
-global_lock = ReentrantLock()
+# Import SpinLock for thread-safety
+using Base.Threads: SpinLock
 
-# Loop over all Iberian cells
-@time for cell in 1
-    i, j = idx[cell][1], idx[cell][2]
-    @info "Processing cell $cell (i=$i, j=$j)..."
-    sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi[i, j])
-    global S, R = identify_n_of_herbs_and_preds(sp_nm)
-    # Include expensive callbacks once per cell
-    include("Callbacks.jl")
-    println("length callbacks = ", length(callbacks))
-    # Gather cell-specific data
-    NPP = Float64(npp_DA[i, j])  # or a fixed test value
-    H0_vector = Vector{Float64}(H0_DA[i, j].a)
+# Initialize a SpinLock for file access
+const file_lock = SpinLock()
 
-    # We collect results for *all* combinations in this cell
-    scan_results = DataFrame(
-        mu                      = Float64[0],
-        mu_predation            = Float64[0],
-        epsilon_val             = Float64[0],
-        symmetrical_competition = Bool[0],
-        NPP                     = Float64[0],
-        g_iH_i                  = Float64[0],
-        survived_herbivores     = Int[0],
-        survived_predators      = Int[0],
-        total_survivors         = Int[0],
-        total_species           = Int[0],
-        survival_rate           = Float64[0],
-        herbivore_survival_rate = Float64[0],
-        predator_survival_rate  = Float64[0],
-        H_biomass               = Float64[0],
-        P_biomass               = Float64[0],
-        biomass_at_the_end      = Float64[0],
-        herb_pred_ratio         = Float64[0]
-    )
-
-    # Multi-threaded loop over parameter combinations
-    for p_idx in 1:length(param_combinations)
-        mu, mu_predation, epsilon_val, sym_competition = param_combinations[p_idx]
-
-        # Wrap in try/catch so we skip if there's an error (e.g. "No real solution")
-        try
-            global (S, R, species_names, herbivore_list, predator_list,
-             H_i0, m_i, p_vec, x_final, g_i, localHatH, G,
-             M_modified, a_matrix, A, epsilon_vector, m_alpha) =
-                setup_community_from_cell(
-                    i, j;
-                    NPP = NPP,
-                    M_mean = 0.1,
-                    mu = mu,
-                    symmetrical_competition = sym_competition,
-                    mean_m_alpha = 0.1,
-                    epsilon_val = epsilon_val,
-                    mu_predation = mu_predation,
-                    iberian_interact_NA = iberian_interact_NA,
-                    species_dict = species_dict,
-                    m_standard_deviation = 0.0,
-                    h_standard_deviation = 0.0,
-                    artificial_pi = false,
-                    real_H0 = true,
-                    H0_vector = H0_vector,
-                )
-                # println("S = $S, R = $R, length(H0_vector) = ", length(H_i0))
-                # println("u0 length = ", length(u0))
-                # println("epsilon_val = ", epsilon_val)
-
-        catch e
-            @warn "Cell $cell, mu=$mu, mu_predation=$mu_predation, epsilon=$epsilon_val, sym_comp=$sym_competition failed: $e. Skipping combo."
-            continue
+function write_result_row(result::NamedTuple, filename::String)
+    lock(file_lock)  # Lock the file for thread-safe access
+    # Convert the result NamedTuple to a DataFrame with a single row.
+    df = DataFrame([result])  # Wrap result in an array for a one-row DataFrame.
+    try
+        if !isfile(filename)
+            # If the file does not exist, write with a header.
+            CSV.write(filename, df)
+        else
+        # Otherwise, append without a header.
+            CSV.write(filename, df; append=true)
         end
-
-        println("The combination ",  param_combinations[p_idx] , " seems to work")
-        # Solve the ODE
-        H_init = H_i0
-        P_init = H_i0[1:R] ./ 10.0
-        u0 = vcat(H_init, P_init)
-
-        params = (S, R, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon_vector, m_alpha)
-        tspan = (0.0, 500.0)
-
-        extinction_trigger = false
-        cb = extinction_trigger ? cb_trigger : cb_no_trigger
-
-        prob = ODEProblem(ecosystem_dynamics!, u0, tspan, params)
-        sol = solve(prob, Tsit5(); callback=cb, reltol=1e-6, abstol=1e-6)
-
-        # Validate the solution
-        if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
-            @warn "Unstable solution for Cell $cell, parameters $param_combinations[p_idx]. Skipping."
-            continue
-        end
-
-        # Count survivors
-        EXTINCTION_THRESHOLD = 1e-6
-        H_end = sol[1:S, end]
-        P_end = sol[S+1:S+R, end]
-        survived_herb = count(H_end .> EXTINCTION_THRESHOLD)
-        survived_pred = count(P_end .> EXTINCTION_THRESHOLD)
-        total_surv = survived_herb + survived_pred
-        total_species = S + R
-        survival_rate = total_surv / total_species
-        herbivore_survival_rate = survived_herb / S
-        predator_survival_rate = survived_pred / R
-        H_biomass = sum(H_end[H_end .> EXTINCTION_THRESHOLD])
-        P_biomass = sum(P_end[P_end .> EXTINCTION_THRESHOLD])
-        biomass_at_the_end = H_biomass + P_biomass
-        herb_pred_ratio = P_biomass/H_biomass
-        g_iH_i = sum(g_i .* H_end)
-
-        # Thread-safe insertion into scan_results
-        @lock global_lock begin
-            push!(scan_results, (
-                mu,
-                mu_predation,
-                mean(epsilon_vector), #TODO improve this fix
-                sym_competition,
-                NPP,
-                g_iH_i,
-                survived_herb,
-                survived_pred,
-                total_surv,
-                total_species,
-                survival_rate,
-                herbivore_survival_rate,
-                predator_survival_rate,
-                H_biomass,
-                P_biomass,
-                biomass_at_the_end,
-                herb_pred_ratio
-            ))
-        end
-    end  # end threaded loop
-
-    # Now find the best result(s) in this cell
-    max_survivors = maximum(scan_results.total_survivors)
-    best_in_cell = scan_results[scan_results.total_survivors .== max_survivors, :]
-
-    # Append to the global DataFrame
-    @lock global_lock begin
-        for row in eachrow(best_in_cell)
-            push!(best_params_all_cells, (
-                cell_id                 = cell,
-                i                       = i,
-                j                       = j,
-                mu                      = row.mu,
-                mu_predation            = row.mu_predation,
-                epsilon_val             = row.epsilon_val,
-                symmetrical_competition = row.symmetrical_competition,
-                NPP                     = row.NPP,
-                g_iH_i                  = row.g_iH_i,
-                survived_herbivores     = row.survived_herbivores,
-                survived_predators      = row.survived_predators,
-                total_survivors         = row.total_survivors,
-                total_species           = row.total_species,
-                survival_rate           = row.survival_rate,
-                herbivore_survival_rate = row.herbivore_survival_rate,
-                predator_survival_rate  = row.predator_survival_rate,
-                H_biomass               = row.H_biomass,
-                P_biomass               = row.P_biomass,
-                biomass_at_the_end      = row.biomass_at_the_end,
-                herb_pred_ratio         = row.herb_pred_ratio
-            ))
-        end
+    finally
+        unlock(file_lock)  # Unlock the file
     end
 end
 
-# Finally, write out the best parameters for each cell
-CSV.write("best_params_per_cell.csv", best_params_all_cells)
-@info "Done! Best parameter configurations for each cell have been saved."
+# Set the output file name (make sure the directory exists)
+output_filename = "Results/best_params_5950_cells.csv"
+
+# (If you wish to clear any old file, you can do so before starting.)
+if isfile(output_filename)
+    rm(output_filename)
+end
+
+# @error("we got here")
+# Process cells (each cell will write its result immediately upon finding a good configuration)
+# (Assuming that `idx` is defined and gives the (i,j) for each cell.)
+@time Threads.@threads for cell in 1:8  # or however many cells you want to process
+    @info "Processing cell $cell..."
+    local_i, local_j = idx[cell][1], idx[cell][2]
+    
+    # Gather cell data
+    sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi[local_i, local_j])
+    local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
+    
+    # Check and remove predators without any prey.
+    predator_pp = check_predator_has_prey(sp_nm)
+    # Assuming check_predator_has_prey returns a tuple like (all_have_prey, num_without, names_without)
+    if !predator_pp[1]
+       local_R -= predator_pp[2]
+       filter!(name -> !(name in predator_pp[3]), sp_nm)
+       @info "In cell $cell, we removed $(predator_pp[2]) predators without prey."
+    end
+    
+    localNPP       = Float64(npp_DA_relative_to_1000[local_i, local_j]) #1000.0
+    localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
+    cb_no_trigger, cb_trg = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
+
+    # We'll track the best result in local variables.
+    best_survival_rate  = 0.0
+    best_result         = nothing
+    found_full_survival = false
+    
+    # Iterate over parameter combinations (up to MAX_ITERS or fewer)
+    for (p_idx, combo) in enumerate(param_combinations[1:min(end, MAX_ITERS)])
+        mu_val, mu_pred_val, eps_val, sym_competition = combo
+
+        # Attempt to set up the community
+        results = attempt_setup_community(
+            local_i, local_j,
+            mu_val, mu_pred_val, eps_val, sym_competition;
+            localNPP       = localNPP,
+            localH0_vector = localH0_vector
+        )
+        if results === nothing
+            continue
+        end
+
+        # Destructure the results:
+        (S2, R2, H_i0, m_i, g_i, G, M_modified,
+         a_matrix, A, epsilon_vector, m_alpha) = (
+            results.S, results.R, results.H_i0, results.m_i,
+            results.g_i, results.G, results.M_modified,
+            results.a_matrix, results.A, results.epsilon_vector,
+            results.m_alpha
+        )
+
+        if (S2 + R2) == 0 || R2 > length(H_i0)
+            continue
+        end
+
+        # Build initial conditions.
+        H_init = H_i0
+        P_init = H_init[1:R2] ./ 10.0
+        u0     = vcat(H_init, P_init)
+
+        params = (S2, R2, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon_vector, m_alpha)
+        prob   = ODEProblem(ecosystem_dynamics!, u0, (0.0, 500.0), params)
+        
+        #### THIS APPROACH ELIMINATES THE SOLVER WARNING ####
+        logger = SimpleLogger(stderr, Logging.Error)
+        sol = with_logger(logger) do
+            solve(prob, Tsit5(); callback=cb_no_trigger, abstol=1e-8, reltol=1e-6)
+        end
+        #######################################################
+
+        # Skip if integration did not complete to 500 or if nan/inf occurred.
+        if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
+            continue
+        end
+
+        # Evaluate survival
+        H_end      = sol[1:S2, end]
+        P_end      = sol[S2+1:S2+R2, end]
+        survived_herb = count(H_end .> EXTINCTION_THRESHOLD)
+        survived_pred = count(P_end .> EXTINCTION_THRESHOLD)
+        total_surv    = survived_herb + survived_pred
+        total_species = S2 + R2
+        survival_rate = total_surv / total_species
+
+        # Update the best result if survival_rate is improved.
+        if survival_rate > best_survival_rate
+            herbivore_survival_rate = survived_herb / S2
+            predator_survival_rate  = survived_pred / R2
+            H_biomass               = sum(H_end)
+            P_biomass               = sum(P_end)
+            biomass_at_the_end      = H_biomass + P_biomass
+            ratio                   = (H_biomass == 0.0) ? NaN : (P_biomass / H_biomass)
+            giHi                    = sum(g_i .* H_end)
+
+            best_survival_rate = survival_rate
+            best_result = (
+                cell_id                 = cell,
+                i                       = local_i,
+                j                       = local_j,
+                mu                      = round(mu_val, digits=3),
+                mu_predation            = round(mu_pred_val, digits=3),
+                epsilon_val             = round(eps_val, digits=3),
+                symmetrical_competition = sym_competition,
+                NPP                     = round(localNPP, digits=2),
+                g_iH_i                  = round(giHi, digits=2),
+                g_iH_i_over_NPP         = round(giHi / localNPP, digits=2), 
+                survived_herbivores     = survived_herb,
+                survived_predators      = survived_pred,
+                total_survivors         = total_surv,
+                total_species           = total_species,
+                survival_rate           = round(survival_rate, digits=3),
+                herbivore_survival_rate = round(herbivore_survival_rate, digits=3),
+                predator_survival_rate  = round(predator_survival_rate, digits=3),
+                H_biomass               = H_biomass,
+                P_biomass               = P_biomass,
+                biomass_at_the_end      = biomass_at_the_end,
+                herb_pred_ratio         = round(ratio, digits=3)
+            )
+        end
+
+        # Stop early if full survival is achieved.
+        if isapprox(survival_rate, 1.0; atol=1e-10)
+            @info "Cell $cell => full survival with (mu=$mu_val, mu_pred=$mu_pred_val, eps=$eps_val). Stopping early."
+            found_full_survival = true
+            break
+        end
+    end
+
+    # Write the result immediately if conditions are met.
+    if found_full_survival || (best_survival_rate >= SURVIVAL_THRESHOLD)
+         # Write best_result to CSV immediately.
+         write_result_row(best_result, output_filename)
+    else
+         @info "Cell $cell: best survival was $(round(best_survival_rate, digits=2)) < $SURVIVAL_THRESHOLD => Not storing."
+    end
+end  # end Threads.@threads
+
+@info "Finished. Stored combos with survival >= $SURVIVAL_THRESHOLD (or full survival)."
+# error("Done")
