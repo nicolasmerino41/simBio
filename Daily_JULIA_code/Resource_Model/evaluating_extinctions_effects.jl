@@ -14,9 +14,9 @@ begin
     # --------------------------
     # 1) Fixed parameter configuration
     # --------------------------
-    mu_val           = 0.9
-    mu_predation_val = 0.00909090909
-    epsilon_val      = 0.853061
+    mu_val           = 0.367
+    mu_predation_val = 0.019191919
+    epsilon_val      = 0.982
     sym_competition  = true
 
     M_mean               = 0.1
@@ -29,7 +29,7 @@ begin
     # --------------------------
     # 2) Choose cell (example: cell 2)
     # --------------------------
-    cell = 426
+    cell = 1
     local_i, local_j = idx[cell][1], idx[cell][2]
 
     # --------------------------
@@ -37,7 +37,7 @@ begin
     # --------------------------
     sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi[local_i, local_j])
     local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
-    localNPP = 1000.0
+    localNPP = Float64(npp_DA_relative_to_1000[local_i, local_j])
     localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
 
     # --------------------------
@@ -195,6 +195,7 @@ begin
         collateral_indices = [i for i in 1:S_full+R_full if full_ext_mask[i] == 0 && ext_mask[i] == 1 && i != i_sp]
         collateral_names = isempty(collateral_indices) ? "none" : join([sp_nm[i] for i in collateral_indices], ",")
         ind_ext_num_str = isempty(collateral_indices) ? "none" : join(string.(collateral_indices), ",")
+
         push!(AAA, (
             cell = cell,
             sp_removed = sp,
@@ -232,11 +233,12 @@ begin
         delta_total_biomass = full_total_biomass - tot_bio
         H_biomass_vector = join(string.(H_end), ",")
         P_biomass_vector = join(string.(P_end), ",")
-        # For predators, we consider collateral extinctions only in the predator compartment.
+        # FALSE For predators, we consider collateral extinctions only in the predator compartment.
         # In the full community, the predator indices are S_full+1:S_full+R_full.
-        collateral_pred_indices = [S_full + i for i in 1:R_full if full_ext_mask[i] == 0 && ext_mask[S_full+i] == 1 && i != i_sp]
-        collateral_pred_names = isempty(collateral_pred_indices) ? "none" : join([predator_list_full[i] for i in 1:R_full if full_ext_mask[i] == 0 && ext_mask[S_full+i] == 1 && i != i_sp], ",")
-        ind_ext_num_pred_str = isempty(collateral_pred_indices) ? "none" : join(string.(collateral_pred_indices), ",")
+        collateral_pred_indices = [i for i in 1:S_full+R_full if full_ext_mask[i] == 0 && ext_mask[i] == 1 && i != i_sp]
+        collateral_pred_names = isempty(collateral_indices) ? "none" : join([sp_nm[i] for i in collateral_indices], ",")
+        ind_ext_num_pred_str = isempty(collateral_indices) ? "none" : join(string.(collateral_indices), ",")
+        
         push!(AAA, (
             cell = cell,
             sp_removed = sp,
