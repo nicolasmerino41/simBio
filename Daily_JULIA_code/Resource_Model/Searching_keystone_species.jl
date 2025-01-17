@@ -319,3 +319,4 @@ for dd in all_results_list
     push!(lowest_survival_species, species_name)
 end
 
+unique(lowest_survival_species)
