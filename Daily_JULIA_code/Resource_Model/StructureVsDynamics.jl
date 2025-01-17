@@ -25,7 +25,7 @@ begin
     ###############################
     sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi[local_i, local_j])
     local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
-    localNPP = 1000.0
+    localNPP = Float64(npp_DA_relative_to_1000[local_i, local_j])
     localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
 
     ###############################
@@ -110,6 +110,8 @@ begin
         delta_total_biomass = Float64[],
         H_biomass_vector = String[],
         P_biomass_vector = String[],
+        H_full_minus_H = String[],
+        P_full_minus_P = String[],
         ind_ext_num = String[],
         ind_ext_name = String[],
         survived_herbs = Int[],
@@ -131,6 +133,8 @@ begin
         delta_total_biomass = 0.0,
         H_biomass_vector = join(string.(H_end_full), ","),
         P_biomass_vector = join(string.(P_end_full), ","),
+        H_full_minus_H = fill(0.0, S_full),
+        P_full_minus_P = fill(0.0, R_full),
         ind_ext_num = "none",
         ind_ext_name = "none",
         survived_herbs = full_surv_herb,
@@ -151,6 +155,8 @@ begin
             P_end = sol[S_local+1:end, end]
             H_end[H_end .< EXTINCTION_THRESHOLD] .= 0.0
             P_end[P_end .< EXTINCTION_THRESHOLD] .= 0.0
+            H_end_full_minus_H_end = H_end_full .- H_end
+            P_end_full_minus_H_end = P_end_full .- P_end
             surv_herb = count(H_end .> EXTINCTION_THRESHOLD)
             surv_pred = count(P_end .> EXTINCTION_THRESHOLD)
             tot_surv = surv_herb + surv_pred
@@ -161,7 +167,7 @@ begin
             # Build a full extinction mask for the community (herbivores + predators)
             ext_mask = vcat(map(x -> x > EXTINCTION_THRESHOLD ? 0 : 1, H_end),
                             map(x -> x > EXTINCTION_THRESHOLD ? 0 : 1, P_end))
-            return (sr, H_bio + P_bio, H_bio, P_bio, surv_herb, surv_pred, ext_mask, H_end, P_end)
+            return (sr, H_bio + P_bio, H_bio, P_bio, surv_herb, surv_pred, ext_mask, H_end, P_end, H_end_full_minus_H_end, P_end_full_minus_P_end)
         end
     end
 
@@ -194,7 +200,7 @@ begin
         modified_H_init = copy(H_init_full)
         modified_H_init[i_sp] = 0.0  # Remove species sp actively.
         modified_u0 = vcat(modified_H_init, P_init_full)
-        sr, tot_bio, H_bio, P_bio, surv_herb, surv_pred, ext_mask, H_end, P_end =
+        sr, tot_bio, H_bio, P_bio, surv_herb, surv_pred, ext_mask, H_end, P_end, H_end_full_minus_H_end, P_end_full_minus_P_end =
             run_simulation(modified_u0, params_full, tspan)
         herb_pred_ratio_mod = H_bio > 0 ? (P_bio / H_bio) : 0.0
         herb_surv_rate_mod = S_full > 0 ? surv_herb / S_full : 0.0
@@ -218,6 +224,8 @@ begin
             predator_survival_rate = round(pred_surv_rate_mod, digits=3),
             H_biomass_vector = H_biomass_vector,
             P_biomass_vector = P_biomass_vector,
+            H_full_minus_H = H_end_full_minus_H_end,
+            P_full_minus_P = P_end_full_minus_P_end,
             ind_ext_num = ind_ext_num_str,
             ind_ext_name = ind_ext_name_str,
             survived_herbs = surv_herb,
@@ -231,7 +239,7 @@ begin
         modified_P_init = copy(P_init_full)
         modified_P_init[i_sp] = 0.0  # Remove species sp actively.
         modified_u0 = vcat(H_init_full, modified_P_init)
-        sr, tot_bio, H_bio, P_bio, surv_herb, surv_pred, ext_mask, H_end, P_end =
+        sr, tot_bio, H_bio, P_bio, surv_herb, surv_pred, ext_mask, H_end, P_end, H_end_full_minus_H_end, P_end_full_minus_P_end =
             run_simulation(modified_u0, params_full, tspan)
         herb_pred_ratio_mod = H_bio > 0 ? (P_bio / H_bio) : 0.0
         herb_surv_rate_mod = S_full > 0 ? surv_herb / S_full : 0.0
@@ -278,32 +286,23 @@ begin
     # Here, results_df contains a column "sp_removed" with species names (or "none" for no removal)
     # and species_metrics contains a column "species" with species names.
 
+    species_net_metrics = compute_food_web_metrics(cell).species_metrics
+
     # Filter out the full community baseline row (if sp_removed == "none")
     removal_df = filter(row -> row.sp_removed != "none", results_df)
 
     # Perform an inner join on the species name.
     merged_df = innerjoin(removal_df, species_net_metrics, on = [:sp_removed => :species])
 
-    # Optionally, you might want to rename the columns coming from species_metrics so that
-    # they are clearly labelled as network metrics.
-    rename!(merged_df, Dict(
-        :indegree => :network_indegree,
-        :outdegree => :network_outdegree,
-        :total_degree => :network_total_degree,
-        :betweenness => :network_betweenness,
-        :closeness => :network_closeness,
-        :clustering => :network_clustering
-    ))
-
     # For the full community baseline (sp_removed == "none"), you may wish to add a row with NaN
     # for the network metrics.
     baseline_df = filter(row -> row.sp_removed == "none", results_df)
-    baseline_df[!, :network_indegree] .= NaN
-    baseline_df[!, :network_outdegree] .= NaN
-    baseline_df[!, :network_total_degree] .= NaN
-    baseline_df[!, :network_betweenness] .= NaN
-    baseline_df[!, :network_closeness] .= NaN
-    baseline_df[!, :network_clustering] .= NaN
+    baseline_df[!, :indegree] .= NaN
+    baseline_df[!, :outdegree] .= NaN
+    baseline_df[!, :total_degree] .= NaN
+    baseline_df[!, :betweenness] .= NaN
+    baseline_df[!, :closeness] .= NaN
+    baseline_df[!, :clustering] .= NaN
 
     # Now, you can combine the merged removal results with the baseline row.
     merged_df = vcat(baseline_df, merged_df)
