@@ -269,6 +269,7 @@ begin
             title="Predators: Abundance",
             yscale=log ? log10 : identity
         )
+        
         pred_indices = 1:length(pred_species_sorted)
         barplot!(ax_abundance_pred, pred_indices, pred_abundance_sorted)
         ax_abundance_pred.xticks = (pred_indices, pred_species_sorted)
