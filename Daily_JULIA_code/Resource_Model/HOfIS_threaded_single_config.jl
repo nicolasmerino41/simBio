@@ -74,7 +74,7 @@ global T_ext               = 250.0
 MAX_ITERS                  = 2000      # Up to 2000 combos
 SURVIVAL_THRESHOLD         = 0.0      # We'll store the best if it reaches at least 0.75
 
-@time Threads.@threads for cell in 1:24  # or whichever cells you want
+@time Threads.@threads for cell in 5519  # or whichever cells you want
     local_i, local_j = idx[cell][1], idx[cell][2]
     @info "Processing cell $cell (i=$local_i, j=$local_j)..."
 
