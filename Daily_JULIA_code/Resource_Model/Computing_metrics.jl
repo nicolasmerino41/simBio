@@ -114,13 +114,13 @@ begin
         return (global_metrics = global_metrics, species_metrics = species_metrics)
     end
 
-    # Example usage:
-    cell = 459
-    metrics_results = compute_food_web_metrics(cell)  # Replace 1 with the desired cell index.
-    @info "Global metrics for cell $cell:" metrics_results.global_metrics
-    @info "Species-specific metrics:" metrics_results.species_metrics
-    global_metrics = metrics_results.global_metrics
-    species_metrics = metrics_results.species_metrics
+    # # Example usage:
+    # cell = 459
+    # metrics_results = compute_food_web_metrics(cell)  # Replace 1 with the desired cell index.
+    # @info "Global metrics for cell $cell:" metrics_results.global_metrics
+    # @info "Species-specific metrics:" metrics_results.species_metrics
+    # global_metrics = metrics_results.global_metrics
+    # species_metrics = metrics_results.species_metrics
 end
 
 function extract_metrics_map(metric = 1)
@@ -135,6 +135,8 @@ function extract_metrics_map(metric = 1)
 
     return DA_metric
 end
+
+##### TRYING THE FUNCNTION #####
 DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
  extract_metrics_map(1), extract_metrics_map(2), extract_metrics_map(3), extract_metrics_map(5), extract_metrics_map(6)
 begin
