@@ -14,9 +14,9 @@ begin
     # --------------------------
     # 1) Fixed parameter configuration
     # --------------------------
-    mu_val           = 0.367
-    mu_predation_val = 0.019191919
-    epsilon_val      = 0.982
+    mu_val           = 0.278
+    mu_predation_val = 0.021
+    epsilon_val      = 0.78
     sym_competition  = true
 
     M_mean               = 0.1
@@ -29,7 +29,7 @@ begin
     # --------------------------
     # 2) Choose cell (example: cell 2)
     # --------------------------
-    cell = 1
+    cell = 5919
     local_i, local_j = idx[cell][1], idx[cell][2]
 
     # --------------------------
@@ -235,9 +235,9 @@ begin
         P_biomass_vector = join(string.(P_end), ",")
         # FALSE For predators, we consider collateral extinctions only in the predator compartment.
         # In the full community, the predator indices are S_full+1:S_full+R_full.
-        collateral_pred_indices = [i for i in 1:S_full+R_full if full_ext_mask[i] == 0 && ext_mask[i] == 1 && i != i_sp]
-        collateral_pred_names = isempty(collateral_indices) ? "none" : join([sp_nm[i] for i in collateral_indices], ",")
-        ind_ext_num_pred_str = isempty(collateral_indices) ? "none" : join(string.(collateral_indices), ",")
+        collateral_indices = [i for i in 1:S_full+R_full if full_ext_mask[i] == 0 && ext_mask[i] == 1 && i != i_sp]
+        collateral_names = isempty(collateral_indices) ? "none" : join([sp_nm[i] for i in collateral_indices], ",")
+        ind_ext_num_str = isempty(collateral_indices) ? "none" : join(string.(collateral_indices), ",")
         
         push!(AAA, (
             cell = cell,
@@ -253,8 +253,8 @@ begin
             predator_survival_rate = round(pred_surv_rate_mod, digits=3),
             H_biomass_vector = H_biomass_vector,
             P_biomass_vector = P_biomass_vector,
-            ind_ext_num = ind_ext_num_pred_str,
-            ind_ext_name = collateral_pred_names,
+            ind_ext_num = ind_ext_num_str,
+            ind_ext_name = collateral_names,
             survived_herbs = surv_herb,
             survived_preds = surv_pred
         ))
