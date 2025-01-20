@@ -14,9 +14,9 @@ begin
     # --------------------------
     # 1) Fixed parameter configuration
     # --------------------------
-    mu_val           = 0.278
-    mu_predation_val = 0.021
-    epsilon_val      = 0.78
+    mu_val           = 0.367
+    mu_predation_val = 0.019
+    epsilon_val      = 0.982
     sym_competition  = true
 
     M_mean               = 0.1
@@ -29,7 +29,7 @@ begin
     # --------------------------
     # 2) Choose cell (example: cell 2)
     # --------------------------
-    cell = 5919
+    cell = 1
     local_i, local_j = idx[cell][1], idx[cell][2]
 
     # --------------------------
@@ -189,8 +189,8 @@ begin
         delta_total_biomass = full_total_biomass - tot_bio
         H_biomass_vector = join(string.(H_end), ",")
         P_biomass_vector = join(string.(P_end), ",")
-        # Identify collateral extinctions only among herbivores:
-        # Those herbivore species that (i) were alive in the full simulation (i.e. full_ext_mask_herb[i] == 0)
+       
+        # Those species that (i) were alive in the full simulation (i.e. full_ext_mask_herb[i] == 0)
         # but (ii) become extinct (ext_mask[i] == 1) in the removal run, excluding the species actively removed.
         collateral_indices = [i for i in 1:S_full+R_full if full_ext_mask[i] == 0 && ext_mask[i] == 1 && i != i_sp]
         collateral_names = isempty(collateral_indices) ? "none" : join([sp_nm[i] for i in collateral_indices], ",")
