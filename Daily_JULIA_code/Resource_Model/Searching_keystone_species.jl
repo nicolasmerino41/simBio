@@ -1,10 +1,14 @@
 # Read best parameters and filter full survival cells
-best_params = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/best_params_5950_cells_express.csv", DataFrame)
-best_params = filter(row -> row.cell_id != 5919, best_params)
+best_params = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/best_params_5950_cells_not_rounded.csv", DataFrame)
+full_survival_df = filter(row -> row.survival_rate == 1.0, best_params)
+# best_params = filter(row -> row.cell_id != 5919, best_params)
+best_params = filter(row -> row.g_iH_i_over_NPP < 10.0, best_params)
 all_results_list = []
 # Iterate over all full survival cells
 Threads.@threads for i in 1:nrow(best_params)
+    
     cell = best_params[i, :cell_id]
+    target_sv = best_params[i, :survival_rate]
     begin
         ###############################
         # 1) Fixed Parameter Configuration
@@ -37,22 +41,33 @@ Threads.@threads for i in 1:nrow(best_params)
         ###############################
         # 4) Run Full Community Simulation (Baseline: no species removed)
         ###############################
-        full_results = setup_community_from_cell(local_i, local_j;
-            NPP = localNPP,
-            M_mean = M_mean,
-            mu = mu_val,
-            symmetrical_competition = sym_competition,
-            mean_m_alpha = mean_m_alpha,
-            epsilon_val = epsilon_val,
-            mu_predation = mu_predation_val,
-            iberian_interact_NA = iberian_interact_NA,
-            species_dict = species_dict,
-            m_standard_deviation = m_standard_deviation,
-            h_standard_deviation = h_standard_deviation,
-            artificial_pi = artificial_pi,
-            real_H0 = real_H0,
-            H0_vector = localH0_vector
+        # full_results = setup_community_from_cell(local_i, local_j;
+        #     NPP = localNPP,
+        #     M_mean = M_mean,
+        #     mu = mu_val,
+        #     symmetrical_competition = sym_competition,
+        #     mean_m_alpha = mean_m_alpha,
+        #     epsilon_val = epsilon_val,
+        #     mu_predation = mu_predation_val,
+        #     iberian_interact_NA = iberian_interact_NA,
+        #     species_dict = species_dict,
+        #     m_standard_deviation = m_standard_deviation,
+        #     h_standard_deviation = h_standard_deviation,
+        #     artificial_pi = artificial_pi,
+        #     real_H0 = real_H0,
+        #     H0_vector = localH0_vector
+        # )
+
+        # Attempt setup
+        full_results = attempt_setup_community(
+            local_i, local_j,
+            mu_val, mu_predation_val, epsilon_val, sym_competition;
+            localNPP      = localNPP,
+            localH0_vector= localH0_vector
         )
+        if full_results === nothing
+            continue
+        end
 
         # Unpack the full simulation results
         (S_full, R_full, species_names_full, herbivore_list_full, predator_list_full,
@@ -95,6 +110,11 @@ Threads.@threads for i in 1:nrow(best_params)
         full_H_biomass = sum(H_end_full[H_end_full .> EXTINCTION_THRESHOLD])
         full_P_biomass = sum(P_end_full[P_end_full .> EXTINCTION_THRESHOLD])
     end
+
+    # if abs(full_survival_rate - target_sv) > 0.05
+    #     @error "Cell $cell: Full survival rate is $(full_survival_rate), but target is $target_sv."
+    # end
+
     full_herb_pred_ratio = full_H_biomass > 0 ? full_P_biomass / full_H_biomass : 0.0
     full_total_biomass = full_H_biomass + full_P_biomass
 
@@ -117,7 +137,7 @@ Threads.@threads for i in 1:nrow(best_params)
         H_full_minus_H = Vector[],
         P_full_minus_P = Vector[],
         ind_ext_num = String[],
-        ind_ext_name = String[],
+        ind_ext_name = Vector[],
         survived_herbs = Int[],
         survived_preds = Int[]
     )
@@ -140,7 +160,7 @@ Threads.@threads for i in 1:nrow(best_params)
         H_full_minus_H = fill(0.0, S_full),
         P_full_minus_P = fill(0.0, R_full),
         ind_ext_num = "none",
-        ind_ext_name = "none",
+        ind_ext_name = ["none"],
         survived_herbs = full_surv_herb,
         survived_preds = full_surv_pred
     ))
@@ -190,7 +210,7 @@ Threads.@threads for i in 1:nrow(best_params)
         # We return all indices (and corresponding species names) where full_mask == 0 (i.e. species was alive in full run)
         # and current_mask == 1 (species extinct in removal run), excluding active_removed.
         inds = [i for i in 1:length(full_mask) if full_mask[i] == 0 && current_mask[i] == 1 && i != active_removed]
-        names_collateral = isempty(inds) ? "none" : join([names[i] for i in inds], ",")
+        names_collateral = isempty(inds) ? ["none"] : [names[i] for i in inds]
         inds_str = isempty(inds) ? "none" : join(string.(inds), ",")
         return inds_str, names_collateral
     end
@@ -200,6 +220,7 @@ Threads.@threads for i in 1:nrow(best_params)
 
     # --- Removal for Herbivores ---
     for (i_sp, sp) in enumerate(herbivore_list_full)
+        # println("Removing herbivore $sp")
         active_removed = i_sp  # in the full state, herbivore indices are 1:S_full.
         modified_H_init = copy(H_init_full)
         modified_H_init[i_sp] = 0.0  # Remove species sp actively.
@@ -282,7 +303,7 @@ Threads.@threads for i in 1:nrow(best_params)
         species_net_metrics = compute_food_web_metrics(cell).species_metrics
 
         # Filter out the full community baseline row (if sp_removed == "none")
-        removal_df = filter(row -> row.sp_removed != "none", results_df)
+        removal_df = filter(row -> row.sp_removed != ["none"], results_df)
 
         # Perform an inner join on the species name
         merged_df = innerjoin(removal_df, species_net_metrics, on = [:sp_removed => :species])
@@ -302,21 +323,72 @@ Threads.@threads for i in 1:nrow(best_params)
         # Add the result for this cell to the list
         push!(all_results_list, merged_df)
 
-        @info "Merged removal and network metrics for cell $cell."
+        @info "Merged removal and network metrics for cell $cell" #. sv was $full_survival_rate"
     end
 end
 
-lowest_survival_species = []
+species_count_df = DataFrame(species_name = String[], count = Int[], ind_ext_names = Vector[])
 
 for dd in all_results_list
     # Find the entry with the lowest survival_rate
-    min_survival_entry = argmin(dd.survival_rate)
+    min_survival = minimum(dd.survival_rate)
+    min_survived = minimum(dd.survived_herbs + dd.survived_preds)
+
+    if min_survived == dd[1, :survived_herbs] + dd[1, :survived_preds] - 1
+        continue
+    end
+    min_survival_entries = findall(x -> x == min_survival, dd.survival_rate)
     
-    # Get the corresponding species name
-    species_name = dd[min_survival_entry, :sp_removed]
-    
-    # Store the species name with the lowest survival rate
-    push!(lowest_survival_species, species_name)
+    for min_survival_entry in min_survival_entries
+        # Get the corresponding species name and ind_ext_names
+        species_name = dd[min_survival_entry, :sp_removed]
+        ind_ext_names = dd[min_survival_entry, :ind_ext_name]
+        
+        # Check if species_name is already in the DataFrame
+        if species_name in species_count_df.species_name
+            indexx = findfirst(x -> x == species_name, species_count_df.species_name)
+            for ind_ext_name in ind_ext_names
+                if !(ind_ext_name in species_count_df[indexx, :ind_ext_names])
+                    push!(species_count_df[indexx, :ind_ext_names], ind_ext_name)
+                end
+            end
+            
+            species_count_df[indexx, :count] += 1
+        else
+            push!(species_count_df, (species_name, 1, ind_ext_names))
+        end
+    end
 end
 
-unique(lowest_survival_species)
+species_count_df
+
+begin
+    species_count_df = sort(species_count_df, :count, rev=true)
+    fig = Figure(resolution = (1000, 800))
+    ax = Axis(fig[1, 1], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
+    MK.barplot!(ax, 1:length(species_count_df.species_name), species_count_df.count)
+    ax.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
+    ax.xticklabelrotation = π/2.5
+    ax.xticklabelsize = 7
+
+    sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
+    ax2 = Axis(fig[1, 2], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
+    MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
+    ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
+    ax2.xticklabelrotation = π/2.5
+    ax2.xticklabelsize = 6
+    
+    display(fig)
+end
+
+begin
+    fig = Figure(resolution = (1000, 800))
+    sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
+    ax2 = Axis(fig[1, 1], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
+    MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
+    ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
+    ax2.xticklabelrotation = π/2.5
+    ax2.xticklabelsize = 6
+    
+    display(fig)
+end
