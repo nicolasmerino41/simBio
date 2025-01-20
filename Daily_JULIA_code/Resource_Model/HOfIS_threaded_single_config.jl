@@ -12,6 +12,7 @@ include("extract_H0_DA.jl")
 include("Functions/attempt_setup_community.jl")
 include("Functions/Callbacks_function.jl")
 include("npp_DA_relative_to_1000.jl")
+include("Functions/Computing_metrics.jl")
 
 # const iberian_interact_NA = iberian_interact_NA
 # const species_dict = species_dict
