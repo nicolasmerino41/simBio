@@ -29,10 +29,16 @@ function attempt_setup_community(
         # If success, return NamedTuple
         return (
             S=S2, 
-            R=R2, 
+            R=R2,
+            species_names=species_names,
+            herbivore_list=herb_list,
+            predator_list=pred_list,
             H_i0=H_i0,
             m_i=m_i,
+            p_vec=p_vec,
+            x_final=x_final, 
             g_i=g_i,
+            localHatH=localHatH,
             G=G,
             M_modified=M_modified,
             a_matrix=a_matrix,
