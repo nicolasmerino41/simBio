@@ -2,9 +2,9 @@ begin
     ###############################
     # 1) Fixed Parameter Configuration
     ###############################
-    mu_val           = 0.189
-    mu_predation_val = 0.016
-    epsilon_val      = 0.835
+    mu_val           = 0.367676767
+    mu_predation_val = 0.015151515
+    epsilon_val      = 0.963636363
     sym_competition  = true
 
     M_mean               = 0.1
@@ -17,7 +17,7 @@ begin
     ###############################
     # 2) Choose a Cell (example: cell 2)
     ###############################
-    cell = 4093
+    cell = 5454
     local_i, local_j = idx[cell][1], idx[cell][2]
 
     ###############################
@@ -108,10 +108,10 @@ begin
         herbivore_survival_rate = Float64[],
         predator_survival_rate = Float64[],
         delta_total_biomass = Float64[],
-        H_biomass_vector = String[],
-        P_biomass_vector = String[],
-        H_full_minus_H = String[],
-        P_full_minus_P = String[],
+        H_biomass_vector = Vector[],
+        P_biomass_vector = Vector[],
+        H_full_minus_H = Vector[],
+        P_full_minus_P = Vector[],
         ind_ext_num = String[],
         ind_ext_name = String[],
         survived_herbs = Int[],
@@ -131,8 +131,8 @@ begin
         herbivore_survival_rate = S_full > 0 ? round(full_surv_herb / S_full, digits=3) : 0.0,
         predator_survival_rate = R_full > 0 ? round(full_surv_pred / R_full, digits=3) : 0.0,
         delta_total_biomass = 0.0,
-        H_biomass_vector = join(string.(H_end_full), ","),
-        P_biomass_vector = join(string.(P_end_full), ","),
+        H_biomass_vector = H_end_full,
+        P_biomass_vector = P_end_full,
         H_full_minus_H = fill(0.0, S_full),
         P_full_minus_P = fill(0.0, R_full),
         ind_ext_num = "none",
@@ -156,7 +156,7 @@ begin
             H_end[H_end .< EXTINCTION_THRESHOLD] .= 0.0
             P_end[P_end .< EXTINCTION_THRESHOLD] .= 0.0
             H_end_full_minus_H_end = H_end_full .- H_end
-            P_end_full_minus_H_end = P_end_full .- P_end
+            P_end_full_minus_P_end = P_end_full .- P_end
             surv_herb = count(H_end .> EXTINCTION_THRESHOLD)
             surv_pred = count(P_end .> EXTINCTION_THRESHOLD)
             tot_surv = surv_herb + surv_pred
@@ -206,10 +206,10 @@ begin
         herb_surv_rate_mod = S_full > 0 ? surv_herb / S_full : 0.0
         pred_surv_rate_mod = R_full > 0 ? surv_pred / R_full : 0.0
         delta_total_biomass = full_total_biomass - tot_bio
-        H_biomass_vector = join(string.(H_end), ",")
-        P_biomass_vector = join(string.(P_end), ",")
+        H_biomass_vector =H_end
+        P_biomass_vector = P_end
         ind_ext_num_str, ind_ext_name_str = collateral_extinctions(active_removed, full_ext_mask, ext_mask, full_state_species_names)
-        println("When removing herbivore $sp, collateral extinctions: $ind_ext_name_str; sr = $sr")
+        # println("When removing herbivore $sp, collateral extinctions: $ind_ext_name_str; sr = $sr")
         push!(results_df, (
             cell = cell,
             sp_removed = sp,
@@ -245,10 +245,10 @@ begin
         herb_surv_rate_mod = S_full > 0 ? surv_herb / S_full : 0.0
         pred_surv_rate_mod = R_full > 0 ? surv_pred / R_full : 0.0
         delta_total_biomass = full_total_biomass - tot_bio
-        H_biomass_vector = join(string.(H_end), ",")
-        P_biomass_vector = join(string.(P_end), ",")
+        H_biomass_vector = H_end
+        P_biomass_vector = P_end
         ind_ext_num_str, ind_ext_name_str = collateral_extinctions(active_removed, full_ext_mask, ext_mask, full_state_species_names)
-        println("When removing predator $sp, collateral extinctions: $ind_ext_name_str; sr = $sr")
+        # println("When removing predator $sp, collateral extinctions: $ind_ext_name_str; sr = $sr")
         push!(results_df, (
             cell = cell,
             sp_removed = sp,
@@ -263,6 +263,8 @@ begin
             predator_survival_rate = round(pred_surv_rate_mod, digits=3),
             H_biomass_vector = H_biomass_vector,
             P_biomass_vector = P_biomass_vector,
+            H_full_minus_H = H_end_full_minus_H_end,
+            P_full_minus_P = P_end_full_minus_P_end,
             ind_ext_num = ind_ext_num_str,
             ind_ext_name = ind_ext_name_str,
             survived_herbs = surv_herb,
