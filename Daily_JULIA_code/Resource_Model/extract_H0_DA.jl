@@ -3,7 +3,7 @@
 # Preferably if you already have the coordinates of the cell (i, j)
 
 # Initialize the empty DA arrays for each suitability method (same shape as k_DA)
-H0_DA = DimArray(reshape([MyBirmmals(SVector{207, Float64}(fill(0.0, 207))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+H0_DA = DimArray(reshape([MyBirmmals(SVector{205, Float64}(fill(0.0, 205))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 
 # Loop through the axes of the DA arrays
 for row in axes(H0_DA, 1), col in axes(H0_DA, 2)
@@ -18,7 +18,7 @@ for row in axes(H0_DA, 1), col in axes(H0_DA, 2)
 
         # # 1. Multiplicative Approach (Original)
         multiplicative_suitability = S_bio5 .* S_bio6 .* S_bio12
-        H0_DA[row, col] = MyBirmmals(SVector{207, Float64}(multiplicative_suitability))
+        H0_DA[row, col] = MyBirmmals(SVector{205, Float64}(multiplicative_suitability))
         # println("multiplicative_suitability: ", multiplicative_suitability, "\n")
     end
 end
