@@ -38,6 +38,8 @@ Threads.@threads for i in 1:nrow(best_params)
         localNPP = Float64(npp_DA_relative_to_1000[local_i, local_j])
         localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
 
+        # cb_no_trigger, cb_trg = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
+        
         ###############################
         # 4) Run Full Community Simulation (Baseline: no species removed)
         ###############################
@@ -111,9 +113,9 @@ Threads.@threads for i in 1:nrow(best_params)
         full_P_biomass = sum(P_end_full[P_end_full .> EXTINCTION_THRESHOLD])
     end
 
-    # if abs(full_survival_rate - target_sv) > 0.05
-    #     @error "Cell $cell: Full survival rate is $(full_survival_rate), but target is $target_sv."
-    # end
+    if abs(full_survival_rate - target_sv) > 0.05
+        @error "Cell $cell: Full survival rate is $(full_survival_rate), but target is $target_sv."
+    end
 
     full_herb_pred_ratio = full_H_biomass > 0 ? full_P_biomass / full_H_biomass : 0.0
     full_total_biomass = full_H_biomass + full_P_biomass
