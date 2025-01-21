@@ -1,7 +1,3 @@
-cell = idx[1]
-
-DA[cell]
-
 average_densities = CSV.File(joinpath("C:/Users", PC, "OneDrive/PhD/GitHub/Networks/DFs/average_densities.csv")) |> DataFrame
 santini_names = average_densities[:, 2]
 
@@ -16,7 +12,7 @@ matches_indices = findall(x -> x in santini_names, spain_names)
 # average_densities: DataFrame with columns "names" and "mean"
 
 # Step 1: Filter spain_names to only include positions 50 to 256
-mammals_birds_names = spain_names[50:256]
+mammals_birds_names = spain_names[50:254]
 
 # Step 2: Prepare lookup dictionaries for bodymass and mean_density
 bodymass_dict = Dict(row.species => row.bodyMass for row in eachrow(gbif_sizes))
@@ -63,10 +59,10 @@ for i in idx
             vect1[j] = birmmals_biomass_fixed[j, :biomass]
         end
     end
-    DA_birmmals_with_pi[i] = MyBirmmals(SVector{207, Float64}(vect1))
+    DA_birmmals_with_pi[i] = MyBirmmals(SVector{205, Float64}(vect1))
 end
 
-map_plot(DA_birmmals_with_pi; type = "heatmap", palette = :thermal)
+# map_plot(DA_birmmals_with_pi; type = "heatmap", palette = :thermal)
 
 DA_birmmals_with_pi[idx[20]].a
 
