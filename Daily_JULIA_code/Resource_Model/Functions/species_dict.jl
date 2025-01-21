@@ -18,7 +18,7 @@ for (idx, sp) in enumerate(row_species)
 end
 
 # SAME but only to identify the herbivores positions in a MyBirmmals struct
-birmmals_names = spain_names[50:256]
+birmmals_names = spain_names[50:254]
 species_dict_herbivores_in_birmmals = Dict{String, Int}()
 
 for (idx, sp) in enumerate(birmmals_names)
