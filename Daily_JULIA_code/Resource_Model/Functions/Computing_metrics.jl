@@ -137,6 +137,7 @@ function extract_metrics_map(metric = 1)
 end
 
 ##### TRYING THE FUNCNTION #####
+if false
 DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
  extract_metrics_map(1), extract_metrics_map(2), extract_metrics_map(3), extract_metrics_map(5), extract_metrics_map(6)
 begin
@@ -160,4 +161,5 @@ ax4.yreversed[] = true
 ax5.yreversed[] = true
 
 display(fig)
+end
 end
