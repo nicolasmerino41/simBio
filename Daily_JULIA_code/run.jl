@@ -1,4 +1,4 @@
-# begin
+begin
 PC = "MM-1"
 end_true = false
 ode_true = true

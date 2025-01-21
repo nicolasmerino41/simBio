@@ -10,6 +10,7 @@ predator_names = setdiff(spain_names, herbivore_names)
 num_herbivores = length(herbivore_names)
 @time include("HerbsVsPreds.jl")
 
+if false
 # Get a map of herbivore abundance
 DA_herbivores = DimArray(reshape([Herbivores(SVector{num_herbivores, Float64}(fill(0.0, num_herbivores))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 for i in idx
@@ -38,6 +39,7 @@ for i in idx
     new = Predators(SVector{101, Float64}(v))
     DA_predators[i] = new
 end
+end
 
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:Herbivores, 2})
     scalars = map(herbivores -> herbivores.b, A)
@@ -49,7 +51,7 @@ function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:Pr
     return Makie.convert_arguments(t, scalars)
 end
 
-
+if false
 begin
     fig = Figure(resolution = (500,300))
 
@@ -76,7 +78,7 @@ begin
 
     display(fig)
 end
-
+end
 ############# PREDATOR-TO-PREY DICTIONARY ############################
 # Create the predator-to-prey dictionary
 using DataStructures
