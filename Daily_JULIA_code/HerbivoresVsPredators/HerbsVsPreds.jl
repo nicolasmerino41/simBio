@@ -5,22 +5,22 @@
 ######################## DEFINING BASIC Herbivores METHODS ####################################
 #################################################################################################
 struct Herbivores{T <: AbstractFloat} <: FieldVector{2, T}
-    a::SVector{155, T}
+    a::SVector{num_herbivores, T}
     b::T
 
     # Custom constructor for automatic sum calculation
-    function Herbivores(a::SVector{155, T}) where T <: AbstractFloat
+    function Herbivores(a::SVector{num_herbivores, T}) where T <: AbstractFloat
         new{T}(a, sum(a))
     end
 
     # Explicit constructor allowing manual setting of both `a` and `b`
-    Herbivores(a::SVector{155, T}, b::T) where T <: AbstractFloat = new{T}(a, b)
+    Herbivores(a::SVector{num_herbivores, T}, b::T) where T <: AbstractFloat = new{T}(a, b)
 end
 
 # Define zero and oneunit for Herbivores
-Base.zero(::Type{Herbivores{T}}) where {T <: AbstractFloat} = Herbivores(SVector{155, T}(fill(zero(T), 155)), zero(T))
-Base.zero(x::Herbivores{T}) where {T <: AbstractFloat} = Herbivores(SVector{155, T}(fill(zero(T), 155)), zero(T))
-Base.oneunit(::Type{Herbivores{T}}) where {T <: AbstractFloat} = MyStructs155(fill(oneunit(T), 155), oneunit(T))
+Base.zero(::Type{Herbivores{T}}) where {T <: AbstractFloat} = Herbivores(SVector{num_herbivores, T}(fill(zero(T), num_herbivores)), zero(T))
+Base.zero(x::Herbivores{T}) where {T <: AbstractFloat} = Herbivores(SVector{num_herbivores, T}(fill(zero(T), num_herbivores)), zero(T))
+Base.oneunit(::Type{Herbivores{T}}) where {T <: AbstractFloat} = MyStructsnum_herbivores(fill(oneunit(T), num_herbivores), oneunit(T))
 
 # Comparison based on 'b' field
 Base.isless(x::Herbivores, y::Herbivores) = isless(x.b, y.b)
@@ -31,12 +31,12 @@ Base.:+(x::Herbivores, y::Herbivores) = Herbivores(x.a .+ y.a, sum(x.a .+ y.a))
 Base.:-(x::Herbivores, y::Herbivores) = Herbivores(x.a .- y.a, sum(x.a .- y.a))
 Base.:*(x::Herbivores, scalar::Real) = Herbivores(x.a .* scalar, sum(x.a .* scalar))
 Base.:/(x::Herbivores, scalar::Real) = Herbivores(x.a ./ scalar, sum(x.a ./ scalar))
-Base.:-(x::Herbivores, scalar::Real) = Herbivores(x.a .- scalar, x.b - scalar * 155)
-Base.:+(x::Herbivores, scalar::Real) = Herbivores(x.a .+ scalar, x.b + scalar * 155)
-Base.:*(x::Herbivores, y::AbstractVector) = Herbivores(x.a .* SVector{155, Float64}(y), sum(x.a .* SVector{155, Float64}(y)))
-Base.:/(x::Herbivores, y::AbstractVector) = Herbivores(x.a ./ SVector{155, Float64}(y), sum(x.a ./ SVector{155, Float64}(y)))
-Base.:*(y::AbstractVector, x::Herbivores) = Herbivores(SVector{155, Float64}(y) .* x.a, sum(SVector{155, Float64}(y) .* x.a))
-Base.:/(y::AbstractVector, x::Herbivores) = Herbivores(SVector{155, Float64}(y) ./ x.a, sum(SVector{155, Float64}(y) ./ x.a))
+Base.:-(x::Herbivores, scalar::Real) = Herbivores(x.a .- scalar, x.b - scalar * num_herbivores)
+Base.:+(x::Herbivores, scalar::Real) = Herbivores(x.a .+ scalar, x.b + scalar * num_herbivores)
+Base.:*(x::Herbivores, y::AbstractVector) = Herbivores(x.a .* SVector{num_herbivores, Float64}(y), sum(x.a .* SVector{num_herbivores, Float64}(y)))
+Base.:/(x::Herbivores, y::AbstractVector) = Herbivores(x.a ./ SVector{num_herbivores, Float64}(y), sum(x.a ./ SVector{num_herbivores, Float64}(y)))
+Base.:*(y::AbstractVector, x::Herbivores) = Herbivores(SVector{num_herbivores, Float64}(y) .* x.a, sum(SVector{num_herbivores, Float64}(y) .* x.a))
+Base.:/(y::AbstractVector, x::Herbivores) = Herbivores(SVector{num_herbivores, Float64}(y) ./ x.a, sum(SVector{num_herbivores, Float64}(y) ./ x.a))
 
 # Define what a NaN is for Herbivores
 Base.isnan(x::Herbivores) = isnan(x.b) || any(isnan, x.a)
