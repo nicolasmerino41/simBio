@@ -1,11 +1,11 @@
-begin
+# begin
 PC = "MM-1"
 end_true = false
 ode_true = true
 num_species = 256
 @time include("HerpsVsBirmmals.jl")
 @time include("kernels.jl")
-@time include("One-click code.jl")
+@time include("New_One-click code.jl")
 # @time include("human_footprint.jl")
 # @time include("Implicit competition for herbivores.jl")
 # include("2010-2100 RasterSeries.jl")
