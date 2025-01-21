@@ -13,6 +13,10 @@ include("Functions/attempt_setup_community.jl")
 include("Functions/Callbacks_function.jl")
 include("npp_DA_relative_to_1000.jl")
 include("Functions/Computing_metrics.jl")
+include("Remaking_iberian_interact_NA.jl")
+
+global EXTINCTION_THRESHOLD = 1e-6
+global T_ext               = 250.0
 
 # const iberian_interact_NA = iberian_interact_NA
 # const species_dict = species_dict
@@ -39,6 +43,7 @@ param_combinations = [
     for epsilon_val in epsilon_vals
     for sym_comp in sym_competition_vals
 ]
+
 # Shuffle the order of param_combinations so that we don't always test the same ones first
 param_combinations = Random.shuffle!(param_combinations)
 param_combinations = param_combinations[1:2000]
@@ -70,12 +75,10 @@ best_params_24_cells_fixed_mu05_nppDA1000 = DataFrame(
 global_lock = ReentrantLock()
 
 # Constants
-global EXTINCTION_THRESHOLD = 1e-6
-global T_ext               = 250.0
 MAX_ITERS                  = 2000      # Up to 2000 combos
 SURVIVAL_THRESHOLD         = 0.0      # We'll store the best if it reaches at least 0.75
 
-@time Threads.@threads for cell in 5519  # or whichever cells you want
+@time Threads.@threads for cell in 1  # or whichever cells you want
     local_i, local_j = idx[cell][1], idx[cell][2]
     @info "Processing cell $cell (i=$local_i, j=$local_j)..."
 
