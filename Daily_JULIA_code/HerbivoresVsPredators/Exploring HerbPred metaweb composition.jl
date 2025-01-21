@@ -1,11 +1,17 @@
 herb_carv_vector
 spain_names
-herbivore_names
+herbivore_names = []
+for i in axes(iberian_interact_NA, 1)
+    if all(x -> x == 0, iberian_interact_NA[i, :])
+        push!(herbivore_names, names(iberian_interact_NA, 1)[i])
+    end
+end
 predator_names = setdiff(spain_names, herbivore_names)
+num_herbivores = length(herbivore_names)
 @time include("HerbsVsPreds.jl")
 
 # Get a map of herbivore abundance
-DA_herbivores = DimArray(reshape([Herbivores(SVector{155, Float64}(fill(0.0, 155))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
+DA_herbivores = DimArray(reshape([Herbivores(SVector{num_herbivores, Float64}(fill(0.0, num_herbivores))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 for i in idx
     v = Vector{Float64}()
     for j in 1:256
@@ -15,7 +21,7 @@ for i in idx
             push!(v, 0.0)
         end
     end
-    new = Herbivores(SVector{155, Float64}(v))
+    new = Herbivores(SVector{num_herbivores, Float64}(v))
     DA_herbivores[i] = new
 end 
 # Get a map of predator abundance
@@ -54,7 +60,7 @@ begin
         Matrix(DA_herbivores),
         interpolate=false, 
         colormap=custom_palette,
-        colorrange = (0, 155)
+        colorrange = (0, num_herbivores)
     )
 
     MK.heatmap!(
@@ -119,6 +125,3 @@ for i in 1:length(spain_names)
         predator_prey_count[spain_names[i]] = (total_prey, herbivore_prey, predator_prey)
     end
 end
-
-# Print the resulting dictionary
-# println(predator_prey_count)
