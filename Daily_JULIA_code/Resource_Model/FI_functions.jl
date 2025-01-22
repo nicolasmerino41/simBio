@@ -176,7 +176,7 @@ function parametrise_the_community(
     end
 
     ############################################################################
-    # (D) Predator–predator, herb–pred feeding matrices => a_matrix, A
+    # PredatorVSpredator and herbivoreVspred feeding matrices =(a_matrix & A)
     ############################################################################
     a_matrix = zeros(S, R)
     A        = Matrix{Float64}(I, R, R)
@@ -228,9 +228,9 @@ function parametrise_the_community(
     for r in 1:S
         for c in 1:S
             val = 0.0
-            for α in 1:R
-                for β in 1:R
-                    val += epsilon[α]*a_matrix[r, α]*A_inv[α, β]*a_matrix[c, β]
+            for alpha in 1:R
+                for beta in 1:R
+                    val += epsilon[alpha]*a_matrix[r, alpha]*A_inv[alpha, beta]*a_matrix[c, beta]
                 end
             end
             C[r,c] = val
@@ -239,9 +239,9 @@ function parametrise_the_community(
 
     for r in 1:S
         val = 0.0
-        for α in 1:R
-            for β in 1:R
-                val += a_matrix[r, α]*A_inv[α, β]*m_alpha[β]
+        for alpha in 1:R
+            for beta in 1:R
+                val += a_matrix[r, alpha]*A_inv[alpha, beta]*m_alpha[beta]
             end
         end
         G[r] = val
@@ -382,12 +382,15 @@ function setup_community_from_cell(
     h_standard_deviation::Float64 = 0.0,
     artificial_pi = false,
     real_H0::Bool = false,
-    H0_vector::Vector{Float64} = nothing
+    H0_vector::Vector{Float64} = nothing,
+    species_names::Vector{String} = nothing
 )
 
     # 1) Grab the cell => find which species are present
     cell = DA_birmmals_with_pi[i, j]
-    species_names = extract_species_names_from_a_cell(cell)  # list of species with .a[k] != 0
+    if isnothing(species_names)
+        species_names = extract_species_names_from_a_cell(cell)  # list of species with .a[k] != 0
+    end
     S, R = identify_n_of_herbs_and_preds(species_names)
 
     # 2) Build cell_abundance specifically for the herbivores
