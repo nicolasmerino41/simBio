@@ -1,6 +1,6 @@
 function attempt_setup_community(
     i, j, mu_val, mu_pred_val, eps_val, sym_competition; 
-    localNPP, localH0_vector
+    localNPP, localH0_vector, species_names=nothing
 )
     try
         S2, R2,
@@ -24,7 +24,8 @@ function attempt_setup_community(
             h_standard_deviation = 0.0,
             artificial_pi = false,
             real_H0 = true,
-            H0_vector = localH0_vector
+            H0_vector = localH0_vector,
+            species_names = species_names
         )
         # If success, return NamedTuple
         return (
