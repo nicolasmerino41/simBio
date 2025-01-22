@@ -586,15 +586,15 @@ for i in 1:size(species_df, 1)
     for j in 1:125*76
         if Float32(species_df.Value[i]) == Float32(utmraster_DA[j])
             if species_df.sum[i] == 54 
-               println(utmraster_DA[3]) 
+            #    println(utmraster_DA[3]) 
             end
             # Convert species_df_matrix[i, 5:260] to SVector{256, Float64} before creating MyStructs256
             DA[j] = MyStructs254(SVector{254, Float64}(species_df_matrix[i, 5:258]))
         end
     end
 end
-# serialize("Objects\\DA_254.jls", DA)
-DA = deserialize("Objects\\DA_254.jls")
+serialize("Objects\\DA_254.jls", DA)
+# DA = deserialize("Objects\\DA_254.jls")
 
 DA_birmmals = DimArray(reshape([MyBirmmals(SVector{205, Float64}(fill(0.0, 205))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
 for i in idx
