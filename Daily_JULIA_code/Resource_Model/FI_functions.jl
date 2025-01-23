@@ -16,8 +16,6 @@
 #     a::SVector{207,Float64}
 # end
 
-predator_names = setdiff(spain_names, herbivore_names)
-
 function extract_species_names_from_a_cell(cell::MyBirmmals)
     names = birmmals_biomass_fixed[:, :species]
     species_names = String[]
@@ -454,3 +452,36 @@ function setup_community_from_cell(
         epsilon, m_alpha
     )
 end
+
+####### A FUNCTION TO EXTRACT INFO OF A SPECIES (I.E. H0_value, whether it's herbivore or predator, etc)
+function extract_info_of_a_species(species_name::String)
+    # 1) Extract the H0 value from the cell
+    if species_name in birmmals_biomass_fixed.species
+        H0_value = birmmals_biomass_fixed[birmmals_biomass_fixed.species .== species_name, :biomass][1]
+        rounded_H0_value = round(H0_value[1], digits=2)
+        # Correctly compute the rank of the species' biomass
+        sorted_biomass = sort(birmmals_biomass_fixed[:, :biomass], rev=true)  # Sort biomass values in descending order
+        rank = findfirst(x -> x == H0_value, sorted_biomass)
+    else
+        error("Species $species_name not found in birmmals_biomass_fixed")
+    end
+
+    # 2) Get the species' positions in `birmmals_names` and `spain_names`
+    position_in_birmmals = findfirst(x -> x == species_name, birmmals_names)
+    position_in_spain_names = findfirst(x -> x == species_name, spain_names)
+
+    # 3) Check if the species is a herbivore or predator
+    if species_name in herbivore_names_as_birmmals
+        what = "herbivore"
+    elseif species_name in predator_names_as_birmmals
+        what = "predator"
+    else
+        error("Species $species_name is neither herbivore nor predator")
+    end
+
+    # 4) Print the output
+    println("$species_name is a $what with H0_value $rounded_H0_value, which falls $rank/$(length(birmmals_biomass_fixed[:, :biomass]))")
+    println("Its position in birmmals_names is $position_in_birmmals and spain_names $position_in_spain_names")
+end
+
+extract_info_of_a_species("Apodemus sylvaticus")
