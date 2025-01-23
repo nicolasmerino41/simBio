@@ -24,11 +24,11 @@ include("npp_DA_relative_to_1000.jl")
 # const spain_names = spain_names
 
 # Define your parameter ranges
-mu_vals               = [0.5]
-mu_predation_vals     = range(0.0, 0.1, length=130)
-epsilon_vals          = range(0.1, 1.0, length=15)
+mu_vals               = range(0.1, 0.9, length=10)
+mu_predation_vals     = range(0.0, 0.5, length=130)
+epsilon_vals          = range(0.1, 1.0, length=20)
 sym_competition_vals  = [true]
-y
+
 # Optionally, for testing:
 # mu_vals = [0.811111111]
 # mu_predation_vals = [0.012121212]
@@ -76,7 +76,7 @@ function write_result_row(result::NamedTuple, filename::String)
 end
 
 # Set the output file name (make sure the directory exists)
-output_filename = "Results/best_params_5950_cells_not_rounded_254_1950iter.csv"
+output_filename = "Results/best_params_5950_cells_not_rounded_254_26000iter_newherbivores.csv"
 
 # Process cells (each cell will write its result immediately upon finding a good configuration)
 # (Assuming that `idx` is defined and gives the (i,j) for each cell.)
@@ -93,11 +93,9 @@ output_filename = "Results/best_params_5950_cells_not_rounded_254_1950iter.csv"
        local_R -= predator_has_prey[2]
        filter!(name -> !(name in predator_has_prey[3]), sp_nm)
        @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
-       if predator_has_prey[2] > 0
         species_names = sp_nm
-       else
-        species_names = nothing # If we can find all predators, we pass species_names = nothing cause setup_community_from_cell will generate it
-       end
+    else
+        species_names = sp_nm
     end
     
     localNPP       = Float64(npp_DA_relative_to_1000[local_i, local_j]) #1000.0
@@ -135,6 +133,7 @@ output_filename = "Results/best_params_5950_cells_not_rounded_254_1950iter.csv"
         )
 
         if (S2 + R2) == 0 || R2 > length(H_i0)
+            @error "Error: (S2 + R2) == 0 || R2 > length(H_i0)"
             continue
         end
 
@@ -158,6 +157,7 @@ output_filename = "Results/best_params_5950_cells_not_rounded_254_1950iter.csv"
 
         # Skip if integration did not complete to 500 or if nan/inf occurred.
         if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
+            @error "Error: sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])"
             continue
         end
 
@@ -220,7 +220,7 @@ output_filename = "Results/best_params_5950_cells_not_rounded_254_1950iter.csv"
     end
 
     # Write the result immediately if conditions are met.
-    if found_full_survival || (best_survival_rate >= SURVIVAL_THRESHOLD)
+    if found_full_survival || (best_survival_rate > SURVIVAL_THRESHOLD)
          # Write best_result to CSV immediately.
          write_result_row(best_result, output_filename)
     else
