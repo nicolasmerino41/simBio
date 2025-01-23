@@ -26,3 +26,16 @@ for (idx, sp) in enumerate(birmmals_names)
         species_dict_herbivores_in_birmmals[sp] = idx
     end
 end
+
+herbivore_names_as_birmmals = []
+sub_iberian_interact_NA = iberian_interact_NA[birmmals_names, birmmals_names]
+for i in birmmals_names
+    if all(x -> x == 0, sub_iberian_interact_NA[i, :])
+        push!(herbivore_names_as_birmmals, i)
+    end
+end
+predator_names_as_birmmals = setdiff(birmmals_names, herbivore_names_as_birmmals)
+
+setdiff(predator_names, predator_names_as_birmmals)
+herbivore_names = herbivore_names_as_birmmals
+predator_names = predator_names_as_birmmals
