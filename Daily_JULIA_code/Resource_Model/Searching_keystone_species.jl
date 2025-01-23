@@ -1,14 +1,24 @@
 # Read best parameters and filter full survival cells
-best_params = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/best_params_5950_cells_not_rounded.csv", DataFrame)
+best_params = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/best_params_5950_cells_not_rounded_254_1950iter_newherbivores.csv", DataFrame)
+best_params = dropmissing(best_params)
+new_best_params = similar(best_params, 0)
+unique_cells = unique(best_params.cell_id)
+for cell in unique_cells
+    cell_df = best_params[best_params.cell_id .== cell, :]
+    new_best_params = vcat(new_best_params, cell_df[findmax(cell_df.survival_rate)[2], :])
+end
+
 full_survival_df = filter(row -> row.survival_rate == 1.0, best_params)
 # best_params = filter(row -> row.cell_id != 5919, best_params)
 best_params = filter(row -> row.g_iH_i_over_NPP < 10.0, best_params)
+average_survival_rate = mean(best_params.survival_rate)
 all_results_list = []
 # Iterate over all full survival cells
 Threads.@threads for i in 1:nrow(best_params)
     
     cell = best_params[i, :cell_id]
     target_sv = best_params[i, :survival_rate]
+    
     begin
         ###############################
         # 1) Fixed Parameter Configuration
@@ -35,6 +45,20 @@ Threads.@threads for i in 1:nrow(best_params)
         ###############################
         sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi[local_i, local_j])
         local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
+
+        predator_has_prey = check_predator_has_prey(sp_nm)
+
+        if !predator_has_prey[1]
+            local_R -= predator_has_prey[2]
+            filter!(name -> !(name in predator_has_prey[3]), sp_nm)
+            @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
+            if predator_has_prey[2] > 0
+                species_names = sp_nm
+            else
+                species_names = nothing # If we can find all predators, we pass species_names = nothing cause setup_community_from_cell will generate it
+            end
+        end
+
         localNPP = Float64(npp_DA_relative_to_1000[local_i, local_j])
         localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
 
@@ -65,7 +89,8 @@ Threads.@threads for i in 1:nrow(best_params)
             local_i, local_j,
             mu_val, mu_predation_val, epsilon_val, sym_competition;
             localNPP      = localNPP,
-            localH0_vector= localH0_vector
+            localH0_vector= localH0_vector,
+            species_names = species_names
         )
         if full_results === nothing
             continue
@@ -76,29 +101,32 @@ Threads.@threads for i in 1:nrow(best_params)
          H_i0_full, m_i_full, p_vec_full, x_final_full, g_i_full, localHatH_full,
          G_full, M_modified_full, a_matrix_full, A_full, epsilon_vector_full, m_alpha_full) = full_results
 
-    # Build the full species list (herbivores then predators)
-    all_species_names = vcat(herbivore_list_full, predator_list_full)
+        # Build the full species list (herbivores then predators)
+        all_species_names = vcat(herbivore_list_full, predator_list_full)
 
-    # Build initial conditions
-    H_init_full = H_i0_full
-    if R_full > length(H_init_full)
-        error("In cell $cell: More predators than herbivore data available.")
-    end
-    P_init_full = H_init_full[1:R_full] ./ 10.0
-    u0_full = vcat(H_init_full, P_init_full)
-    params_full = (S_full, R_full, H_i0_full, m_i_full, g_i_full, G_full,
-                   M_modified_full, a_matrix_full, A_full, epsilon_vector_full, m_alpha_full)
-    tspan = (0.0, 500.0)
-    prob_full = ODEProblem(ecosystem_dynamics!, u0_full, tspan, params_full)
-    sol_full = solve(prob_full, Tsit5(); reltol=1e-6, abstol=1e-6)
+        # Build initial conditions
+        H_init_full = H_i0_full
+        if R_full > length(H_init_full)
+            error("In cell $cell: More predators than herbivore data available.")
+        end
+        P_init_full = H_init_full[1:R_full] ./ 10.0
+        u0_full = vcat(H_init_full, P_init_full)
+        params_full = (
+            S_full, R_full, H_i0_full, m_i_full, g_i_full, G_full,
+            M_modified_full, a_matrix_full, A_full, epsilon_vector_full, m_alpha_full
+        )
+        tspan = (0.0, 500.0)
+        prob_full = ODEProblem(ecosystem_dynamics!, u0_full, tspan, params_full)
+        sol_full = solve(prob_full, Tsit5(); reltol=1e-6, abstol=1e-6)
 
-    if sol_full.t[end] < 500.0 || any(isnan, sol_full.u[end]) || any(isinf, sol_full.u[end])
-        full_survival_rate = 0.0
-        full_H_biomass = 0.0
-        full_P_biomass = 0.0
-        full_surv_herb = 0
-        full_surv_pred = 0
-    else
+        if sol_full.t[end] < 500.0 || any(isnan, sol_full.u[end]) || any(isinf, sol_full.u[end])
+            full_survival_rate = 0.0
+            full_H_biomass = 0.0
+            full_P_biomass = 0.0
+            full_surv_herb = 0
+            full_surv_pred = 0
+        else
+        
         H_end_full = sol_full[1:S_full, end]
         P_end_full = sol_full[S_full+1:S_full+R_full, end]
         # Set values below threshold to zero
@@ -329,40 +357,92 @@ Threads.@threads for i in 1:nrow(best_params)
     end
 end
 
-species_count_df = DataFrame(species_name = String[], count = Int[], ind_ext_names = Vector[])
+serialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/all_results_list_from_best_params_5950_cells_254_1950iter_newherbivores.jls", all_results_list)
+all_results_list = deserialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/all_results_list_from_best_params_5950_cells_254_1950iter.jls")
 
+# Checking sr matches best_params and all_results_list with full_species by matching cell_id
+comparison_df = DataFrame(best_params_sr = [], cell_from_best = [], cell_from_all = [], all_results_list_sr = [], diff = [])
+for bp_row in eachrow(best_params)
+    cell_id = bp_row[:cell_id]
+    all_results_row = findfirst(x -> x[1, :cell] == cell_id, all_results_list)
+    
+    if all_results_row !== nothing
+        best_params_sr = bp_row[:survival_rate]
+        all_results_list_sr = all_results_list[all_results_row][1, :survival_rate]
+        diff = best_params_sr - all_results_list_sr
+        push!(comparison_df, (best_params_sr, cell_id, all_results_list[all_results_row][1, :cell], all_results_list_sr, diff))
+    end
+end
+
+# Initialize the DataFrame with proper column types
+species_count_df = DataFrame(
+    species_name = String[],
+    count = Int[],
+    cell_id = Vector{Int}[],  # Assuming cell IDs are integers
+    ind_ext_names = Vector{String}[]
+)
+
+# Loop through all results
 for dd in all_results_list
     # Find the entry with the lowest survival_rate
     min_survival = minimum(dd.survival_rate)
     min_survived = minimum(dd.survived_herbs + dd.survived_preds)
 
+    # Skip if the minimum survival condition matches the first row's survivors minus 1
     if min_survived == dd[1, :survived_herbs] + dd[1, :survived_preds] - 1
         continue
     end
+
+    # Get all entries with the minimum survival_rate
     min_survival_entries = findall(x -> x == min_survival, dd.survival_rate)
     
     for min_survival_entry in min_survival_entries
-        # Get the corresponding species name and ind_ext_names
+        # Get the species name, individual extinction names, and cell ID
         species_name = dd[min_survival_entry, :sp_removed]
         ind_ext_names = dd[min_survival_entry, :ind_ext_name]
-        
+        cell_id = dd[min_survival_entry, :cell]
+
         # Check if species_name is already in the DataFrame
         if species_name in species_count_df.species_name
+            # Find the index of the existing entry
             indexx = findfirst(x -> x == species_name, species_count_df.species_name)
+
+            # Update the ind_ext_names and cell_id if they are not already present
             for ind_ext_name in ind_ext_names
                 if !(ind_ext_name in species_count_df[indexx, :ind_ext_names])
                     push!(species_count_df[indexx, :ind_ext_names], ind_ext_name)
                 end
             end
-            
+
+            if !(cell_id in species_count_df[indexx, :cell_id])
+                push!(species_count_df[indexx, :cell_id], cell_id)
+            end
+
+            # Increment the count
             species_count_df[indexx, :count] += 1
         else
-            push!(species_count_df, (species_name, 1, ind_ext_names))
+            # Add a new entry for this species
+            push!(species_count_df, (
+                species_name,                  # species_name
+                1,                             # count starts at 1
+                [cell_id],                     # cell_id as a single-element array
+                ind_ext_names                  # ind_ext_names as-is
+            ))
         end
     end
 end
 
-species_count_df
+for i in birmmals_names
+    if !(i in species_count_df.species_name)
+        push!(species_count_df, (
+            i,
+            0,
+            [],
+            []
+        ))
+    end
+end
+species_count_df[!, :ind_ext_names_length] = length.(species_count_df.ind_ext_names)
 
 begin
     species_count_df = sort(species_count_df, :count, rev=true)
@@ -374,7 +454,7 @@ begin
     ax.xticklabelsize = 7
 
     sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
-    ax2 = Axis(fig[1, 2], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
+    ax2 = Axis(fig[1, 2], title="H0_values Biomass", xlabel="Species", ylabel="Biomass")
     MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
     ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
     ax2.xticklabelrotation = π/2.5
@@ -384,13 +464,52 @@ begin
 end
 
 begin
+    dis = true
+    save_the_plot = true
+    log = true
     fig = Figure(resolution = (1000, 800))
     sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
-    ax2 = Axis(fig[1, 1], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
+    ax2 = Axis(
+        fig[1, 1], title="H0_values Biomass", 
+        xlabel="Species", ylabel="Biomass",
+        yscale=log ? log10 : identity
+        )
     MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
     ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
     ax2.xticklabelrotation = π/2.5
     ax2.xticklabelsize = 6
     
-    display(fig)
+    if dis
+        display(fig)
+    end
+    word = log ? "log" : "absolute"
+    if save_the_plot
+        save("Plots/H0_values_biomass_$word.png", fig) 
+    end
+end
+
+begin
+    dis = true
+    log = false
+    save_the_plot = true
+    fig = Figure(resolution = (1000, 800))
+    ax = Axis(
+        fig[1, 1],
+         title="Correlation between H0_values and frequency of most influencial species", 
+         xlabel="Frequency", ylabel="H0_values",
+         yscale=log ? log10 : identity,
+        #  xscale=log ? log10 : identity
+    )
+    matched_df = innerjoin(species_count_df, sorted_birmmals_biomass_fixed, on=:species_name => :species)
+    MK.scatter!(ax, matched_df.count, matched_df.biomass)
+    ax.xlabel = "Frequency of most influencial species"
+    ax.ylabel = "Biomass of species"
+    
+    if dis
+        display(fig)
+    end
+    word = log ? "logscale" : ""
+    if save_the_plot
+        save("Plots/H0_values_VS_most_influencial_$word.png", fig) 
+    end
 end
