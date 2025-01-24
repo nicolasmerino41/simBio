@@ -72,7 +72,7 @@ param_combinations = param_combinations[1:end]
 # Define constants
 const EXTINCTION_THRESHOLD = 1e-6
 const T_ext               = 250.0
-const MAX_ITERS           = 20      # Up to 2000 combos
+const MAX_ITERS           = 2000      # Up to 2000 combos
 const SURVIVAL_THRESHOLD  = 0.0       # For example, store best if survival rate >= threshold
 
 # Set the output file names (ensure directories exist)
@@ -213,7 +213,7 @@ problem_species_filename = "Results/problematic_species.csv"
                 return true  # Feasibility achieved
             end
         end
-        @info "No feasible combination found for cell $cell."
+        # @info "No feasible combination found for cell $cell."
         return false  # Feasibility not achieved
     end
 
