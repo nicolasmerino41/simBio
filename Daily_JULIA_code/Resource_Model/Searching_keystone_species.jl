@@ -52,11 +52,9 @@ Threads.@threads for i in 1:nrow(best_params)
             local_R -= predator_has_prey[2]
             filter!(name -> !(name in predator_has_prey[3]), sp_nm)
             @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
-            if predator_has_prey[2] > 0
-                species_names = sp_nm
-            else
-                species_names = nothing # If we can find all predators, we pass species_names = nothing cause setup_community_from_cell will generate it
-            end
+            species_names = sp_nm
+        else
+            species_names = sp_nm
         end
 
         localNPP = Float64(npp_DA_relative_to_1000[local_i, local_j])
@@ -357,7 +355,7 @@ Threads.@threads for i in 1:nrow(best_params)
     end
 end
 
-serialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/all_results_list_from_best_params_5950_cells_254_1950iter_newherbivores.jls", all_results_list)
+# serialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/all_results_list_from_best_params_5950_cells_254_1950iter_newherbivores.jls", all_results_list)
 all_results_list = deserialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/all_results_list_from_best_params_5950_cells_254_1950iter.jls")
 
 # Checking sr matches best_params and all_results_list with full_species by matching cell_id
