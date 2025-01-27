@@ -77,7 +77,7 @@ const SURVIVAL_THRESHOLD  = 0.0       # For example, store best if survival rate
 
 # Set the output file names (ensure directories exist)
 output_filename = "Results/Big_pipeline_results.csv"
-problem_species_filename = "Results/problematic_species.csv"
+problematic_species_filename = "Results/problematic_species.csv"
 
 @threads for cell in 1:8  # Adjust the range as needed
     @info "Processing cell $cell..."

@@ -1,5 +1,5 @@
 begin
-PC = "nicol"
+PC = "MM-1"
 end_true = false
 ode_true = true
 num_species = 256
