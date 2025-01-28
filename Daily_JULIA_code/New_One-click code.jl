@@ -536,7 +536,7 @@ DA_harmonic = DimArray(reshape([MyStructs254(SVector{254, Float64}(fill(0.0, 254
 
 # Define the herbivore carnivore vector
 herb_carv_svector = SVector{254, Float64}([name in herbivore_names ? 1.0 : 0.00000001 for name in spain_names])
-herb_carv_vector = [name in herbivore_names ? 1.0 : 0.00000001 for name in spain_names]
+# herb_carv_vector = [name in herbivore_names ? 1.0 : 0.00000001 for name in spain_names]
 
 DA_sum = deserialize("Objects\\DA_sum.jls")
 idx = findall(x -> x == 1.0, DA_sum)
