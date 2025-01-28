@@ -22,3 +22,30 @@ for row in axes(H0_DA, 1), col in axes(H0_DA, 2)
         # println("multiplicative_suitability: ", multiplicative_suitability, "\n")
     end
 end
+
+# DA_BIRMMALS_WITH_PI CORRECTED FOR PREDATORS WITHOUT PREY
+DA_birmmals_with_pi_corrected = deepcopy(DA_birmmals_with_pi)
+
+for i in 1:length(idx)
+    
+    local_i, local_j = idx[i][1], idx[i][2]
+    
+    # Gather cell data
+    sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi[local_i, local_j])
+    local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
+    predator_has_prey = check_predator_has_prey(sp_nm)
+
+    if !predator_has_prey[1]
+        filter!(name -> !(name in predator_has_prey[3]), sp_nm)
+        # @info("In cell $i, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
+        
+        vectoro = Vector(DA_birmmals_with_pi[local_i, local_j].a)
+        
+        for j in predator_has_prey[3]
+            index = species_dict_predators_in_birmmals[j]
+            vectoro[index] = 0.0
+        end
+
+        DA_birmmals_with_pi_corrected[local_i, local_j] = MyBirmmals(SVector{205, Float64}(vectoro))
+    end
+end
