@@ -14,6 +14,7 @@ include("Functions/Callbacks_function.jl")
 include("npp_DA_relative_to_1000.jl")
 include("Functions/Computing_metrics.jl")
 include("../HerbivoresVsPredators/Exploring HerbPred metaweb composition.jl")
+include("Functions/attempt_feasibility.jl")
 
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
