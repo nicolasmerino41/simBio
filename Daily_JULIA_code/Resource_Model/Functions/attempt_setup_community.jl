@@ -49,7 +49,7 @@ function attempt_setup_community(
         )
     catch e
         # If anything fails, we log it or ignore it, then return nothing
-        @warn "Failed inside attempt_setup_community with error: $e\n$(catch_backtrace())"
+        # @warn "Failed inside attempt_setup_community with error: $e\n$(catch_backtrace())"
         return nothing
     end
 end
