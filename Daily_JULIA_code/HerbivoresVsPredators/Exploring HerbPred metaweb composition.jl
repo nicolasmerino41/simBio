@@ -1,15 +1,7 @@
-herb_carv_vector
-spain_names
-herbivore_names = []
-for i in axes(iberian_interact_NA, 1)
-    if all(x -> x == 0, iberian_interact_NA[i, :])
-        push!(herbivore_names, names(iberian_interact_NA, 1)[i])
-    end
-end
-predator_names = setdiff(spain_names, herbivore_names)
 num_herbivores = length(herbivore_names)
 @time include("HerbsVsPreds.jl")
-
+herb_carv_svector = SVector{254, Float64}([name in herbivore_names ? 1.0 : 0.00000001 for name in spain_names])
+herb_carv_vector = [name in herbivore_names ? 1.0 : 0.00000001 for name in spain_names]
 if false
 # Get a map of herbivore abundance
 DA_herbivores = DimArray(reshape([Herbivores(SVector{num_herbivores, Float64}(fill(0.0, num_herbivores))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
