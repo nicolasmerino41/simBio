@@ -19,13 +19,6 @@ end
 
 # SAME but only to identify the herbivores positions in a MyBirmmals struct
 birmmals_names = spain_names[50:254]
-species_dict_herbivores_in_birmmals = Dict{String, Int}()
-
-for (idx, sp) in enumerate(birmmals_names)
-    if sp in herbivore_names
-        species_dict_herbivores_in_birmmals[sp] = idx
-    end
-end
 
 herbivore_names_as_birmmals = []
 sub_iberian_interact_NA = iberian_interact_NA[birmmals_names, birmmals_names]
@@ -39,3 +32,19 @@ predator_names_as_birmmals = setdiff(birmmals_names, herbivore_names_as_birmmals
 setdiff(predator_names, predator_names_as_birmmals)
 herbivore_names = herbivore_names_as_birmmals
 predator_names = predator_names_as_birmmals
+
+species_dict_herbivores_in_birmmals = Dict{String, Int}()
+
+for (idx, sp) in enumerate(birmmals_names)
+    if sp in herbivore_names
+        species_dict_herbivores_in_birmmals[sp] = idx
+    end
+end
+
+species_dict_predators_in_birmmals = Dict{String, Int}()
+# We'll also define a dictionary that maps each predator name to its integer index.
+for (idx, sp) in enumerate(birmmals_names)
+    if sp in predator_names
+        species_dict_predators_in_birmmals[sp] = idx
+    end
+end
