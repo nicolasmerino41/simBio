@@ -136,8 +136,8 @@ Threads.@threads for cell in start_val:end_val # Adjust the range as needed
         @info "Cell $cell is not feasible initially. Attempting species removal..."
         # Step 2: Iteratively remove species to achieve feasibility
         problematic_species_list = String[]
-	slightly_problematic_species_list = String[]
-        best_survival_rate_from_sp_removed = best_result.survival_rate
+	    slightly_problematic_species_list = String[]
+        best_survival_rate_from_sp_removed = isnothing(best_result) ? 0.0 : best_result.survival_rate
         for species in sp_nm
             modified_sp_nm = filter(s -> s != species, sp_nm)
             feasible, best_result = attempt_feasibility(modified_sp_nm, local_i, local_j, localNPP, localH0_vector, parameters; many_params = key, sp_removed = true, sp_removed_name = species)
