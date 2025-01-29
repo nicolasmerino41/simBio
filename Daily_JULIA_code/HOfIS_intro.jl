@@ -11,6 +11,6 @@ include("Resource_Model/npp_DA_relative_to_1000.jl")
 include("Resource_Model/Functions/Computing_metrics.jl")
 include("HerbivoresVsPredators/Exploring HerbPred metaweb composition.jl")
 include("Resource_Model/Functions/attempt_feasibility.jl")
-
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
+include("Resource_Model/SingleModelRun.jl")
