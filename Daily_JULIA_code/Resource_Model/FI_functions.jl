@@ -453,15 +453,15 @@ function setup_community_from_cell(
     )
 end
 
-####### A FUNCTION TO EXTRACT INFO OF A SPECIES (I.E. H0_value, whether it's herbivore or predator, etc)
+####### A FUNCTION TO EXTRACT INFO OF A SPECIES (I.E. pi_value, whether it's herbivore or predator, etc)
 function extract_info_of_a_species(species_name::String)
-    # 1) Extract the H0 value from the cell
+    # 1) Extract the pi value from the cell
     if species_name in birmmals_biomass_fixed.species
-        H0_value = birmmals_biomass_fixed[birmmals_biomass_fixed.species .== species_name, :biomass][1]
-        rounded_H0_value = round(H0_value[1], digits=2)
+        pi_value = birmmals_biomass_fixed[birmmals_biomass_fixed.species .== species_name, :biomass][1]
+        rounded_pi_value = round(pi_value[1], digits=2)
         # Correctly compute the rank of the species' biomass
         sorted_biomass = sort(birmmals_biomass_fixed[:, :biomass], rev=true)  # Sort biomass values in descending order
-        rank = findfirst(x -> x == H0_value, sorted_biomass)
+        rank = findfirst(x -> x == pi_value, sorted_biomass)
     else
         error("Species $species_name not found in birmmals_biomass_fixed")
     end
@@ -478,10 +478,25 @@ function extract_info_of_a_species(species_name::String)
     else
         error("Species $species_name is neither herbivore nor predator")
     end
+    
+    # 4) Check its average H0 value from H0_DA
+    if species_name in herbivore_names_as_birmmals
+        H0_value_vector = []
+        for i in idx
+            push!(H0_value_vector, H0_DA[i].a[species_dict_herbivores_in_birmmals[species_name]])
+        end
+        average_H0_value = mean(H0_value_vector)
+        H0_value_sd = std(H0_value_vector)
+    end 
 
-    # 4) Print the output
-    println("$species_name is a $what with H0_value $rounded_H0_value, which falls $rank/$(length(birmmals_biomass_fixed[:, :biomass]))")
+    # 5) Print the output
+    println("$species_name is a $what with p_i $rounded_pi_value, which falls $rank/$(length(birmmals_biomass_fixed[:, :biomass]))")
     println("Its position in birmmals_names is $position_in_birmmals and spain_names $position_in_spain_names")
+
+    if species_name in herbivore_names_as_birmmals
+        println("Its average H0 value is $average_H0_value")
+        println("Its standard deviation is $H0_value_sd")
+    end
 end
 
-extract_info_of_a_species("Apodemus sylvaticus")
+# extract_info_of_a_species("Apodemus sylvaticus")
