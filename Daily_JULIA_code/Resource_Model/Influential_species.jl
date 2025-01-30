@@ -18,13 +18,16 @@ end
 
 #################################################################
 #################################################################
+begin
 # FIND THE MOST INFLUENTIAL SPECIES
 # Initialize the DataFrame with proper column types
 species_count_df = DataFrame(
     species_name = String[],
     count = Int[],
+    ind_ext_names_length = Int[],
+    number_of_presences = Int[],
     cell_id = Vector{Int}[],  # Assuming cell IDs are integers
-    ind_ext_names = Vector{String}[]
+    ind_ext_names = Vector{String}[],
 )
 
 # Loop through all results
@@ -70,8 +73,10 @@ for dd in all_results_list
             push!(species_count_df, (
                 species_name,                  # species_name
                 1,                             # count starts at 1
+                0,
+                count_number_of_presences(species_name; info = false),
                 [cell_id],                     # cell_id as a single-element array
-                ind_ext_names                  # ind_ext_names as-is
+                ind_ext_names,                  # ind_ext_names as-is
             ))
         end
     end
@@ -81,14 +86,20 @@ for i in birmmals_names
     if !(i in species_count_df.species_name)
         push!(species_count_df, (
             i,
-            0,
-            [],
-            []
+            0,              # :count
+            0,              # :ind_ext_names_length
+            count_number_of_presences(i; info = false),
+            Int[],          # Empty Vector{Int} for :cell_id
+            String[]        # Vector{String} for :ind_ext_names
         ))
     end
 end
-species_count_df[!, :ind_ext_names_length] = length.(species_count_df.ind_ext_names)
 
+species_count_df[!, :ind_ext_names_length] = length.(species_count_df.ind_ext_names)
+insertcols!(species_count_df, 3,
+    :stand_count => species_count_df[!, :count] ./ species_count_df[!, :number_of_presences]
+)
+end
 #### PLOT MOST INFLUENTIAL SPECIES AND PI BIOMASS VALUES
 begin
     species_count_df = sort(species_count_df, :count, rev=true)
@@ -99,13 +110,34 @@ begin
     ax.xticklabelrotation = π/2.5
     ax.xticklabelsize = 7
 
-    sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
-    ax2 = Axis(fig[1, 2], title="H0_values Biomass", xlabel="Species", ylabel="Biomass")
-    MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
-    ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
+    # species_count_df = sort(species_count_df, :stand_count, rev=true)
+    ax2 = Axis(fig[1, 2], title="Standardized frequency by prevalence", xlabel="Species", ylabel="Frequency")
+    MK.barplot!(ax2, 1:length(species_count_df.species_name), species_count_df.stand_count)
+    ax2.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
     ax2.xticklabelrotation = π/2.5
     ax2.xticklabelsize = 6
+        
+    # sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
+    # ax2 = Axis(fig[1, 2], title="H0_values Biomass", xlabel="Species", ylabel="Biomass")
+    # MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
+    # ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
+    # ax2.xticklabelrotation = π/2.5
+    # ax2.xticklabelsize = 6
     
+    display(fig)
+
+    println(species_count_df.species_name)
+end
+
+begin
+    species_count_df = sort(species_count_df, :stand_count, rev=true)
+    fig = Figure(resolution = (1000, 800))
+    ax2 = Axis(fig[1, 1], title="Standardized frequency by prevalence", xlabel="Species", ylabel="Frequency")
+    MK.barplot!(ax2, 1:length(species_count_df.species_name), species_count_df.stand_count)
+    ax2.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
+    ax2.xticklabelrotation = π/2.5
+    ax2.xticklabelsize = 6
+
     display(fig)
 end
 
