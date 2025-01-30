@@ -1,5 +1,10 @@
 # Function to attempt feasibility with current species list
-function attempt_feasibility(current_sp_nm, local_i, local_j, localNPP, localH0_vector, parameters; many_params = true, sp_removed = false, sp_removed_name = missing)
+function attempt_feasibility(
+    current_sp_nm, local_i, local_j,
+    localNPP, localH0_vector, parameters;
+    many_params = true, sp_removed = false, sp_removed_name = missing,
+    artificial_pi = false
+    )
 
     cell = findfirst(isequal(CartesianIndex(local_i, local_j)), idx)
     # Track the best result and problematic species
@@ -25,7 +30,8 @@ function attempt_feasibility(current_sp_nm, local_i, local_j, localNPP, localH0_
             mu_val, mu_pred_val, eps_val, sym_competition;
             localNPP       = localNPP,
             localH0_vector = localH0_vector,
-            species_names  = current_sp_nm
+            species_names  = current_sp_nm,
+            artificial_pi  = artificial_pi
         )
         if results === nothing
             continue
@@ -73,8 +79,11 @@ function attempt_feasibility(current_sp_nm, local_i, local_j, localNPP, localH0_
         total_species = S2 + R2
         survival_rate = total_surv / total_species
 
+        giHi = sum(g_i .* H_end)
+        ratio_ok = (giHi / localNPP > 0.5) && (giHi / localNPP < 10.0)
+
         # Update the best result if survival_rate is improved.
-        if survival_rate > best_survival_rate
+        if survival_rate > best_survival_rate && ratio_ok
             
             herbivore_survival_rate = survived_herb / S2
             predator_survival_rate  = survived_pred / R2

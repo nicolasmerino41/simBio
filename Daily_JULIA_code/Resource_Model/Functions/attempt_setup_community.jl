@@ -1,6 +1,8 @@
 function attempt_setup_community(
-    i, j, mu_val, mu_pred_val, eps_val, sym_competition; 
-    localNPP, localH0_vector, species_names=nothing
+    i, j, 
+    mu_val, mu_pred_val, eps_val, sym_competition; 
+    localNPP, localH0_vector, 
+    species_names=nothing, artificial_pi=false
 )
     try
         S2, R2,
@@ -22,7 +24,7 @@ function attempt_setup_community(
             species_dict = species_dict,
             m_standard_deviation = 0.0,
             h_standard_deviation = 0.0,
-            artificial_pi = false,
+            artificial_pi = artificial_pi,
             real_H0 = true,
             H0_vector = localH0_vector,
             species_names = species_names
