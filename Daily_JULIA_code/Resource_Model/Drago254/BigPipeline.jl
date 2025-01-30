@@ -17,6 +17,7 @@ include("Scripts/Callbacks_function.jl")
 include("Scripts/npp_DA_relative_to_1000.jl")
 include("Scripts/attempt_feasibility.jl")
 
+const global art_pi = true
 # Import SpinLock for thread-safety
 using Base.Threads: SpinLock
 using Base.Threads: @threads
@@ -77,9 +78,9 @@ const MAX_ITERS           = 10      # Up to 2000 combos
 const SURVIVAL_THRESHOLD  = 0.0       # For example, store best if survival rate >= threshold
 
 # Set the output file names (ensure directories exist)
-output_filename = "Results/Big_pipeline_results_drago.csv"
-problematic_species_filename = "Results/problematic_species_drago.csv"
-slightly_problematic_species_filename = "Results/slightly_problematic_species_drago.csv"
+output_filename = "Results/Big_pipeline_results_with_even_pi.csv"
+problematic_species_filename = "Results/problematic_species_with_even_pi.csv"
+slightly_problematic_species_filename = "Results/slightly_problematic_species_with_even_pi.csv"
 
 Threads.@threads for cell in 1:8 # Adjust the range as needed
     @info "Processing cell $cell..."
@@ -107,7 +108,12 @@ Threads.@threads for cell in 1:8 # Adjust the range as needed
     # cb_no_trigger, cb_trg = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
 
     # Step 1: Attempt full feasibility
-    feasible, best_result = attempt_feasibility(species_names, local_i, local_j, localNPP, localH0_vector, param_combinations; many_params = true, sp_removed = false)
+    feasible, best_result = attempt_feasibility(
+        species_names, local_i, local_j,
+        localNPP, localH0_vector, param_combinations; 
+        many_params = true, sp_removed = false,
+        artificial_pi = art_pi
+    )
 
     if feasible
         # Write the best_result to CSV
@@ -135,7 +141,13 @@ Threads.@threads for cell in 1:8 # Adjust the range as needed
         best_survival_rate_from_sp_removed = best_result.survival_rate
         for species in sp_nm
             modified_sp_nm = filter(s -> s != species, sp_nm)
-            feasible, best_result = attempt_feasibility(modified_sp_nm, local_i, local_j, localNPP, localH0_vector, parameters; many_params = key, sp_removed = true, sp_removed_name = species)
+            feasible, best_result = attempt_feasibility(
+                modified_sp_nm, local_i, local_j,
+                localNPP, localH0_vector, parameters;
+                many_params = key,
+                sp_removed = true, sp_removed_name = species,
+                artificial_pi = art_pi
+                )
             if feasible
                 push!(problematic_species_list, species)
                 @info "Removing species '$species' makes cell $cell feasible."
