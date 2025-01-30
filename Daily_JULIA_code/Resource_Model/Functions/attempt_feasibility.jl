@@ -80,7 +80,7 @@ function attempt_feasibility(
         survival_rate = total_surv / total_species
 
         giHi = sum(g_i .* H_end)
-        ratio_ok = (giHi / localNPP > 0.5) && (giHi / localNPP < 10.0)
+        ratio_ok = (giHi / localNPP > 0.5) && (giHi / localNPP < 2.0)
 
         # Update the best result if survival_rate is improved.
         if survival_rate > best_survival_rate && ratio_ok
