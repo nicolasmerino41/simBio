@@ -14,3 +14,4 @@ include("Resource_Model/Functions/attempt_feasibility.jl")
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
 include("Resource_Model/SingleModelRun.jl")
+include("Resource_Model/species_distributions.jl")
