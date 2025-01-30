@@ -27,6 +27,42 @@ end
 end
 
 # NOW WE'LL IMPLEMENT THE SAME APPROACH WE USED FOR Searching_keystone_species.jl AND SpeciesEffectOnEcosystemFunctioning.jl
+const file_lock = ReentrantLock()
+
+"""
+    write_result_jls(result::Any, filename::String)
+
+Thread-safe function to append `result` to a list stored in `filename` as a `.jls` file.
+
+- Locks `file_lock` before reading/writing to avoid race conditions.
+- Reads existing data (if any) from `filename`, pushes `result`, then overwrites the file.
+"""
+function write_result_jls(result, filename::String)
+    lock(file_lock)
+    try
+        if !isfile(filename)
+            # File doesn't exist. Create new array with this first result
+            open(filename, "w") do io
+                serialize(io, [result])
+            end
+        else
+            # File already exists: read data, push new result, re-serialize
+            existing_data = nothing
+            open(filename, "r") do io
+                existing_data = deserialize(io)
+            end
+            
+            push!(existing_data, result)  # append the new row or DataFrame
+
+            # Overwrite the file with the updated data
+            open(filename, "w") do io
+                serialize(io, existing_data)
+            end
+        end
+    finally
+        unlock(file_lock)
+    end
+end
 
 ###############################################################################
 # 2) COLLATERAL EXTINCTIONS
@@ -402,7 +438,7 @@ end
 ###############################################################################
 # 6) DRIVER FUNCTION FOR ALL CELLS
 ###############################################################################
-function run_keystone_removal(Big_P_results_maximised::DataFrame)
+function run_keystone_removal(Big_P_results_maximised::DataFrame; jls_filename="all_results.jls")
     all_results_list = Vector{DataFrame}()
 
     Threads.@threads for row in eachrow(Big_P_results_maximised)
@@ -415,15 +451,21 @@ function run_keystone_removal(Big_P_results_maximised::DataFrame)
 
         @info "CELL=$cell => Baseline (excluding $sp_removed_best), then one-by-one removals"
         cell_df = run_experiments_for_cell(cell, mu_val, mu_pred_val, eps_val, sym_comp, sp_removed_best)
+        
         @info "Finished cell $cell"
+
+        # 1) Save the results of this cell to .jls
+        write_result_jls(cell_df, jls_filename)
+
+        # 2) Also push into in-memory structure if you still want it
         push!(all_results_list, cell_df)
     end
 
     return all_results_list
 end
 
-@time all_results_list = run_keystone_removal(Big_P_results_maximised)
-serialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls", all_results_list)
-all_results_list = deserialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls")
-# A_all_results_list = all_results_list[4]
-# The result is a Vector{DataFrame}, one DataFrame per cell in Big_P_results_maximised.
+# @time all_results_list = run_keystone_removal(Big_P_results_maximised[1:2, :]; jls_filename="Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls")
+
+all_results_list = deserialize(
+    "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls"
+    )
