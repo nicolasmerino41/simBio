@@ -70,3 +70,34 @@ end
 # Display the resulting DataFrame
 println(species_ecosystem_effect)
 
+##### PLOTTING THE DATA ############
+# 1) Sort descending by average_effect
+see = deepcopy(species_ecosystem_effect)
+sort!(see, :average_effect, rev=true)
+
+# 2) Extract sorted columns
+species = see.species_name
+avgs    = see.average_effect
+sds     = see.average_effect_sd
+
+# 3) Create a point plot with error bars
+#    - seriestype=:scatter gives points
+#    - yerror = sds draws ± error bars
+#    - xrotation=45 rotates the x-axis labels for readability
+Plots.plot(
+    species, avgs;
+    yerror = sds,
+    seriestype = :scatter,
+    legend = false,
+    xlabel = "Species",
+    ylabel = "Average Effect",
+    title = "Species Effects (± SD)",
+    xrotation = 45
+)
+
+# Display the plot
+savefig("species_effect_plot.png") # optional: save to file
+display(plot())
+
+AAAA = all_results_list[20]
+
