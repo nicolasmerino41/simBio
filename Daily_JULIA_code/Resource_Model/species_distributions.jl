@@ -27,7 +27,7 @@ function species_distribution(species::String; resolution = (800, 600))
 
     fig = Figure()
     ax = Axis(fig[1, 1], title = "Distribution of $species", xlabel = "x", ylabel = "y")
-    heatmap!(ax, the_map, colormap = :inferno, colorrange = (0, 1))
+    Makie.heatmap!(ax, the_map, colormap = :inferno, colorrange = (0, 1))
     Colorbar(fig[1, 2], colormap = :inferno, vertical = true)
     ax.yreversed = true
     display(fig)
