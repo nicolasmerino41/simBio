@@ -102,20 +102,21 @@ insertcols!(species_count_df, 3,
 end
 #### PLOT MOST INFLUENTIAL SPECIES AND PI BIOMASS VALUES
 begin
+    ending = 205
     species_count_df = sort(species_count_df, :count, rev=true)
     fig = Figure(resolution = (1000, 800))
     ax = Axis(fig[1, 1], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
-    MK.barplot!(ax, 1:length(species_count_df.species_name), species_count_df.count)
-    ax.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
+    MK.barplot!(ax, 1:length(species_count_df.species_name[1:ending]), species_count_df.count[1:ending])
+    ax.xticks = (1:length(species_count_df.species_name[1:ending]), species_count_df.species_name[1:ending])
     ax.xticklabelrotation = π/2.5
     ax.xticklabelsize = 7
 
-    # species_count_df = sort(species_count_df, :stand_count, rev=true)
-    ax2 = Axis(fig[1, 2], title="Standardized frequency by prevalence", xlabel="Species", ylabel="Frequency")
-    MK.barplot!(ax2, 1:length(species_count_df.species_name), species_count_df.stand_count)
-    ax2.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
-    ax2.xticklabelrotation = π/2.5
-    ax2.xticklabelsize = 6
+    # # species_count_df = sort(species_count_df, :stand_count, rev=true)
+    # ax2 = Axis(fig[1, 2], title="Standardized frequency by prevalence", xlabel="Species", ylabel="Frequency")
+    # MK.barplot!(ax2, 1:length(species_count_df.species_name), species_count_df.stand_count)
+    # ax2.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
+    # ax2.xticklabelrotation = π/2.5
+    # ax2.xticklabelsize = 6
         
     # sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
     # ax2 = Axis(fig[1, 2], title="H0_values Biomass", xlabel="Species", ylabel="Biomass")
@@ -130,13 +131,14 @@ begin
 end
 
 begin
+    ending = 205
     species_count_df = sort(species_count_df, :stand_count, rev=true)
     fig = Figure(resolution = (1000, 800))
     ax2 = Axis(fig[1, 1], title="Standardized frequency by prevalence", xlabel="Species", ylabel="Frequency")
-    MK.barplot!(ax2, 1:length(species_count_df.species_name), species_count_df.stand_count)
-    ax2.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
+    MK.barplot!(ax2, 1:length(species_count_df.species_name[1:ending]), species_count_df.stand_count[1:ending])
+    ax2.xticks = (1:length(species_count_df.species_name[1:ending]), species_count_df.species_name[1:ending])
     ax2.xticklabelrotation = π/2.5
-    ax2.xticklabelsize = 6
+    ax2.xticklabelsize = 8
 
     display(fig)
 end
@@ -178,7 +180,7 @@ begin
          title="Correlation between H0_values and frequency of most influencial species", 
          xlabel="Frequency", ylabel="H0_values",
          yscale=log ? log10 : identity,
-        #  xscale=log ? log10 : identity
+        # xscale=log ? log10 : identity
     )
     matched_df = innerjoin(species_count_df, sorted_birmmals_biomass_fixed, on=:species_name => :species)
     MK.scatter!(ax, matched_df.count, matched_df.biomass)
@@ -192,4 +194,84 @@ begin
     if save_the_plot
         save("Plots/H0_values_VS_most_influencial_$word.png", fig) 
     end
+end
+
+###### PLOT MOST INFLUENTIAL SPECIES, AND SOME OF THEIR NETWORK METRICS
+# Define the metric names
+metric_names = ["Density", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
+# Initialize the DataFrame
+average_metric_per_species = DataFrame(
+    species_name = String[],
+    density = Float64[],
+    avg_degree = Float64[],
+    avg_clustering = Float64[],
+    global_betweenness = Float64[],
+    global_closeness = Float64[],
+    number_of_presences = Int[]
+)
+
+# Dictionary to store metrics before computing averages
+species_metrics_dict = Dict{String, Vector{Vector{Float64}}}()
+
+# Loop through all species
+for species in unique(species_count_df.species_name)
+    species_metrics_dict[species] = [Float64[] for _ in metric_names]
+
+    # Go through each cell's results
+    num_presences = 0
+    for dd in all_results_list
+        # Check if the species appears in this cell
+        if species in dd.sp_removed
+            num_presences += 1
+            # Extract the metrics for this species in this cell
+            network_metrics = compute_food_web_metrics(dd.cell[1])  # Assuming `compute_food_web_metrics` works with cell ID
+
+            # Append the values to the corresponding metric list
+            push!(species_metrics_dict[species][1], network_metrics.global_metrics.density)
+            push!(species_metrics_dict[species][2], network_metrics.global_metrics.avg_degree)
+            push!(species_metrics_dict[species][3], network_metrics.global_metrics.avg_clustering)
+            push!(species_metrics_dict[species][4], network_metrics.global_metrics.global_betweenness)
+            push!(species_metrics_dict[species][5], network_metrics.global_metrics.global_closeness)
+        end
+    end
+
+    # If species was found in at least one cell, compute averages and store results
+    if num_presences > 0
+        avg_metrics = [mean(metric_list) for metric_list in species_metrics_dict[species]]
+        push!(average_metric_per_species, (
+            species_name = species,
+            density = avg_metrics[1],
+            avg_degree = avg_metrics[2],
+            avg_clustering = avg_metrics[3],
+            global_betweenness = avg_metrics[4],
+            global_closeness = avg_metrics[5],
+            number_of_presences = num_presences
+        ))
+    end
+end
+
+# Sort by most influential species (highest presence count)
+sort!(average_metric_per_species, :number_of_presences, rev=true)
+
+# Display results
+println(average_metric_per_species)
+
+
+begin
+    species_count_df = sort(species_count_df, :count, rev=true)
+    metric_number = 1 
+    if metric == 1
+
+        
+    end
+
+    fig = Figure(resolution = (1000, 800))
+    ax = Axis(fig[1, 1], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
+    MK.barplot!(ax, 1:length(species_count_df.species_name), species_count_df.count)
+    ax.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
+    ax.xticklabelrotation = π/2.5
+    ax.xticklabelsize = 7
+
+    ax2 = Axis(fig[1, 2], title="Metric $metric", xlabel="Species", ylabel="$metric")
+    
 end
