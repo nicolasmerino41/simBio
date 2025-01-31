@@ -26,6 +26,7 @@ include("Scripts/attempt_feasibility.jl")
 using Base.Threads: SpinLock
 using Base.Threads: @threads
 
+const global art_pi = true
 # Initialize a SpinLock for file access
 const file_lock = SpinLock()
 
@@ -78,13 +79,13 @@ global param_combinations = param_combinations[1:end]
 # Define constants
 const EXTINCTION_THRESHOLD = 1e-6
 const T_ext               = 250.0
-const MAX_ITERS           = 10      # Up to 2000 combos
+const MAX_ITERS           = 2000      # Up to 2000 combos
 const SURVIVAL_THRESHOLD  = 0.0       # For example, store best if survival rate >= threshold
 
 # Set the output file names (ensure directories exist)
-output_filename = "Results/Big_pipeline_results_drago_cheato.csv"
-problematic_species_filename = "Results/problematic_species_drago_cheato.csv"
-slightly_problematic_species_filename = "Results/slightly_problematic_species_drago_cheato.csv"
+output_filename = "Results/Big_pipeline_results_with_even_pi_express.csv"
+problematic_species_filename = "Results/problematic_species_with_even_pi_express.csv"
+slightly_problematic_species_filename = "Results/slightly_problematic_species_with_even_pi_express.csv"
 
 Threads.@threads for cell in start_val:end_val # Adjust the range as needed
     @info "Processing cell $cell..."
@@ -112,7 +113,12 @@ Threads.@threads for cell in start_val:end_val # Adjust the range as needed
     # cb_no_trigger, cb_trg = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
 
     # Step 1: Attempt full feasibility
-    feasible, best_result = attempt_feasibility(species_names, local_i, local_j, localNPP, localH0_vector, param_combinations; many_params = true, sp_removed = false)
+    feasible, best_result = attempt_feasibility(
+        species_names, local_i, local_j,
+        localNPP, localH0_vector, param_combinations; 
+        many_params = true, sp_removed = false,
+        artificial_pi = art_pi
+    )
 
     if feasible
         # Write the best_result to CSV
@@ -132,7 +138,7 @@ Threads.@threads for cell in start_val:end_val # Adjust the range as needed
             parameters = param_combinations
             @info "Cell $cell did not have any non-nothing results but we don't care"
         end
-
+        
         @info "Cell $cell is not feasible initially. Attempting species removal..."
         # Step 2: Iteratively remove species to achieve feasibility
         problematic_species_list = String[]
@@ -140,7 +146,13 @@ Threads.@threads for cell in start_val:end_val # Adjust the range as needed
         best_survival_rate_from_sp_removed = isnothing(best_result) ? 0.0 : best_result.survival_rate
         for species in sp_nm
             modified_sp_nm = filter(s -> s != species, sp_nm)
-            feasible, best_result = attempt_feasibility(modified_sp_nm, local_i, local_j, localNPP, localH0_vector, parameters; many_params = key, sp_removed = true, sp_removed_name = species)
+            feasible, best_result = attempt_feasibility(
+                modified_sp_nm, local_i, local_j,
+                localNPP, localH0_vector, parameters;
+                many_params = key,
+                sp_removed = true, sp_removed_name = species,
+                artificial_pi = art_pi
+                )
             if feasible
                 push!(problematic_species_list, species)
                 @info "Removing species '$species' makes cell $cell feasible."
