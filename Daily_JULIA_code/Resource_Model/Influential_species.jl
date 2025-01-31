@@ -197,81 +197,65 @@ begin
 end
 
 ###### PLOT MOST INFLUENTIAL SPECIES, AND SOME OF THEIR NETWORK METRICS
-# Define the metric names
-metric_names = ["Density", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
-# Initialize the DataFrame
-average_metric_per_species = DataFrame(
-    species_name = String[],
-    density = Float64[],
-    avg_degree = Float64[],
-    avg_clustering = Float64[],
-    global_betweenness = Float64[],
-    global_closeness = Float64[],
-    number_of_presences = Int[]
-)
+using CairoMakie
 
-# Dictionary to store metrics before computing averages
-species_metrics_dict = Dict{String, Vector{Vector{Float64}}}()
+function plot_species_metrics(species_count_df, new_all_results_list, selected_metric::Symbol)
+    # Sort species by frequency of being most influential
+    sorted_species = sort(species_count_df, :count, rev=true)
+    
+    # Extract species names & frequencies
+    species_names = sorted_species.species_name
+    species_frequencies = count_number_of_presences.(species_names; info = false)
+    species_counts = sorted_species.count
 
-# Loop through all species
-for species in unique(species_count_df.species_name)
-    species_metrics_dict[species] = [Float64[] for _ in metric_names]
+    new_df = DataFrame(species_names = species_names, species_frequencies = species_frequencies)
+    temp_df = DataFrame(
+        species = species_names,
+        temp_vect = zeros(length(species_names)),
+        count = zeros(length(species_names))
+    )
 
-    # Go through each cell's results
-    num_presences = 0
-    for dd in all_results_list
-        # Check if the species appears in this cell
-        if species in dd.sp_removed
-            num_presences += 1
-            # Extract the metrics for this species in this cell
-            network_metrics = compute_food_web_metrics(dd.cell[1])  # Assuming `compute_food_web_metrics` works with cell ID
-
-            # Append the values to the corresponding metric list
-            push!(species_metrics_dict[species][1], network_metrics.global_metrics.density)
-            push!(species_metrics_dict[species][2], network_metrics.global_metrics.avg_degree)
-            push!(species_metrics_dict[species][3], network_metrics.global_metrics.avg_clustering)
-            push!(species_metrics_dict[species][4], network_metrics.global_metrics.global_betweenness)
-            push!(species_metrics_dict[species][5], network_metrics.global_metrics.global_closeness)
+    for i in species_names
+        for j in 1:length(new_all_results_list)
+            # println(new_all_results_list[j].sp_removed)
+            if i in new_all_results_list[j].sp_removed
+                new_value = new_all_results_list[j][new_all_results_list[j].sp_removed .== i, selected_metric]
+                # println("new_value: ", new_value)
+                temp_df[temp_df.species .== i, :temp_vect] += new_value
+                # println("hello", temp_df[temp_df.species .== i, :count])
+                temp_df[temp_df.species .== i, :count] += Any[1.0]
+            end
         end
     end
 
-    # If species was found in at least one cell, compute averages and store results
-    if num_presences > 0
-        avg_metrics = [mean(metric_list) for metric_list in species_metrics_dict[species]]
-        push!(average_metric_per_species, (
-            species_name = species,
-            density = avg_metrics[1],
-            avg_degree = avg_metrics[2],
-            avg_clustering = avg_metrics[3],
-            global_betweenness = avg_metrics[4],
-            global_closeness = avg_metrics[5],
-            number_of_presences = num_presences
-        ))
-    end
+    mean_values = temp_df.temp_vect ./ temp_df.count
+    new_df[!, selected_metric] = mean_values
+
+    # Define figure
+    fig = Figure(resolution = (1200, 600))
+
+    # --- Frequency Plot (Left) ---
+    ax1 = Axis(fig[1, 1], 
+        title="Most Influential Species", 
+        xlabel="Species", ylabel="Frequency",
+        xticks=(1:length(species_names), species_names),
+        xticklabelrotation=π/4, xticklabelsize=8)
+
+    barplot!(ax1, 1:length(species_names), species_counts, color=:blue)
+
+    # --- Species-Specific Metric Plot (Right) ---
+    ax2 = Axis(fig[1, 2], 
+        title="Average $selected_metric per Species", 
+        xlabel="Species", ylabel="Value",
+        xticks=(1:length(species_names), species_names),
+        xticklabelrotation=π/4, xticklabelsize=8)
+
+    scatter!(ax2, 1:length(species_names), mean_values, color=:red)
+    # errorbars!(ax2, 1:length(species_names), metric_values, [0.0 for _ in metric_values], color=:black)  # Adjust error bars if needed
+
+    display(fig)
 end
 
-# Sort by most influential species (highest presence count)
-sort!(average_metric_per_species, :number_of_presences, rev=true)
-
-# Display results
-println(average_metric_per_species)
-
-
-begin
-    species_count_df = sort(species_count_df, :count, rev=true)
-    metric_number = 1 
-    if metric == 1
-
-        
-    end
-
-    fig = Figure(resolution = (1000, 800))
-    ax = Axis(fig[1, 1], title="Frequency of most influencial species", xlabel="Species", ylabel="Frequency")
-    MK.barplot!(ax, 1:length(species_count_df.species_name), species_count_df.count)
-    ax.xticks = (1:length(species_count_df.species_name), species_count_df.species_name)
-    ax.xticklabelrotation = π/2.5
-    ax.xticklabelsize = 7
-
-    ax2 = Axis(fig[1, 2], title="Metric $metric", xlabel="Species", ylabel="$metric")
-    
-end
+# Example usage:
+selected_metric = :total_degree # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
+plot_species_metrics(species_count_df, new_all_results_list, selected_metric)
