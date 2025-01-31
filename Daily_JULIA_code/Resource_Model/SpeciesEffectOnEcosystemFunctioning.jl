@@ -27,16 +27,18 @@ for species_name in all_species
         if species_name in dd.sp_removed
             # Extract the delta_total_biomass for the species in this cell
             delta_total_biomass = dd[dd.sp_removed .== species_name, :delta_total_biomass]
-
-            # Add the biomass values to the list
-            append!(delta_total_biomass_values, delta_total_biomass)
-            # println(species_name)
-            # If the species exists in the biomass table, standardize the value
-            if species_name in birmmals_biomass_fixed.species
-                species_biomass = birmmals_biomass_fixed[birmmals_biomass_fixed.species .== species_name, :biomass][1]
-                append!(standardized_biomass_values, delta_total_biomass ./ species_biomass)
-            else
-                println("Warning: Species $species_name not found in birmmals_biomass_fixed. Skipping standardization.")
+            # println("delta_total_biomass", delta_total_biomass)
+            if delta_total_biomass[1] < 50.0 && delta_total_biomass[1] > -50.0
+                # Add the biomass values to the list
+                append!(delta_total_biomass_values, delta_total_biomass)
+                # println(species_name)
+                # If the species exists in the biomass table, standardize the value
+                if species_name in birmmals_biomass_fixed.species
+                    species_biomass = birmmals_biomass_fixed[birmmals_biomass_fixed.species .== species_name, :biomass][1]
+                    append!(standardized_biomass_values, delta_total_biomass ./ species_biomass)
+                else
+                    println("Warning: Species $species_name not found in birmmals_biomass_fixed. Skipping standardization.")
+                end
             end
         end
     end
@@ -71,33 +73,39 @@ end
 println(species_ecosystem_effect)
 
 ##### PLOTTING THE DATA ############
-# 1) Sort descending by average_effect
-see = deepcopy(species_ecosystem_effect)
-sort!(see, :average_effect, rev=true)
+begin
+    log = false
+    avg_eff_or_avg_eff_stand = false  # true for average_effect, false for average_effect_standardized
+    # 1) Sort descending by average_effect
+    see = deepcopy(species_ecosystem_effect)
+    sort!(see, avg_eff_or_avg_eff_stand ? :average_effect : :average_effect_standardized, rev=true)
 
-# 2) Extract sorted columns
-species = see.species_name
-avgs    = see.average_effect
-sds     = see.average_effect_sd
+    # 2) Extract sorted columns
+    species = see.species_name
+    avgs    = avg_eff_or_avg_eff_stand ? see.average_effect : see.average_effect_standardized
+    sds     = avg_eff_or_avg_eff_stand ? see.average_effect_sd : see.average_effect_standardized_sd
 
-# 3) Create a point plot with error bars
-#    - seriestype=:scatter gives points
-#    - yerror = sds draws ± error bars
-#    - xrotation=45 rotates the x-axis labels for readability
-Plots.plot(
-    species, avgs;
-    yerror = sds,
-    seriestype = :scatter,
-    legend = false,
-    xlabel = "Species",
-    ylabel = "Average Effect",
-    title = "Species Effects (± SD)",
-    xrotation = 45
-)
+    # 3) Define figure and axis
+    fig = Figure(resolution=(1100, 700))
+    ax = Axis(fig[1, 1],
+        title = "Species Effects (± SD)",
+        xlabel = "Species",
+        ylabel = avg_eff_or_avg_eff_stand ? "Average Effect" : "Average Effect (Standardized)",
+        xticks = (1:length(species), species),  # Label x-axis with species names
+        xticklabelrotation = π/4,               # Rotate x-axis labels
+        xticklabelalign = (:right, :center),     # Align labels to prevent overlap
+        yscale = log ? log10 : identity
+    )
 
-# Display the plot
-savefig("species_effect_plot.png") # optional: save to file
-display(plot())
+    # 4) Plot error bars
+    MK.errorbars!(ax, 1:length(species), avgs, sds, color=:black)
+
+    # 5) Plot points
+    MK.scatter!(ax, 1:length(species), avgs, color=:blue, markersize=10)
+
+    # 6) Save and display
+    # save("species_effect_plot.png", fig)
+    display(fig)
+end
 
 AAAA = all_results_list[20]
-
