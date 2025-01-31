@@ -136,6 +136,7 @@ end
 
 ##### TRYING THE FUNCTION #####
 if true
+    
     if isempty(va)
         DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
         extract_metrics_map(1), extract_metrics_map(2), extract_metrics_map(3), extract_metrics_map(5), extract_metrics_map(6)
@@ -147,14 +148,14 @@ if true
         DA_global_betweenness,
         DA_global_closeness
     ]
-    va_names = ["Density", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
+    va_names = ["Connectance", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
     together = false
-    number_of_the_metric = 2
+    number_of_the_metric = 5
     # max_value = 1
     begin
         if together
-            fig = Figure(resolution = (1900, 600))
-            ax1 = Axis(fig[1, 1], title = "Density")
+            fig = Figure(resolution = (2300, 900))
+            ax1 = Axis(fig[1, 1], title = "Connectance")
             ax2 = Axis(fig[1, 2], title = "Average Degree")
             ax3 = Axis(fig[1, 3], title = "Average Clustering")
             ax4 = Axis(fig[1, 4], title = "Global Betweenness")
@@ -180,7 +181,7 @@ if true
             Makie.heatmap!(
                 ax, va[number_of_the_metric];
                 interpolate=false, colormap=custom_palette,
-                # colorrange = (0, max_value)
+                # colorrange = (0, 0.15)
                 )
             ax.yreversed[] = true
             display(fig)
