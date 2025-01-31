@@ -1,7 +1,7 @@
 num_herbivores = length(herbivore_names)
 @time include("HerbsVsPreds.jl")
 herb_carv_svector = SVector{254, Float64}([name in herbivore_names ? 1.0 : 0.00000001 for name in spain_names])
-herb_carv_vector = [name in herbivore_names ? 1.0 : 0.00000001 for name in spain_names]
+herb_carv_vector = [name in predator_names_as_birmmals ? 0.00000001 : 1.0 for name in spain_names]
 if false
 # Get a map of herbivore abundance
 DA_herbivores = DimArray(reshape([Herbivores(SVector{num_herbivores, Float64}(fill(0.0, num_herbivores))) for _ in 1:125*76], 125, 76), (Dim{:a}(1:125), Dim{:b}(1:76)))
