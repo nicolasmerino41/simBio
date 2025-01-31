@@ -469,3 +469,37 @@ end
 all_results_list = deserialize(
     "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls"
     )
+
+###### ADDING METRICS TO ALL_RESULTS_LIST ######
+new_all_results_list = Vector{DataFrame}()
+for i in 1:length(all_results_list) 
+    cell = all_results_list[i][1, :cell]
+
+    results_df = all_results_list[i]
+
+    metrics = compute_food_web_metrics(cell; round=true)
+    species_metrics = metrics.species_metrics
+    global_metrics = metrics.global_metrics
+
+    # Filter out the full community baseline row (if sp_removed == "none")
+    removal_df = filter(row -> row.sp_removed != ["none"], results_df)
+
+     # Perform an inner join on the species name
+    merged_df = innerjoin(removal_df, species_metrics, on = [:sp_removed => :species])
+
+    # For the full community baseline (sp_removed == "none"), add a row with NaN for the network metrics
+    baseline_df = filter(row -> row.sp_removed == "none", results_df)
+    baseline_df[!, :indegree] .= NaN
+    baseline_df[!, :outdegree] .= NaN
+    baseline_df[!, :total_degree] .= NaN
+    baseline_df[!, :betweenness] .= NaN
+    baseline_df[!, :closeness] .= NaN
+    baseline_df[!, :clustering] .= NaN
+
+    # Combine the merged removal results with the baseline row
+    merged_df = vcat(baseline_df, merged_df)
+
+    # Add the result for this cell to the list
+    push!(new_all_results_list, merged_df)
+end
+A_all_results_list = new_all_results_list[30]
