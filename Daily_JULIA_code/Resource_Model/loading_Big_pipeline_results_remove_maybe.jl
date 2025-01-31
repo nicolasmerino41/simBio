@@ -1,5 +1,6 @@
 Big_P_results = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/Big_pipeline_results_drago_cheato.csv", DataFrame)
-unique_cells = unique(Big_P_results.cell_id)
+Big_P_results = Big_P_results[.!ismissing.(Big_P_results.cell_id), :]
+unique_cells = string.(unique(Big_P_results.cell_id))
 
 begin
     # Initialize an empty DataFrame with the same structure as Big_P_results
