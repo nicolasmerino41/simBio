@@ -1,5 +1,5 @@
 # Read best parameters and filter full survival cells
-best_params = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/best_params_5950_cells_not_rounded_254_1950iter_newherbivores.csv", DataFrame)
+best_params = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/best_params_5950_cells_not_rounded_254_1950iter.csv", DataFrame)
 best_params = dropmissing(best_params)
 new_best_params = similar(best_params, 0)
 unique_cells = unique(best_params.cell_id)
