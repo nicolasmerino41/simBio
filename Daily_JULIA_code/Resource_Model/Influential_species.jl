@@ -249,6 +249,12 @@ function plot_species_metrics(species_count_df, new_all_results_list, selected_m
         xlabel="Species", ylabel="Value",
         xticks=(1:length(species_names), species_names),
         xticklabelrotation=π/4, xticklabelsize=8)
+        # Regression line IT DOES NOT WORK FOR NOW
+        # regression_data = DataFrame(x=1:length(species_names), y=mean_values)
+        # model = lm(@formula(y ~ x), regression_data)
+        # line_x = range(1, length(species_names), length=100)
+        # line_y = coef(model)[1] .+ coef(model)[2] .* line_x
+        # lines!(ax2, line_x, line_y, linewidth=2, color=:red)
 
     scatter!(ax2, 1:length(species_names), mean_values, color=:red)
     # errorbars!(ax2, 1:length(species_names), metric_values, [0.0 for _ in metric_values], color=:black)  # Adjust error bars if needed
