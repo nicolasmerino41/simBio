@@ -134,8 +134,57 @@ function extract_metrics_map(metric = 1)
     return DA_metric
 end
 
+using DataFrames, Statistics
+
+# This function aggregates species-specific metrics across the given cell indices.
+function compute_average_species_metrics(cell_indices::AbstractVector{Int})
+    all_species_metrics = DataFrame()
+    
+    # Iterate over the cell indices.
+    for cell in cell_indices
+        try
+            # Call your function to compute the metrics for the cell.
+            metrics = compute_food_web_metrics(cell; round=false)
+            species_metrics = metrics.species_metrics
+            
+            # (Optional) Add a column indicating the originating cell.
+            species_metrics[!, :cell_id] .= cell
+            
+            # Vertically concatenate the species metrics from this cell.
+            all_species_metrics = vcat(all_species_metrics, species_metrics)
+        catch e
+            @warn "Error computing metrics for cell $cell: $e"
+            continue
+        end
+    end
+
+    # Group by species (the column "species" holds the species name).
+    grouped = groupby(all_species_metrics, :species)
+
+    # For each species, compute the mean of each metric across cells.
+    species_avg_df = combine(grouped,
+        :indegree    => mean  => :mean_indegree,
+        :outdegree   => mean  => :mean_outdegree,
+        :total_degree=> mean  => :mean_total_degree,
+        :betweenness => mean  => :mean_betweenness,
+        :closeness   => mean  => :mean_closeness,
+        :clustering  => mean  => :mean_clustering,
+        nrow         => :cell_count  # How many cells the species appears in.
+    )
+
+    return species_avg_df
+end
+
+# Example usage:
+# Assume that idx is defined and contains the cell indices (or use 1:number_of_cells)
+cell_range = 1:length(idx)
+avg_species_metrics = compute_average_species_metrics(cell_range)
+
+# Display the aggregated DataFrame.
+display(avg_species_metrics)
+
 ##### TRYING THE FUNCTION #####
-if true
+if false
     
     if isempty(va)
         DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
