@@ -94,7 +94,8 @@ begin
         xticks = (1:length(species), species),  # Label x-axis with species names
         xticklabelrotation = π/4,               # Rotate x-axis labels
         xticklabelalign = (:right, :center),     # Align labels to prevent overlap
-        yscale = log ? log10 : identity
+        yscale = log ? log10 : identity,
+        xticklabelsize = 6 
     )
 
     # 4) Plot error bars
