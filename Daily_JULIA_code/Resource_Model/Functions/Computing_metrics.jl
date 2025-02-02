@@ -149,7 +149,7 @@ if true
         DA_global_closeness
     ]
     va_names = ["Connectance", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
-    together = false
+    together = true
     number_of_the_metric = 5
     # max_value = 1
     begin
