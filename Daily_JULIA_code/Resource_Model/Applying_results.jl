@@ -134,7 +134,8 @@ function run_baseline_scenario(
         mu_val, mu_pred_val, eps_val, sym_competition;
         localNPP      = localNPP,
         localH0_vector= localH0_vector,
-        species_names = sp_nm
+        species_names = sp_nm,
+        artificial_pi = true
     )
     if setup_results === nothing
         return nothing
@@ -464,18 +465,22 @@ function run_keystone_removal(Big_P_results_maximised::DataFrame; jls_filename="
     return all_results_list
 end
 
-# @time all_results_list = run_keystone_removal(Big_P_results_maximised[1:2, :]; jls_filename="Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls")
+@time all_results_list = run_keystone_removal(Big_P_even_pi_maximised; jls_filename="Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/3-2/all_results_list_even_pi_1195.jls")
 
 all_results_list = deserialize(
     "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls"
     )
+all_results_list_even_pi = deserialize(
+    "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/3-2/all_results_list_even_pi_1195.jls"
+    )
 
+A_all_results_list = all_results_list[2]
 ###### ADDING METRICS TO ALL_RESULTS_LIST ######
 new_all_results_list = Vector{DataFrame}()
-for i in 1:length(all_results_list) 
-    cell = all_results_list[i][1, :cell]
-
-    results_df = all_results_list[i]
+for i in 1:length(df_to_work_with) 
+    cell = df_to_work_with[i][1, :cell]
+    
+    results_df = df_to_work_with[i]
 
     metrics = compute_food_web_metrics(cell; round=true)
     species_metrics = metrics.species_metrics
@@ -485,7 +490,7 @@ for i in 1:length(all_results_list)
     removal_df = filter(row -> row.sp_removed != ["none"], results_df)
 
      # Perform an inner join on the species name
-    merged_df = innerjoin(removal_df, species_metrics, on = [:sp_removed => :species])
+    merged_df = innerjoin(removal_df, species_metrics, on = [:sp_removed => :species_name])
 
     # For the full community baseline (sp_removed == "none"), add a row with NaN for the network metrics
     baseline_df = filter(row -> row.sp_removed == "none", results_df)
