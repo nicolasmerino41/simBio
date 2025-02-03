@@ -79,7 +79,7 @@ function compute_food_web_metrics(cell_index::Int; round = false)
 
     # --- Compute Species-Specific Metrics ---
     # We'll collect per-species metrics in a vector of named tuples.
-    species_metrics_list = Vector{NamedTuple{(:species, :indegree, :outdegree, :total_degree, :betweenness, :closeness, :clustering),NTuple{7, Any}}}(undef, n)
+    species_metrics_list = Vector{NamedTuple{(:species_name, :indegree, :outdegree, :total_degree, :betweenness, :closeness, :clustering),NTuple{7, Any}}}(undef, n)
     # Attempt to compute centrality measures; if they fail, assign NaN.
     local_betweenness = try
         betweenness_centrality(g)
@@ -99,7 +99,7 @@ function compute_food_web_metrics(cell_index::Int; round = false)
         tot_deg = degree(g, v)
         local_clust = local_clustering_coefficient(ug, v)  # Fixed here
         species_metrics_list[v] = (
-            species = species_names[v],
+            species_name = species_names[v],
             indegree = indeg,
             outdegree = outdeg,
             total_degree = tot_deg,
@@ -159,10 +159,10 @@ function compute_average_species_metrics(cell_indices::AbstractVector{Int})
     end
 
     # Group by species (the column "species" holds the species name).
-    grouped = groupby(all_species_metrics, :species)
+    grouped = groupby(all_species_metrics, :species_name)
 
     # For each species, compute the mean of each metric across cells.
-    species_avg_df = combine(grouped,
+    species_avg_df = DataFrames.combine(grouped,
         :indegree    => mean  => :mean_indegree,
         :outdegree   => mean  => :mean_outdegree,
         :total_degree=> mean  => :mean_total_degree,
@@ -177,14 +177,14 @@ end
 
 # Example usage:
 # Assume that idx is defined and contains the cell indices (or use 1:number_of_cells)
-cell_range = 1:length(idx)
-avg_species_metrics = compute_average_species_metrics(cell_range)
+cell_range = 1:5950
+@time avg_species_metrics = compute_average_species_metrics(cell_range)
 
 # Display the aggregated DataFrame.
 display(avg_species_metrics)
 
 ##### TRYING THE FUNCTION #####
-if false
+if true
     
     if isempty(va)
         DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
@@ -198,8 +198,8 @@ if false
         DA_global_closeness
     ]
     va_names = ["Connectance", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
-    together = true
-    number_of_the_metric = 5
+    together = false
+    number_of_the_metric = 1
     # max_value = 1
     begin
         if together
@@ -230,7 +230,7 @@ if false
             Makie.heatmap!(
                 ax, va[number_of_the_metric];
                 interpolate=false, colormap=custom_palette,
-                # colorrange = (0, 0.15)
+                colorrange = (0, 0.15)
                 )
             ax.yreversed[] = true
             display(fig)
