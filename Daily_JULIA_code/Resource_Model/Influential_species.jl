@@ -1,10 +1,10 @@
 #### THIS CODE IS A COPY FROM A CHUNK OF SEARCHING_KEYSTON_SPECIES.JL
 #### IT CAN BE USED AFTER RUNNIN Applying_results.jl and IT WILL GIVE 
 #### INFORMATION ON THE MOST INFLUENTIAL SPECIES
-
+df_to_work_with = all_results_list_even_pi
 # SEEMS ALL_RESULTS_LIST IS CORRECT
 comparison_df = DataFrame(big_p_sr = [], cell_from_big_p = [], cell_from_all = [], all_results_list_sr = [], diff = [])
-for bp_row in eachrow(Big_P_results_maximised)
+for bp_row in eachrow(df_to_work_with)
     cell_id = bp_row[:cell_id]
     all_results_row = findfirst(x -> x[1, :cell] == cell_id, all_results_list)
     
@@ -31,7 +31,7 @@ species_count_df = DataFrame(
 )
 
 # Loop through all results
-for dd in all_results_list
+for dd in df_to_work_with
     # Find the entry with the lowest survival_rate
     min_survival = minimum(dd.survival_rate)
     min_survived = minimum(dd.survived_herbs + dd.survived_preds)
@@ -118,12 +118,12 @@ begin
     # ax2.xticklabelrotation = π/2.5
     # ax2.xticklabelsize = 6
         
-    # sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
-    # ax2 = Axis(fig[1, 2], title="H0_values Biomass", xlabel="Species", ylabel="Biomass")
-    # MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
-    # ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
-    # ax2.xticklabelrotation = π/2.5
-    # ax2.xticklabelsize = 6
+    sorted_birmmals_biomass_fixed = sort(birmmals_biomass_fixed, :biomass, rev=true)
+    ax2 = Axis(fig[1, 2], title="H0_values Biomass", xlabel="Species", ylabel="Biomass")
+    MK.barplot!(ax2, 1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.biomass)
+    ax2.xticks = (1:nrow(birmmals_biomass_fixed), sorted_birmmals_biomass_fixed.species)
+    ax2.xticklabelrotation = π/2.5
+    ax2.xticklabelsize = 6
     
     display(fig)
 
@@ -197,8 +197,6 @@ begin
 end
 
 ###### PLOT MOST INFLUENTIAL SPECIES, AND SOME OF THEIR NETWORK METRICS
-using CairoMakie
-
 function plot_species_metrics(species_count_df, new_all_results_list, selected_metric::Symbol)
     # Sort species by frequency of being most influential
     sorted_species = sort(species_count_df, :count, rev=true)
@@ -263,5 +261,5 @@ function plot_species_metrics(species_count_df, new_all_results_list, selected_m
 end
 
 # Example usage:
-selected_metric = :total_degree # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
+selected_metric = :clustering # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
 plot_species_metrics(species_count_df, new_all_results_list, selected_metric)
