@@ -4,6 +4,7 @@ include("Resource_Model/Functions/species_dict.jl")
 
 include("Resource_Model/ecosystem_dynamics!.jl")
 include("Resource_Model/FI_functions.jl")
+include("Resource_Model/Functions/SEEF_function.jl")
 include("Resource_Model/extract_H0_DA.jl")
 include("Resource_Model/Functions/attempt_setup_community.jl")
 include("Resource_Model/Functions/Callbacks_function.jl")
