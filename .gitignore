@@ -43,3 +43,5 @@ Rcode/*.pdf
 *.pptx
 *.jls
 *.png
+*.toc
+*.aux

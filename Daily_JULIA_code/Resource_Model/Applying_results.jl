@@ -465,13 +465,13 @@ function run_keystone_removal(Big_P_results_maximised::DataFrame; jls_filename="
     return all_results_list
 end
 
-@time all_results_list = run_keystone_removal(Big_P_even_pi_maximised; jls_filename="Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/3-2/all_results_list_even_pi_1195.jls")
+@time all_results_list = run_keystone_removal(Big_P_even_pi_maximised; jls_filename="Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/3-2/all_results_list_even_pi_2958.jls")
 
 all_results_list = deserialize(
     "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls"
     )
 all_results_list_even_pi = deserialize(
-    "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/3-2/all_results_list_even_pi_1195.jls"
+    "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/3-2/all_results_list_even_pi_2958.jls"
     )
 
 A_all_results_list = all_results_list[2]
