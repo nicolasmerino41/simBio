@@ -58,7 +58,7 @@ end
 cell_sensitivity_df = measure_cell_sensitivity(all_results_list_even_pi)
 # corrected_cell_sensitivity_df = cell_sensitivity_df[cell_sensitivity_df.avg_sensitivity .< 5.0, :]
 
-function map_cell_sensitivity(cell_sensitivity_df::DataFrame; capped = false)
+function map_cell_sensitivity(cell_sensitivity_df::DataFrame; capped = false, disp = true)
    grid = deepcopy(float(DA_sum))
    for i in axes(grid, 1), j in axes(grid, 2)
         if grid[i, j] == 0
@@ -77,11 +77,13 @@ function map_cell_sensitivity(cell_sensitivity_df::DataFrame; capped = false)
       grid[local_i, local_j] = cell_sensitivity_df[i, :avg_sensitivity]
       end 
     end
-   return grid
+    if disp
+        display(map_plot(grid; palette = custom_palette))
+    end
+    return grid
 end
 
 grid = map_cell_sensitivity(cell_sensitivity_df; capped = true)
-map_plot(grid; palette = custom_palette)
 
 ######## PLOTTING THE CORRELATION BETWEEN GLOBAL METRICS AND SENSITIVITY ########
 begin
