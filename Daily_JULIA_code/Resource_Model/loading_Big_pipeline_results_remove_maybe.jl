@@ -2,7 +2,11 @@ Big_P_results = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_ou
 Big_P_results = Big_P_results[.!ismissing.(Big_P_results.cell_id), :]
 unique_cells = string.(unique(Big_P_results.cell_id))
 
-Big_P_even_pi = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/30-1/Big_pipeline_results_with_even_pi_express.csv", DataFrame)
+#### We needed to loaded this way cause there was column problems but it works fine
+lines = readlines("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/30-1/Big_pipeline_results_with_even_pi_express.csv")
+data = [join(split(line, ",")[1:24], ",") for line in lines if length(split(line, ",")) == 24]
+# Now parse from an IOBuffer.
+Big_P_even_pi = CSV.read(IOBuffer(join(data, "\n")), DataFrame, header=true)
 Big_P_even_pi = Big_P_even_pi[.!ismissing.(Big_P_even_pi.cell_id), :][:, 1:24]
 unique_cells_pi = string.(unique(Big_P_even_pi.cell_id))
 
