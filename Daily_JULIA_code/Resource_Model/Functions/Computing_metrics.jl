@@ -33,7 +33,7 @@ function compute_food_web_metrics(cell_index::Int; round = false)
 
     # --- Build the sub-network adjacency matrix ---
     indices = [species_dict[sp] for sp in species_names if haskey(species_dict, sp)]
-    global submatrix = iberian_interact_NA[indices, indices]
+    submatrix = iberian_interact_NA[indices, indices]
     # Convert to a standard Array and then to a Boolean matrix:
     A_bool = map(x -> x > 0.0, Array(submatrix))
     n = size(A_bool, 1)
@@ -121,20 +121,17 @@ end
     # global_metrics = metrics_results.global_metrics
     # species_metrics = metrics_results.species_metrics
 
-function extract_metrics_map(metric = 1)
+function extract_metrics_map(metric)
     DA_metric = deepcopy(float.(DA_sum))
     val = 0
-    Threads.@threads for cell in idx
-        val += 1
-        metrics_results  = compute_food_web_metrics(val)
+    Threads.@threads for cell in 1:length(idx)
+        metrics_results = compute_food_web_metrics(cell)
         value = metrics_results.global_metrics[metric]
-        DA_metric[cell] = value
+        DA_metric[idx[cell][1], idx[cell][2]] = value
     end
 
     return DA_metric
 end
-
-using DataFrames, Statistics
 
 # This function aggregates species-specific metrics across the given cell indices.
 function compute_average_species_metrics(cell_indices::AbstractVector{Int})
@@ -183,12 +180,65 @@ cell_range = 1:5950
 # Display the aggregated DataFrame.
 display(avg_species_metrics)
 
+##### COMPUTE THE NRI OF EACH CELL AND PLOT IT #####
+function compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = false)
+    
+    # Copy the DA_sum grid as a starting point (convert to float)
+    grid = deepcopy(float(DA_sum))
+    
+    # Replace 0 or 1 entries with NaN or 0 as needed for visualization.
+    for i in axes(grid, 1), j in axes(grid, 2)
+        if grid[i, j] == 0
+            grid[i, j] = NaN
+        elseif grid[i, j] == 1.0
+            grid[i, j] = NaN
+        end
+    end
+
+    max_betweenness = 0.0
+    max_density = 0.0
+    max_avg_clust = 0.0
+    # Loop over each cell in the stability DataFrame.
+    for i in 1:length(idx)
+        local_i, local_j = idx[i][1], idx[i][2]
+        metrics = compute_food_web_metrics(i; round=false)
+        max_betweenness = max(max_betweenness, metrics.global_metrics.global_betweenness)
+        max_density = max(max_density, metrics.global_metrics.density)
+        max_avg_clust = max(max_avg_clust, metrics.global_metrics.avg_clustering)
+    end
+    max_NPP = maximum(npp_DA[.!isnan.(npp_DA)])
+    new_npp_da = npp_DA ./ max_NPP
+    # Loop over each cell in the stability DataFrame.
+    Threads.@threads for i in 1:length(idx)
+        local_i, local_j = idx[i][1], idx[i][2]
+        metrics = compute_food_web_metrics(i; round=false)
+        betweenness = metrics.global_metrics.global_betweenness
+        density = metrics.global_metrics.density
+        avg_clust = metrics.global_metrics.avg_clustering
+        NRI = density/max_density + avg_clust/max_avg_clust - betweenness/max_betweenness
+        grid[local_i, local_j] = NRI
+        if standardise_by_NPP
+            grid[local_i, local_j] = NRI * new_npp_da[local_i, local_j]
+        end
+    end
+
+    if plot
+        fig = Figure(resolution = (600, 600))
+        ax = Axis(fig[1, 1], title = title)
+        Makie.heatmap!(ax, grid; interpolate=false, colormap=custom_palette)
+        Colorbar(fig[1, 2], colormap=custom_palette)
+        ax.yreversed[] = true
+        display(fig)
+    end
+    return grid
+end
+# compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = false)
 ##### TRYING THE FUNCTION #####
-if true
+if false
     
     if isempty(va)
         DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
-        extract_metrics_map(1), extract_metrics_map(2), extract_metrics_map(3), extract_metrics_map(5), extract_metrics_map(6)
+            extract_metrics_map(1), extract_metrics_map(2), extract_metrics_map(3), extract_metrics_map(5), extract_metrics_map(6)
     end
     va = [
         DA_density,
@@ -199,7 +249,7 @@ if true
     ]
     va_names = ["Connectance", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
     together = false
-    number_of_the_metric = 1
+    number_of_the_metric = 3
     # max_value = 1
     begin
         if together
@@ -230,10 +280,34 @@ if true
             Makie.heatmap!(
                 ax, va[number_of_the_metric];
                 interpolate=false, colormap=custom_palette,
-                colorrange = (0, 0.15)
+                # colorrange = (0, 0.15)
                 )
             ax.yreversed[] = true
             display(fig)
         end
     end
-end 
+end
+
+# COMPARING AVG CLUSTERING WITH NRI
+if true
+begin
+    a = map_cell_metric(cell_stability_df_even_pi, :CVI; disp = false, title = "Cell Vulnerability Index (CVI) with even pi")#, capped = true, cap_val = 1.18) 
+    b = compute_and_map_NRI(; plot = false, title = "NRI")
+    c = compute_and_map_NRI(; plot = false, title = "NRI", standardise_by_NPP = true)
+
+    fig = Figure(resolution = (1200, 600))
+    ax = Axis(fig[1, 1], title = "Cell Vulnerability Index (CVI) with even pi")
+    Makie.heatmap!(ax, a; interpolate=false, colormap=custom_palette)
+    ax.yreversed[] = true
+    
+    ax2 = Axis(fig[1, 2], title = "NRI")
+    Makie.heatmap!(ax2, b; interpolate=false, colormap=custom_palette)
+    ax2.yreversed[] = true
+
+    ax3 = Axis(fig[1, 3], title = "NRI * NPP")
+    Makie.heatmap!(ax3, c; interpolate=false, colormap=custom_palette)
+    ax3.yreversed[] = true
+
+    display(fig)
+end
+end
