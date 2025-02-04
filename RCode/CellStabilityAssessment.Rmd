@@ -1,0 +1,69 @@
+---
+title: "Cell stability assessment"
+author: "Nico"
+date: "February 2025"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: '5'
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    bookdown: true
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Here, I propose a combined metric framework to evaluate the sensitivity and stability of ecological communities. The idea is to combine the effects of species removals (sensitivity) with global network metrics (robustness) to obtain an overall Combined Stability Metric (CSM).
+
+We define the following metrics:
+
+1. **Average Removal Impact (ARI):**  
+   The average absolute change in a community metric (in this case biomass) when individual species are removed:
+   
+   $$
+   \text{ARI} = \frac{1}{N}\sum_{i=1}^{N} \left| \Delta_i \right|
+   $$
+   
+   where \( \Delta _i \) is the change due to the removal of species \( i \), and \( N \) is the number of species removals.
+
+2. **Removal Variability (RV):**  
+   The standard deviation of the removal impacts:
+   
+   $$
+   \text{RV} = \text{std}\left(\left\{ \left|\Delta_i\right| \right\}_{i=1}^{N}\right)
+   $$
+
+3. **Cell Vulnerability Index (CVI):**  
+   We then scale the average impact by its variability and normalize it by the baseline performance (no species removed):
+   
+   $$
+   \text{CVI} = \frac{\text{ARI}}{\text{Baseline}} \times \left(1 + \frac{\text{RV}}{\text{ARI}}\right)
+   $$
+
+4. **Network Robustness Index (NRI):**  
+   We perform aweighted combination of global network metrics such as density, average clustering, and global betweenness. I do not consider any degree metric for now for unit-consistency reasons:
+   
+   $$
+   \text{NRI} = w_1 \times \text{density} + w_2 \times \text{avg\_clustering} - w_3 \times \text{global\_betweenness}
+   $$
+   
+   where \(w_1\), \(w_2\), and \(w_3\) reflect the relative importance of each metric. For now, we will assume equal importance.
+
+5. **Cobined Stability Metric (CSM):**  
+   Finally, we combine the sensitivity and robustness components:
+   
+   $$
+   \text{CSM} = \alpha \times (1 - \text{CVI}) + \beta \times \text{NRI}
+   $$
+   
+   Here, \(\alpha\) and \(\beta\) balance the contribution of the two aspects. Again, for now, we will assume equal         importance.
