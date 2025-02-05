@@ -91,9 +91,11 @@ function new_measure_cell_stability(all_results_list::Vector{DataFrame})
     return cell_stability_df
 end
 
-# Compute the stability DataFrame (using, for example, all_results_list_even_pi)
-cell_stability_df_even_pi = new_measure_cell_stability(all_results_list_even_pi)
-cell_stability_df_not_even_pi = new_measure_cell_stability(all_results_list)
+if false
+    # Compute the stability DataFrame (using, for example, all_results_list_even_pi)
+    cell_stability_df_even_pi = new_measure_cell_stability(all_results_list_even_pi)
+    cell_stability_df_not_even_pi = new_measure_cell_stability(all_results_list)
+end
 
 # ----------------------------
 # 2. Mapping functions to visualize cell-level metrics on the grid
@@ -142,32 +144,39 @@ function map_cell_metric(
     return grid
 end
 
-# Map CVI and NRI on the grid.
-grid_CVI_even_pi = map_cell_metric(
-    cell_stability_df_even_pi, :CVI;
-    title = "Cell Vulnerability Index (CVI) with even pi",
-    standardize_by_NPP = true
-    )#, capped = true, cap_val = 1.18)
-grid_CVI_not_even_pi = map_cell_metric(cell_stability_df_not_even_pi, :CVI; title = "Cell Vulnerability Index (CVI) with not even pi")#, capped = true, cap_val = 1.18)
-grid_NRI = map_cell_metric(cell_stability_df, :NRI; title = "Network Robustness Index (NRI)")
-
+if false
+    # Map CVI and NRI on the grid.
+    grid_CVI_even_pi = map_cell_metric(
+        cell_stability_df_even_pi, :CVI;
+        title = "Cell Vulnerability Index (CVI) with even pi",
+        standardize_by_NPP = true
+        )#, capped = true, cap_val = 1.18)
+    grid_CVI_not_even_pi = map_cell_metric(cell_stability_df_not_even_pi, :CVI; title = "Cell Vulnerability Index (CVI) with not even pi")#, capped = true, cap_val = 1.18)
+    grid_NRI = map_cell_metric(cell_stability_df, :NRI; title = "Network Robustness Index (NRI)")
+end
 
 # ----------------------------
 # 3. Scatter plot correlating CVI and NRI across cells
 # ----------------------------
-begin
+function scatter_CVI_NRI(cell_stability_df::DataFrame; info = true)
     fig3 = Figure(resolution = (600,600))
     ax3 = Axis(fig3[1,1],
         title = "CVI vs. NRI",
         xlabel = "NRI",
         ylabel = "CVI"
     )
-    subset = cell_stability_df_even_pi
+    subset = cell_stability_df
     scatter!(ax3, subset.NRI, subset.CVI,
-             markersize = 10, color = :blue)
-    # Optionally, compute and display the Pearson correlation coefficient.
-    corr_val = cor(cell_stability_df.CVI, cell_stability_df.NRI)
-    text!(ax3, "r = $(round(corr_val, digits=2))", position = (0.05, 0.95),
-          align = (:left, :top), color = :black, fontsize = 12)
+             markersize = 8, color = :blue
+    )
+
+    if info
+        # Optionally, compute and display the Pearson correlation coefficient.
+        corr_val = cor(cell_stability_df.CVI, cell_stability_df.NRI)
+        text!(
+            ax3, "r = $(round(corr_val, digits=2))", position = (0.05, 0.95),
+            align = (:left, :top), color = :black, fontsize = 12
+        )
+    end
     display(fig3)
 end

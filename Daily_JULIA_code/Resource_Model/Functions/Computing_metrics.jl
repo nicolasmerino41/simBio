@@ -289,7 +289,7 @@ if false
 end
 
 # COMPARING AVG CLUSTERING WITH NRI
-if true
+if false
 begin
     a = map_cell_metric(cell_stability_df_even_pi, :CVI; disp = false, title = "Cell Vulnerability Index (CVI) with even pi")#, capped = true, cap_val = 1.18) 
     b = compute_and_map_NRI(; plot = false, title = "NRI")

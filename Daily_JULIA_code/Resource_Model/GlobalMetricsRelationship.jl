@@ -1,4 +1,4 @@
-function measure_cell_sensitivity(all_results_list::Vector{DataFrame})
+function measure_cell_sensitivity(all_results_list::Vector{DataFrame}; capped = true, cap_val = 5.0)
     # Create an empty DataFrame to store the cell-level sensitivity metrics.
     cell_sensitivity_df = DataFrame(
          cell_id = Int[],
@@ -14,7 +14,7 @@ function measure_cell_sensitivity(all_results_list::Vector{DataFrame})
     # Loop over each cell (each element of all_results_list)
     for cell_index in 1:length(all_results_list)
          df = all_results_list[cell_index]
-         
+         real_cell_index = df[1, :cell]
          # Identify the baseline row: the one where no species is removed.
          baseline_rows = df[df.sp_removed .== "none", :]
          if nrow(baseline_rows) == 0
@@ -33,6 +33,7 @@ function measure_cell_sensitivity(all_results_list::Vector{DataFrame})
          # Define sensitivity as the absolute difference between the removal effect
          # and the baseline effect.
          effects = abs.(removal_df.delta_total_biomass)
+         effects = capped ? min.(effects, cap_val) : effects
          avg_sens = mean(effects)
          sens_sd = std(effects)
          
@@ -42,7 +43,7 @@ function measure_cell_sensitivity(all_results_list::Vector{DataFrame})
          
          # Append a new row with this cell's id, sensitivity, and global metrics.
          push!(cell_sensitivity_df, (
-            cell_id = cell_index,
+            cell_id = real_cell_index,
             avg_sensitivity = avg_sens,
             sensitivity_sd = sens_sd,
             density = gm.density,
@@ -58,7 +59,7 @@ end
 cell_sensitivity_df = measure_cell_sensitivity(all_results_list_even_pi)
 # corrected_cell_sensitivity_df = cell_sensitivity_df[cell_sensitivity_df.avg_sensitivity .< 5.0, :]
 
-function map_cell_sensitivity(cell_sensitivity_df::DataFrame; capped = false, disp = true)
+function map_cell_sensitivity(cell_sensitivity_df::DataFrame; disp = true)
    grid = deepcopy(float(DA_sum))
    for i in axes(grid, 1), j in axes(grid, 2)
         if grid[i, j] == 0
@@ -69,13 +70,12 @@ function map_cell_sensitivity(cell_sensitivity_df::DataFrame; capped = false, di
     end
 
    for i in 1:nrow(cell_sensitivity_df)
+      
       coord = idx[cell_sensitivity_df[i, :cell_id]]
       local_i, local_j = coord[1], coord[2]
-      if cell_sensitivity_df[i, :avg_sensitivity] > 5.0
-        grid[local_i, local_j] = capped ? 5.0 : cell_sensitivity_df[i, :avg_sensitivity]
-      else
-      grid[local_i, local_j] = cell_sensitivity_df[i, :avg_sensitivity]
-      end 
+
+      grid[local_i, local_j] = cell_sensitivity_df[i, :avg_sensitivity] 
+    
     end
     if disp
         display(map_plot(grid; palette = custom_palette))
@@ -86,8 +86,11 @@ end
 grid = map_cell_sensitivity(cell_sensitivity_df; capped = true)
 
 ######## PLOTTING THE CORRELATION BETWEEN GLOBAL METRICS AND SENSITIVITY ########
-begin
-    
+function plot_global_metrics_vs_sensitivity(
+    cell_sensitivity_df::DataFrame;
+    save = false
+)
+
     # Define the list of global metrics and corresponding labels.
     metrics = [:density, :avg_degree, :avg_clustering, :global_betweenness, :global_closeness]
     metric_labels = ["Density", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
@@ -120,8 +123,11 @@ begin
 
     display(fig)
     for metric in metrics
-        max_val = maximum(corrected_cell_sensitivity_df[!, metric])
+        max_val = maximum(cell_sensitivity_df[!, metric])
         println("Max $(metric_labels[findfirst(isequal(metric), metrics)]) = $max_val")
+    end
+    if save 
+        save("Plots/global_metrics_vs_sensitivity.png", fig)
     end
 end
 

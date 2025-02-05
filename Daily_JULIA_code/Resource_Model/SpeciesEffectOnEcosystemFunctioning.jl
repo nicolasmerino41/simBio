@@ -8,9 +8,8 @@ see_even     = SEEF(all_results_list_even_pi)
 
 see_to_plot  = see_even
 ########## PLOTTING THE DATA ############
-begin
-    log = false
-    avg_eff_or_avg_eff_stand = true  # true for average_effect, false for average_effect_standardized
+function plot_species_effects(see_to_plot; log = false, avg_eff_or_avg_eff_stand = true)
+    
     # 1) Sort descending by average_effect
     see = deepcopy(see_to_plot)
     sort!(see, avg_eff_or_avg_eff_stand ? :average_effect : :average_effect_standardized, rev=true)
@@ -46,7 +45,11 @@ begin
 end
 
 ##### PLOTING AVERAGE EFFECT OF EACH SPECIES VS THEIR METRICS ########
-begin
+function plot_average_effect_vs_metrics(
+    see_to_plot = see_even;
+    avg_species_metrics = avg_species_metrics
+)
+    
     avg_in_y = true
     
     # First, join the two DataFrames on species name.

@@ -18,88 +18,91 @@ end
 
 #################################################################
 #################################################################
-begin
-# FIND THE MOST INFLUENTIAL SPECIES
-# Initialize the DataFrame with proper column types
-species_count_df = DataFrame(
-    species_name = String[],
-    count = Int[],
-    ind_ext_names_length = Int[],
-    number_of_presences = Int[],
-    cell_id = Vector{Int}[],  # Assuming cell IDs are integers
-    ind_ext_names = Vector{String}[],
-)
+function create_species_count_df(df_to_work_with)
+    # FIND THE MOST INFLUENTIAL SPECIES
+    # Initialize the DataFrame with proper column types
+    species_count_df = DataFrame(
+        species_name = String[],
+        count = Int[],
+        ind_ext_names_length = Int[],
+        number_of_presences = Int[],
+        cell_id = Vector{Int}[],  # Assuming cell IDs are integers
+        ind_ext_names = Vector{String}[],
+    )
 
-# Loop through all results
-for dd in df_to_work_with
-    # Find the entry with the lowest survival_rate
-    min_survival = minimum(dd.survival_rate)
-    min_survived = minimum(dd.survived_herbs + dd.survived_preds)
+    # Loop through all results
+    for dd in df_to_work_with
+        # Find the entry with the lowest survival_rate
+        min_survival = minimum(dd.survival_rate)
+        min_survived = minimum(dd.survived_herbs + dd.survived_preds)
 
-    # Skip if the minimum survival condition matches the first row's survivors minus 1
-    if min_survived == dd[1, :survived_herbs] + dd[1, :survived_preds] - 1
-        continue
+        # Skip if the minimum survival condition matches the first row's survivors minus 1
+        if min_survived == dd[1, :survived_herbs] + dd[1, :survived_preds] - 1
+            continue
+        end
+
+        # Get all entries with the minimum survival_rate
+        min_survival_entries = findall(x -> x == min_survival, dd.survival_rate)
+    
+        for min_survival_entry in min_survival_entries
+            # Get the species name, individual extinction names, and cell ID
+            species_name = dd[min_survival_entry, :sp_removed]
+            ind_ext_names = dd[min_survival_entry, :ind_ext_name]
+            cell_id = dd[min_survival_entry, :cell]
+
+            # Check if species_name is already in the DataFrame
+            if species_name in species_count_df.species_name
+                # Find the index of the existing entry
+                indexx = findfirst(x -> x == species_name, species_count_df.species_name)
+
+                # Update the ind_ext_names and cell_id if they are not already present
+                for ind_ext_name in ind_ext_names
+                    if !(ind_ext_name in species_count_df[indexx, :ind_ext_names])
+                        push!(species_count_df[indexx, :ind_ext_names], ind_ext_name)
+                    end
+                end
+
+                if !(cell_id in species_count_df[indexx, :cell_id])
+                    push!(species_count_df[indexx, :cell_id], cell_id)
+                end
+
+                # Increment the count
+                species_count_df[indexx, :count] += 1
+            else
+                # Add a new entry for this species
+                push!(species_count_df, (
+                    species_name,                  # species_name
+                    1,                             # count starts at 1
+                    0,
+                    count_number_of_presences(species_name; info = false),
+                    [cell_id],                     # cell_id as a single-element array
+                    ind_ext_names,                  # ind_ext_names as-is
+                ))
+            end
+        end
     end
 
-    # Get all entries with the minimum survival_rate
-    min_survival_entries = findall(x -> x == min_survival, dd.survival_rate)
-    
-    for min_survival_entry in min_survival_entries
-        # Get the species name, individual extinction names, and cell ID
-        species_name = dd[min_survival_entry, :sp_removed]
-        ind_ext_names = dd[min_survival_entry, :ind_ext_name]
-        cell_id = dd[min_survival_entry, :cell]
-
-        # Check if species_name is already in the DataFrame
-        if species_name in species_count_df.species_name
-            # Find the index of the existing entry
-            indexx = findfirst(x -> x == species_name, species_count_df.species_name)
-
-            # Update the ind_ext_names and cell_id if they are not already present
-            for ind_ext_name in ind_ext_names
-                if !(ind_ext_name in species_count_df[indexx, :ind_ext_names])
-                    push!(species_count_df[indexx, :ind_ext_names], ind_ext_name)
-                end
-            end
-
-            if !(cell_id in species_count_df[indexx, :cell_id])
-                push!(species_count_df[indexx, :cell_id], cell_id)
-            end
-
-            # Increment the count
-            species_count_df[indexx, :count] += 1
-        else
-            # Add a new entry for this species
+    for i in birmmals_names
+        if !(i in species_count_df.species_name)
             push!(species_count_df, (
-                species_name,                  # species_name
-                1,                             # count starts at 1
-                0,
-                count_number_of_presences(species_name; info = false),
-                [cell_id],                     # cell_id as a single-element array
-                ind_ext_names,                  # ind_ext_names as-is
+                i,
+                0,              # :count
+                0,              # :ind_ext_names_length
+                count_number_of_presences(i; info = false),
+                Int[],          # Empty Vector{Int} for :cell_id
+                String[]        # Vector{String} for :ind_ext_names
             ))
         end
     end
-end
 
-for i in birmmals_names
-    if !(i in species_count_df.species_name)
-        push!(species_count_df, (
-            i,
-            0,              # :count
-            0,              # :ind_ext_names_length
-            count_number_of_presences(i; info = false),
-            Int[],          # Empty Vector{Int} for :cell_id
-            String[]        # Vector{String} for :ind_ext_names
-        ))
-    end
-end
+    species_count_df[!, :ind_ext_names_length] = length.(species_count_df.ind_ext_names)
+    insertcols!(species_count_df, 3,
+        :stand_count => species_count_df[!, :count] ./ species_count_df[!, :number_of_presences]
+    )
 
-species_count_df[!, :ind_ext_names_length] = length.(species_count_df.ind_ext_names)
-insertcols!(species_count_df, 3,
-    :stand_count => species_count_df[!, :count] ./ species_count_df[!, :number_of_presences]
-)
+    return species_count_df
 end
+# species_count_df = create_species_count_df(all_results_list_even_pi)
 
 #### PLOT MOST INFLUENTIAL SPECIES AND PI BIOMASS VALUES
 begin

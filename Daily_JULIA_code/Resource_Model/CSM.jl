@@ -1,4 +1,4 @@
-function compute_CVI(all_results_list::Vector{DataFrame})
+function compute_CSM(all_results_list::Vector{DataFrame})
     # Create a DataFrame to hold the results
     cell_stability = DataFrame(
          cell_id = Int[],
@@ -74,7 +74,7 @@ function compute_CVI(all_results_list::Vector{DataFrame})
 end
 
 # Then run and analyze:
-stability_df = compute_CVI(all_results_list_even_pi)
+# stability_df = compute_CSM(all_results_list_even_pi)
 
 ###### PLOTTING THE DATA ############
 function map_CSM(stability_df; plot = true, palette = custom_palette, resolution = (600, 600), title = "CSM")
@@ -109,4 +109,4 @@ function map_CSM(stability_df; plot = true, palette = custom_palette, resolution
     return grid
 end
 
-map_CSM(stability_df)
+# map_CSM(stability_df)
