@@ -38,6 +38,7 @@ begin
 
     # 5) Plot points
     MK.scatter!(ax, 1:length(species), avgs, color=:blue, markersize=10)
+    MK.lines!(ax, 1:length(species), fill(0.0, length(species)), color=:red)
 
     # 6) Save and display
     # save("species_effect_plot.png", fig)
@@ -47,6 +48,7 @@ end
 ##### PLOTING AVERAGE EFFECT OF EACH SPECIES VS THEIR METRICS ########
 begin
     avg_in_y = true
+    
     # First, join the two DataFrames on species name.
     # species_ecosystem_effect has column :species_names and avg_species_metrics has column :species.
     joined_df = innerjoin(
@@ -67,13 +69,13 @@ begin
         ax = Axis(fig[row, col],
             title = avg_in_y ? labels[i] * " vs Average Effect" : "Average Effect vs " * labels[i],
             xlabel = avg_in_y ? labels[i] : "Average Effect", 
-            ylabel = invert_y_and_x ? "Average Effect" : labels[i],
+            ylabel = avg_in_y ? "Average Effect" : labels[i],
         )
         
         scatter!(
             ax,
-            invert_y_and_x ? joined_df[!, metric] : joined_df[!, :average_effect],
-            invert_y_and_x ? joined_df[!, :average_effect] : joined_df[!, metric],
+            avg_in_y ? joined_df[!, metric] : joined_df[!, :average_effect],
+            avg_in_y ? joined_df[!, :average_effect] : joined_df[!, metric],
             markersize = 8,
             color = :blue
         )
@@ -105,6 +107,11 @@ begin
 
     scatter!(ax, joined_df.average_effect_even, joined_df.average_effect_noteven,
         color = :blue, markersize = 10)
+
+    # Optionally, compute and display the Pearson correlation coefficient.
+    corr_val = cor(joined_df.average_effect_even, joined_df.average_effect_noteven)
+    text!(ax, "r = $(round(corr_val, digits=2))", position = (0.05, 0.95),
+        align = (:left, :top), color = :black, fontsize = 12)
 
     display(fig)
 end
@@ -185,5 +192,3 @@ begin
         println(sorted_noteven.species_name[i], " with average effect: ", sorted_noteven.average_effect[i])
     end
 end
-
-# COMPARE AVERAGE EFFECT VS H0_VALUES OR H_END_VALUES

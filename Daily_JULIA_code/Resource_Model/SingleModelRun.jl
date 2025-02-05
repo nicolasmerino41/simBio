@@ -141,7 +141,7 @@ println(AAAA)
 println(AAAA.survival_rate)
 
 #################### SAME THING BUT AS A FUNCTION ######################
-function single_run(cell, mu_val, mu_pred_val, eps_val, sym_competition; sp_removed_name=nothing)
+function single_run(cell, mu_val, mu_pred_val, eps_val, sym_competition; sp_removed_name=nothing, artificial_pi=false, NPP=nothing)
     
     # Placeholder for results
     AAAA = DataFrame()
@@ -166,14 +166,17 @@ function single_run(cell, mu_val, mu_pred_val, eps_val, sym_competition; sp_remo
     
     localNPP       = Float64(npp_DA_relative_to_1000[local_i, local_j]) #1000.0
     localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
-
+    if !isnothing(NPP)
+        localNPP = NPP
+    end
     # Attempt setup
     results = attempt_setup_community(
         local_i, local_j,
         mu_val, mu_pred_val, eps_val, sym_competition;
         localNPP      = localNPP,
         localH0_vector= localH0_vector,
-        species_names = sp_nm
+        species_names = sp_nm,
+        artificial_pi = artificial_pi
     )
     
     if results === nothing

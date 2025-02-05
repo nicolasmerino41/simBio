@@ -4,15 +4,15 @@
 df_to_work_with = all_results_list_even_pi
 # SEEMS ALL_RESULTS_LIST IS CORRECT
 comparison_df = DataFrame(big_p_sr = [], cell_from_big_p = [], cell_from_all = [], all_results_list_sr = [], diff = [])
-for bp_row in eachrow(df_to_work_with)
+for bp_row in eachrow(Big_P_results_maximised)
     cell_id = bp_row[:cell_id]
-    all_results_row = findfirst(x -> x[1, :cell] == cell_id, all_results_list)
+    all_results_row = findfirst(x -> x[1, :cell] == cell_id, df_to_work_with)
     
     if all_results_row !== nothing
         best_params_sr = bp_row[:survival_rate]
-        all_results_list_sr = all_results_list[all_results_row][1, :survival_rate]
+        all_results_list_sr = df_to_work_with[all_results_row][1, :survival_rate]
         diff = best_params_sr - all_results_list_sr
-        push!(comparison_df, (best_params_sr, cell_id, all_results_list[all_results_row][1, :cell], all_results_list_sr, diff))
+        push!(comparison_df, (best_params_sr, cell_id, df_to_work_with[all_results_row][1, :cell], all_results_list_sr, diff))
     end
 end
 
@@ -100,6 +100,7 @@ insertcols!(species_count_df, 3,
     :stand_count => species_count_df[!, :count] ./ species_count_df[!, :number_of_presences]
 )
 end
+
 #### PLOT MOST INFLUENTIAL SPECIES AND PI BIOMASS VALUES
 begin
     ending = 205
@@ -109,7 +110,7 @@ begin
     MK.barplot!(ax, 1:length(species_count_df.species_name[1:ending]), species_count_df.count[1:ending])
     ax.xticks = (1:length(species_count_df.species_name[1:ending]), species_count_df.species_name[1:ending])
     ax.xticklabelrotation = π/2.5
-    ax.xticklabelsize = 7
+    ax.xticklabelsize = 6
 
     # # species_count_df = sort(species_count_df, :stand_count, rev=true)
     # ax2 = Axis(fig[1, 2], title="Standardized frequency by prevalence", xlabel="Species", ylabel="Frequency")
@@ -127,7 +128,7 @@ begin
     
     display(fig)
 
-    println(species_count_df.species_name)
+    # println(species_count_df.species_name)
 end
 
 begin
