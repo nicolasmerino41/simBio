@@ -5,6 +5,7 @@
 include("CVIvsNRI.jl")
 include("CSM.jl")
 include("CommunityNPPsaturation.jl")
+include("GlobalMetricsRelationship.jl")
 
 df_to_work_with = all_results_list_even_pi
 # --------------------------
@@ -18,7 +19,7 @@ display(species_count_df)
 # --------------------------
 # This requires new_all_results_list from Applying_results.jl
 # And plot_species_metrics() comes from Influential_species.jl
-selected_metric = :indegree # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
+selected_metric = :clustering # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
 plot_species_metrics(species_count_df, new_all_results_list, selected_metric)
 
 # --------------------------
@@ -32,8 +33,8 @@ see_to_plot  = see_even
 # The plot_species_effects function comes from SpeciesEffectOnEcosystemFunctioning.jl
 plot_species_effects(
     see_to_plot;
-    log = false, 
-    avg_eff_or_avg_eff_stand = true # true for average_effect, false for average_effect_standardized
+    log = false, # This does not work because there's negative data 
+    standardise_by_H0 = false # true for average_effect, false for average_effect_standardized
 )
 
 # --------------------------
@@ -41,14 +42,14 @@ plot_species_effects(
 # --------------------------
 # compute_average_species_metrics comes from Functions/Computing_metrics.jl
 cell_range = 1:5950
-avg_species_metrics = compute_average_species_metrics(cell_range)
+# avg_species_metrics = compute_average_species_metrics(cell_range) # This takes a long time
 
 # The plot_average_effect_vs_metrics function comes from SpeciesEffectOnEcosystemFunctioning.jl
 plot_average_effect_vs_metrics(
     see_even;
     avg_species_metrics = avg_species_metrics 
 )
-
+map_plot(npp_DA; palette = custom_palette)
 # --------------------------
 # 5) ORIGINAL SENSITIVITY FROM GlobalMetricsRelationship.jl
 # --------------------------
@@ -82,7 +83,7 @@ grid_CVI_even_pi = map_cell_metric(
     new_cell_stability_df_even_pi, :CVI;
     title = "Cell Vulnerability Index (CVI) with even pi",
     standardize_by_NPP = false,
-    capped = false, cap_val = 1.18
+    capped = true, cap_val = 1.18
 )
 grid_CVI_not_even_pi = map_cell_metric(
     new_cell_stability_df_not_even_pi, :CVI; 
@@ -127,8 +128,31 @@ csm_grid = map_CSM(
 # ----------------------------
 npp_saturation_df = CommunityNPPsaturation(
     Big_P_even_pi_maximised; 
-    scatter = true, 
-    map = true, NPP_aside = true,
+    scatter = true,
+    map = true,
+    palette = custom_palette,
     resolution_scatter = (600,600),
-    resolution_map = (1000,400)
+    resolution_map = (1000,600),
+    scatter_title = "NPP vs. Total Biomass",
+    map_title = "Residuals (Observed - Predicted Biomass)",
+    NPP_aside = true,
+    evaluate_richness = false
+)
+
+# ----------------------------
+# 13) THE EFFECT OF RICHNESS
+# ----------------------------
+DA_richness_birmmals = deserialize("Objects/DA_richness_birmmals.jls")
+npp_saturation_df = CommunityNPPsaturation(
+    Big_P_even_pi_maximised;
+    scatter = true,
+    map = true,
+    palette = custom_palette,
+    resolution_scatter = (600,600),
+    resolution_map = (1000,600),
+    scatter_title = "NPP vs. Total Biomass",
+    map_title = "Residuals (Observed - Predicted Biomass)",
+    NPP_aside = false,
+    richness_aside = true,
+    evaluate_richness = true
 )
