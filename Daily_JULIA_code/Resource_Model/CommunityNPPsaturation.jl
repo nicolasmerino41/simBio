@@ -8,7 +8,10 @@ function CommunityNPPsaturation(df;
         resolution_map = (1000,600),
         scatter_title = "NPP vs. Total Biomass",
         map_title = "Residuals (Observed - Predicted Biomass)",
-        NPP_aside::Bool = true)
+        NPP_aside::Bool = true,
+        richness_aside::Bool = false,
+        evaluate_richness::Bool = false
+)
     
     # --- Fit a linear regression model ---
     lm_model = lm(@formula(biomass_at_the_end ~ NPP), df)
@@ -18,6 +21,18 @@ function CommunityNPPsaturation(df;
     df[!, :predicted_biomass] = predicted_biomass
     df[!, :residual] = df.biomass_at_the_end .- predicted_biomass
 
+    if evaluate_richness
+        # Calculate richness for each cell
+        vect = []
+        for i in 1:nrow(df)
+            cell = df[i, :cell_id]
+            local_i, local_j = idx[cell][1], idx[cell][2]
+            richness = DA_richness_birmmals[local_i, local_j]
+            push!(vect, richness)
+        end
+        df[!, :richness] = vect
+    end 
+
     # --- Scatter Plot: NPP vs. Total Biomass ---
     if scatter
         fig_scatter = Figure(resolution = resolution_scatter)
@@ -26,7 +41,25 @@ function CommunityNPPsaturation(df;
             xlabel = "NPP",
             ylabel = "Total Biomass"
         )
-        scatter!(ax_scatter, df.NPP, df.biomass_at_the_end, color = :blue, markersize = 10)
+        
+        # Normalize richness values for color mapping
+        min_richness = minimum(df.richness)
+        max_richness = maximum(df.richness)
+        norm_richness = (df.richness .- min_richness) ./ (max_richness - min_richness)
+
+        # Choose a colormap (e.g., :viridis, :plasma, :inferno)
+        colors = cgrad(:viridis)[norm_richness]
+
+        # Scatter plot with color mapped to richness
+        scatter!(
+            ax_scatter, df.NPP, df.biomass_at_the_end, 
+            color = colors, markersize = 10
+        )
+
+        # Plot the regression line (sort by NPP for a smooth line).
+        sorted_idx = sortperm(df.NPP)
+        lines!(ax_scatter, df.NPP[sorted_idx], predicted_biomass[sorted_idx],
+               color = :red, linewidth = 2)
         
         # Plot the regression line (sort by NPP for a smooth line).
         sorted_idx = sortperm(df.NPP)
@@ -62,13 +95,13 @@ function CommunityNPPsaturation(df;
         # Plot the residual grid as a heatmap.
         fig_map = Figure(resolution = resolution_map)
         ax_map = Axis(fig_map[1,1],
-            title = map_title,
-            xlabel = "Column (j)",
-            ylabel = "Row (i)"
+            title = map_title
         )
         heatmap!(ax_map, grid; interpolate = false, colormap = palette)
         ax_map.yreversed[] = true
-
+        if richness_aside && NPP_aside
+            error("richness_aside and NPP_aside cannot be true at the same time")
+        end
         # Optionally, show the NPP map alongside.
         if NPP_aside
             ax_map2 = Axis(fig_map[1,2], title = "NPP")
@@ -76,6 +109,13 @@ function CommunityNPPsaturation(df;
             # You might not want to reverse the y-axis on the NPP plot.
             ax_map2.yreversed[] = false
         end
+        if richness_aside
+            ax_map2 = Axis(fig_map[1,2], title = "Richness")
+            heatmap!(ax_map2, DA_richness_birmmals; interpolate = false, colormap = palette)
+            # You might not want to reverse the y-axis on the NPP plot.
+            ax_map2.yreversed[] = true
+        end
+
 
         display(fig_map)
     end
