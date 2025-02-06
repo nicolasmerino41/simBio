@@ -56,7 +56,7 @@ function measure_cell_sensitivity(all_results_list::Vector{DataFrame}; capped = 
     return cell_sensitivity_df
 end
 
-cell_sensitivity_df = measure_cell_sensitivity(all_results_list_even_pi)
+# cell_sensitivity_df = measure_cell_sensitivity(all_results_list_even_pi)
 # corrected_cell_sensitivity_df = cell_sensitivity_df[cell_sensitivity_df.avg_sensitivity .< 5.0, :]
 
 function map_cell_sensitivity(cell_sensitivity_df::DataFrame; disp = true)
@@ -83,7 +83,7 @@ function map_cell_sensitivity(cell_sensitivity_df::DataFrame; disp = true)
     return grid
 end
 
-grid = map_cell_sensitivity(cell_sensitivity_df; capped = true)
+# grid = map_cell_sensitivity(cell_sensitivity_df; capped = true)
 
 ######## PLOTTING THE CORRELATION BETWEEN GLOBAL METRICS AND SENSITIVITY ########
 function plot_global_metrics_vs_sensitivity(
@@ -134,7 +134,8 @@ end
 # save("Plots/global_metrics_vs_sensitivity.png", fig)
 
 ##### HERE I WANT TO PLOT THE HERP/PRED RATIO OF OPTIM CONFIGURATION IN THE IBERIAN GRID #####
-begin
+if false
+    begin
     
     # Choose the DataFrame that holds your optimal parametrisation.
     # It should contain a baseline row for each cell with sp_removed == false (i.e. baseline)
@@ -174,5 +175,6 @@ begin
     heatmap!(ax, ratio_matrix; colormap = :viridis)
     # Colorbar(fig[1, 2], ax; label = "Herb/Pred Ratio")
     display(fig)
-end
+    end
 
+end

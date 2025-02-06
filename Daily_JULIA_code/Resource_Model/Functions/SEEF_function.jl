@@ -1,4 +1,4 @@
-function SEEF(df_tp_work_with)
+function SEEF(df_to_work_with)
     # Initialize an empty DataFrame to store the results.
     species_ecosystem_effect = DataFrame(
         species_name = String[],
@@ -9,9 +9,9 @@ function SEEF(df_tp_work_with)
         clear_directional_efect = Bool[]
     )
 
-    # Get all unique species names across all cells in df_tp_work_with.
-    # Here, each element of df_tp_work_with is expected to have a field/column named "sp_removed".
-    all_species = unique(vcat([dd.sp_removed for dd in df_tp_work_with]...))
+    # Get all unique species names across all cells in df_to_work_with.
+    # Here, each element of df_to_work_with is expected to have a field/column named "sp_removed".
+    all_species = unique(vcat([dd.sp_removed for dd in df_to_work_with]...))
     filter!(x -> x != "none", all_species)
 
     # Loop over each species.
@@ -20,8 +20,8 @@ function SEEF(df_tp_work_with)
         delta_total_biomass_values = Float64[]
         standardized_biomass_values = Float64[]
 
-        # Loop through each cell's DataFrame in df_tp_work_with.
-        for dd in df_tp_work_with
+        # Loop through each cell's DataFrame in df_to_work_with.
+        for dd in df_to_work_with
             if species_name in dd.sp_removed
                 # Extract the delta_total_biomass values for rows where the species was removed.
                 delta_total_biomass = dd[dd.sp_removed .== species_name, :delta_total_biomass]

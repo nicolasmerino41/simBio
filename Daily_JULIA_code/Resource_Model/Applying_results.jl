@@ -474,10 +474,10 @@ all_results_list_even_pi = deserialize(
     "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/3-2/all_results_list_even_pi_3701.jls"
     )
 
-A_all_results_list = all_results_list_even_pi[2]
+A_all_results_list = all_results_list_even_pi[10]
 ###### ADDING METRICS TO ALL_RESULTS_LIST ######
 new_all_results_list = Vector{DataFrame}()
-for i in 1:length(df_to_work_with) 
+for i in 1:length(all_results_list_even_pi) 
     cell = df_to_work_with[i][1, :cell]
     
     results_df = df_to_work_with[i]

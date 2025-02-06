@@ -8,23 +8,23 @@ see_even     = SEEF(all_results_list_even_pi)
 
 see_to_plot  = see_even
 ########## PLOTTING THE DATA ############
-function plot_species_effects(see_to_plot; log = false, avg_eff_or_avg_eff_stand = true)
+function plot_species_effects(see_to_plot; log = false, standardise_by_H0 = false)
     
     # 1) Sort descending by average_effect
     see = deepcopy(see_to_plot)
-    sort!(see, avg_eff_or_avg_eff_stand ? :average_effect : :average_effect_standardized, rev=true)
+    sort!(see, standardise_by_H0 ? :average_effect_standardized : :average_effect, rev=true)
 
     # 2) Extract sorted columns
     species = see.species_name
-    avgs    = avg_eff_or_avg_eff_stand ? see.average_effect : see.average_effect_standardized
-    sds     = avg_eff_or_avg_eff_stand ? see.average_effect_sd : see.average_effect_standardized_sd
+    avgs    = standardise_by_H0 ? see.average_effect_standardized : see.average_effect
+    sds     = standardise_by_H0 ? see.average_effect_standardized_sd : see.average_effect_sd
 
     # 3) Define figure and axis
     fig = Figure(resolution=(1100, 700))
     ax = Axis(fig[1, 1],
         title = "Species Effects (± SD)",
         xlabel = "Species",
-        ylabel = avg_eff_or_avg_eff_stand ? "Average Effect" : "Average Effect (Standardized)",
+        ylabel = standardise_by_H0 ? "Average Effect (Standardized)" : "Average Effect",
         xticks = (1:length(species), species),  # Label x-axis with species names
         xticklabelrotation = π/4,               # Rotate x-axis labels
         xticklabelalign = (:right, :center),     # Align labels to prevent overlap
