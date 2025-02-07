@@ -476,6 +476,7 @@ all_results_list_even_pi = deserialize(
 
 A_all_results_list = all_results_list_even_pi[10]
 ###### ADDING METRICS TO ALL_RESULTS_LIST ######
+df_to_work_with = all_results_list_even_pi
 new_all_results_list = Vector{DataFrame}()
 for i in 1:length(all_results_list_even_pi) 
     cell = df_to_work_with[i][1, :cell]

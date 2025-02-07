@@ -120,7 +120,7 @@ function CommunityNPPsaturation(df;
         display(fig_map)
     end
 
-    return df
+    return df, grid
 end
 
 if false
