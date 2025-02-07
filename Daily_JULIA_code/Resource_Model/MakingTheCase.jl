@@ -19,7 +19,7 @@ display(species_count_df)
 # --------------------------
 # This requires new_all_results_list from Applying_results.jl
 # And plot_species_metrics() comes from Influential_species.jl
-selected_metric = :clustering # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
+selected_metric = :total_degree # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
 plot_species_metrics(species_count_df, new_all_results_list, selected_metric)
 
 # --------------------------
@@ -33,8 +33,11 @@ see_to_plot  = see_even
 # The plot_species_effects function comes from SpeciesEffectOnEcosystemFunctioning.jl
 plot_species_effects(
     see_to_plot;
+    herbivore_names = herbivore_names,
+    predator_names = predator_names,
     log = false, # This does not work because there's negative data 
-    standardise_by_H0 = false # true for average_effect, false for average_effect_standardized
+    standardise_by_H0 = false, # true for average_effect, false for average_effect_standardized
+    resolution=(1100, 500)
 )
 
 # --------------------------
@@ -47,9 +50,11 @@ cell_range = 1:5950
 # The plot_average_effect_vs_metrics function comes from SpeciesEffectOnEcosystemFunctioning.jl
 plot_average_effect_vs_metrics(
     see_even;
-    avg_species_metrics = avg_species_metrics 
+    avg_species_metrics = avg_species_metrics,
+    herbivore_names = herbivore_names,
+    predator_names = predator_names 
 )
-map_plot(npp_DA; palette = custom_palette)
+# map_plot(npp_DA; palette = custom_palette)
 # --------------------------
 # 5) ORIGINAL SENSITIVITY FROM GlobalMetricsRelationship.jl
 # --------------------------
@@ -120,7 +125,7 @@ csm_df = compute_CSM(df_to_work_with)
 csm_grid = map_CSM(
     csm_df; 
     plot = true, palette = custom_palette,
-    resolution = (600, 600), title = "CSM"
+    resolution = (600, 400), title = "CSM"
 )
 
 # ----------------------------
@@ -131,8 +136,8 @@ npp_saturation_df = CommunityNPPsaturation(
     scatter = true,
     map = true,
     palette = custom_palette,
-    resolution_scatter = (600,600),
-    resolution_map = (1000,600),
+    resolution_scatter = (600,400),
+    resolution_map = (1000,400),
     scatter_title = "NPP vs. Total Biomass",
     map_title = "Residuals (Observed - Predicted Biomass)",
     NPP_aside = true,
@@ -143,16 +148,48 @@ npp_saturation_df = CommunityNPPsaturation(
 # 13) THE EFFECT OF RICHNESS
 # ----------------------------
 DA_richness_birmmals = deserialize("Objects/DA_richness_birmmals.jls")
-npp_saturation_df = CommunityNPPsaturation(
+npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
     Big_P_even_pi_maximised;
     scatter = true,
     map = true,
     palette = custom_palette,
-    resolution_scatter = (600,600),
-    resolution_map = (1000,600),
+    resolution_scatter = (600,400),
+    resolution_map = (1000,400),
     scatter_title = "NPP vs. Total Biomass",
     map_title = "Residuals (Observed - Predicted Biomass)",
     NPP_aside = false,
     richness_aside = true,
     evaluate_richness = true
+)
+
+# ----------------------------
+# 14) PLOT CLUSTER MAP
+# ----------------------------
+# To run function 14 and 15 you need to first run CharacterisingCommunities.jl and obtain the cluster grid
+number_clusters = 3
+include("CharacterisingCommunities.jl")
+plot_cluster_map(
+    cluster_grid; 
+    resolution=(600,400), 
+    title="Community Clusters",
+    colormap=custom_palette
+)
+
+# ----------------------------
+# 15) PLOT CLUSTER SCATTER
+# ----------------------------
+plot_cluster_scatter(
+    df_cells; 
+    xvar = :over_under, yvar = :CSM, # You can choose :NPP, :CSM, :CVI, :NRI, :raw_sensitivity, :richness and, :over_under
+    cluster_col = :cluster, 
+    resolution=(600,600),
+    colormap=:Set1, markersize=8
+)
+
+# ----------------------------
+# 16) PCA EXPLAINS OVER-UNDER
+# ----------------------------
+pca_explain_over_under(
+    df_cells,
+    vars = [:raw_sensitivity, :CVI, :NRI, :CSM, :NPP, :richness, :over_under]
 )
