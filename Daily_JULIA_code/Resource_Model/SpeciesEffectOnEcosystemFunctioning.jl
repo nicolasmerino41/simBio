@@ -8,7 +8,13 @@ see_even     = SEEF(all_results_list_even_pi)
 
 see_to_plot  = see_even
 ########## PLOTTING THE DATA ############
-function plot_species_effects(see_to_plot; log = false, standardise_by_H0 = false)
+function plot_species_effects(
+    see_to_plot;
+    herbivore_names = herbivore_names,
+    predator_names = predator_names,
+    log=false, standardise_by_H0=false,
+    resolution=(1100, 500)
+)
     
     # 1) Sort descending by average_effect
     see = deepcopy(see_to_plot)
@@ -19,8 +25,12 @@ function plot_species_effects(see_to_plot; log = false, standardise_by_H0 = fals
     avgs    = standardise_by_H0 ? see.average_effect_standardized : see.average_effect
     sds     = standardise_by_H0 ? see.average_effect_standardized_sd : see.average_effect_sd
 
-    # 3) Define figure and axis
-    fig = Figure(resolution=(1100, 700))
+    # 3) Assign colors based on species type
+    colors = [species[i] in herbivore_names ? :blue : 
+              (species[i] in predator_names ? :red : :gray) for i in 1:length(species)]
+
+    # 4) Define figure and axis
+    fig = Figure(resolution=resolution)
     ax = Axis(fig[1, 1],
         title = "Species Effects (± SD)",
         xlabel = "Species",
@@ -32,40 +42,49 @@ function plot_species_effects(see_to_plot; log = false, standardise_by_H0 = fals
         xticklabelsize = 6 
     )
 
-    # 4) Plot error bars
-    MK.errorbars!(ax, 1:length(species), avgs, sds, color=:black)
+    # 5) Plot error bars
+    MK.errorbars!(ax, 1:length(species), avgs, sds, color=colors)
 
-    # 5) Plot points
-    MK.scatter!(ax, 1:length(species), avgs, color=:blue, markersize=10)
+    # 6) Plot points with assigned colors
+    MK.scatter!(ax, 1:length(species), avgs, color=colors, markersize=10)
+    
+    # 7) Plot reference line at zero
     MK.lines!(ax, 1:length(species), fill(0.0, length(species)), color=:red)
 
-    # 6) Save and display
-    # save("species_effect_plot.png", fig)
+    # 8) Display figure
     display(fig)
 end
 
 ##### PLOTING AVERAGE EFFECT OF EACH SPECIES VS THEIR METRICS ########
 function plot_average_effect_vs_metrics(
     see_to_plot = see_even;
-    avg_species_metrics = avg_species_metrics
+    avg_species_metrics = avg_species_metrics,
+    herbivore_names = herbivore_names,
+    predator_names = predator_names
 )
     
     avg_in_y = true
-    
-    # First, join the two DataFrames on species name.
-    # species_ecosystem_effect has column :species_names and avg_species_metrics has column :species.
+
+    # Join the two DataFrames on species name
     joined_df = innerjoin(
         see_to_plot, avg_species_metrics,
         on = :species_name
     )
-    println("minimum avg_effect is", minimum(joined_df.average_effect))
-    # Define the list of metrics you want to plot from avg_species_metrics.
+    println("Minimum avg_effect is", minimum(joined_df.average_effect))
+
+    # Define the list of metrics to plot
     metrics = [:mean_indegree, :mean_outdegree, :mean_total_degree, :mean_betweenness, :mean_closeness, :mean_clustering]
     labels  = ["Mean Indegree", "Mean Outdegree", "Mean Total Degree", "Mean Betweenness", "Mean Closeness", "Mean Clustering"]
 
-    # Create a figure with multiple subplots (e.g., 2 rows × 3 columns).
+    # Assign colors based on species type
+    colors = [joined_df.species_name[i] in herbivore_names ? :blue : 
+              (joined_df.species_name[i] in predator_names ? :red : :gray) 
+              for i in 1:nrow(joined_df)]
+
+    # Create a figure with multiple subplots (2 rows × 3 columns)
     fig = Figure(resolution = (1200, 800))
     n = length(metrics)
+
     for (i, metric) in enumerate(metrics)
         row = div(i-1, 3) + 1
         col = mod(i-1, 3) + 1
@@ -80,7 +99,7 @@ function plot_average_effect_vs_metrics(
             avg_in_y ? joined_df[!, metric] : joined_df[!, :average_effect],
             avg_in_y ? joined_df[!, :average_effect] : joined_df[!, metric],
             markersize = 8,
-            color = :blue
+            color = colors
         )
     end
 
