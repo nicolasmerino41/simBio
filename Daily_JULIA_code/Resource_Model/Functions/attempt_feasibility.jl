@@ -80,7 +80,7 @@ function attempt_feasibility(
         survival_rate = total_surv / total_species
 
         giHi = sum(g_i .* H_end)
-        ratio_ok = (giHi / localNPP > 0.5) && (giHi / localNPP < 2.0)
+        ratio_ok = (giHi / localNPP > 0.5) && (giHi / localNPP < 1.5)
 
         # Update the best result if survival_rate is improved.
         if survival_rate > best_survival_rate && ratio_ok
@@ -124,7 +124,7 @@ function attempt_feasibility(
 
         # Stop early if full survival is achieved.
         if isapprox(survival_rate, 1.0; atol=1e-10)
-            ratio_ok = (giHi / localNPP > 0.5) && (giHi / localNPP < 5.0)
+            ratio_ok = (giHi / localNPP > 0.5) && (giHi / localNPP < 1.5)
             if ratio_ok
             @info "Cell $cell => full survival with (mu=$mu_val, mu_pred=$mu_pred_val, eps=$eps_val). Stopping early."
             return true, best_result  # Feasibility achieved

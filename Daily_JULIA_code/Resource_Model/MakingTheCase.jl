@@ -11,7 +11,11 @@ df_to_work_with = all_results_list_even_pi
 # --------------------------
 # 1) SPECIES_COUNT_DF
 # --------------------------
-species_count_df = create_species_count_df(df_to_work_with)
+species_count_df = create_species_count_df(
+    df_to_work_with,
+    only_most_influential = true
+)
+
 display(species_count_df)
 
 # --------------------------
@@ -19,9 +23,21 @@ display(species_count_df)
 # --------------------------
 # This requires new_all_results_list from Applying_results.jl
 # And plot_species_metrics() comes from Influential_species.jl
-selected_metric = :total_degree # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
-plot_species_metrics(species_count_df, new_all_results_list, selected_metric)
-
+selected_metric = :clustering # Change to :indegree, :outdegree, :total_degree, :closeness, or :clustering
+plot_species_metrics(
+    species_count_df,
+    new_all_results_list,
+    selected_metric::Symbol;
+    only_most_influential = true, # If you set create_species_count_df() to only_most_influential = true
+    count_or_stand_count = false, # If true, use count; if false, use stand_count
+    herbivore_names = herbivore_names,
+    predator_names = predator_names,
+    by_name_or_by_TL = true,  # if true, color by herb/pred; if false, color continuously by TL from TrophInd
+    palette = custom_palette
+)
+for i in 1:20 
+    println(sort(species_count_df, :stand_count, rev=true).species_name[i])
+end
 # --------------------------
 # 3) SPECIES EFFECT ON ECOSYSTEM FUNCTIONING
 # --------------------------
@@ -30,14 +46,19 @@ see_not_even = SEEF(all_results_list)
 see_even     = SEEF(all_results_list_even_pi)
 
 see_to_plot  = see_even
+for i in 1:20
+    println(sort(see_to_plot, :average_effect, rev=true).species_name[i])
+end
 # The plot_species_effects function comes from SpeciesEffectOnEcosystemFunctioning.jl
 plot_species_effects(
     see_to_plot;
     herbivore_names = herbivore_names,
     predator_names = predator_names,
-    log = false, # This does not work because there's negative data 
-    standardise_by_H0 = false, # true for average_effect, false for average_effect_standardized
-    resolution=(1100, 500)
+    log = false,
+    standardise_by_H0 = false,
+    resolution = (1100, 600),
+    by_name_or_by_TL = false,  # if true, assign colors by name; if false, use continuous TL from TrophInd
+    palette = custom_palette
 )
 
 # --------------------------
@@ -49,17 +70,20 @@ cell_range = 1:5950
 
 # The plot_average_effect_vs_metrics function comes from SpeciesEffectOnEcosystemFunctioning.jl
 plot_average_effect_vs_metrics(
-    see_even;
+    see_not_even;
     avg_species_metrics = avg_species_metrics,
     herbivore_names = herbivore_names,
-    predator_names = predator_names 
+    predator_names = predator_names,
+    by_name_or_by_TL = true,  # if true, color by species type; if false, color continuously by TL from TrophInd
+    palette = custom_palette
 )
+
 # map_plot(npp_DA; palette = custom_palette)
 # --------------------------
 # 5) ORIGINAL SENSITIVITY FROM GlobalMetricsRelationship.jl
 # --------------------------
 cell_sensitivity_df = measure_cell_sensitivity(
-    df_to_work_with;
+    all_results_list_even_pi;
     capped = true, cap_val = 5.0
 )
 
@@ -88,7 +112,7 @@ grid_CVI_even_pi = map_cell_metric(
     new_cell_stability_df_even_pi, :CVI;
     title = "Cell Vulnerability Index (CVI) with even pi",
     standardize_by_NPP = false,
-    capped = true, cap_val = 1.18
+    # capped = true, cap_val = 1.18
 )
 grid_CVI_not_even_pi = map_cell_metric(
     new_cell_stability_df_not_even_pi, :CVI; 
@@ -98,7 +122,7 @@ grid_CVI_not_even_pi = map_cell_metric(
 grid_NRI = map_cell_metric(
     new_cell_stability_df_even_pi, :NRI; 
     title = "Network Robustness Index (NRI)"
-) # THIS ONE IS QUITE USELESS BECAUSE YOU CAN GET ALL NRI FROM THE FOLLOWING
+) # THIS ONE IS QUITE USELESS BECAUSE YOU CAN GET ALL NRI FROM POINT 9
 
 # ----------------------------
 # 9) PLOT THE FULL NRI GRID
@@ -107,7 +131,8 @@ grid_NRI = map_cell_metric(
 compute_and_map_NRI(;
     plot = true, 
     title = "NRI",
-    standardise_by_NPP = false
+    standardise_by_NPP = false,
+    resolution = (1000, 700)
 )
 
 # ----------------------------
@@ -121,7 +146,7 @@ scatter_CVI_NRI(
 # ----------------------------
 # 11) COMPUTE CSM AND PLOT IT (From CSM.jl)
 # ----------------------------
-csm_df = compute_CSM(df_to_work_with)
+csm_df = compute_CSM(all_results_list_even_pi)
 csm_grid = map_CSM(
     csm_df; 
     plot = true, palette = custom_palette,
@@ -131,8 +156,8 @@ csm_grid = map_CSM(
 # ----------------------------
 # 12) COMMUNITY NPP SATURATION (From CommunityNPPsaturation.jl)
 # ----------------------------
-npp_saturation_df = CommunityNPPsaturation(
-    Big_P_even_pi_maximised; 
+npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
+    Big_P_results_maximised; 
     scatter = true,
     map = true,
     palette = custom_palette,
@@ -141,7 +166,8 @@ npp_saturation_df = CommunityNPPsaturation(
     scatter_title = "NPP vs. Total Biomass",
     map_title = "Residuals (Observed - Predicted Biomass)",
     NPP_aside = true,
-    evaluate_richness = false
+    richness_aside = true,
+    evaluate_richness = true
 )
 
 # ----------------------------

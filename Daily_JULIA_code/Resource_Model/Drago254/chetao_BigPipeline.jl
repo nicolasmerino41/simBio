@@ -60,7 +60,7 @@ end
 
 # Define your parameter ranges
 mu_vals               = range(0.1, 0.9, length=10)
-mu_predation_vals     = range(0.0, 0.2, length=130)
+mu_predation_vals     = range(0.0, 0.3, length=130)
 epsilon_vals          = range(0.1, 1.0, length=20)
 sym_competition_vals  = [true]
 
@@ -83,9 +83,9 @@ const MAX_ITERS           = 2000      # Up to 2000 combos
 const SURVIVAL_THRESHOLD  = 0.0       # For example, store best if survival rate >= threshold
 
 # Set the output file names (ensure directories exist)
-output_filename = "Results/Big_pipeline_results_with_even_pi_express.csv"
-problematic_species_filename = "Results/problematic_species_with_even_pi_express.csv"
-slightly_problematic_species_filename = "Results/slightly_problematic_species_with_even_pi_express.csv"
+output_filename = "Results/Big_pipeline_results_with_even_pi_express_50SPLIT.csv"
+problematic_species_filename = "Results/problematic_species_with_even_pi_express_50SPLIT.csv"
+slightly_problematic_species_filename = "Results/slightly_problematic_species_with_even_pi_express_50SPLIT.csv"
 
 Threads.@threads for cell in start_val:end_val # Adjust the range as needed
     @info "Processing cell $cell..."
@@ -132,18 +132,19 @@ Threads.@threads for cell in start_val:end_val # Adjust the range as needed
             write_result_row(best_result, output_filename)
             key = true
             @info "Cell $cell did have at least one non-nothing result but we don't care"
-            
+            best_num_survivors = best_result.total_survivors
         else
             key = true
             parameters = param_combinations
             @info "Cell $cell did not have any non-nothing results but we don't care"
+            best_num_survivors = 0
         end
         
         @info "Cell $cell is not feasible initially. Attempting species removal..."
         # Step 2: Iteratively remove species to achieve feasibility
         problematic_species_list = String[]
 	    slightly_problematic_species_list = String[]
-        best_survival_rate_from_sp_removed = isnothing(best_result) ? 0.0 : best_result.survival_rate
+        best_num_survivors_from_sp_removed = best_num_survivors-1
         for species in sp_nm
             modified_sp_nm = filter(s -> s != species, sp_nm)
             feasible, best_result = attempt_feasibility(
@@ -158,10 +159,10 @@ Threads.@threads for cell in start_val:end_val # Adjust the range as needed
                 @info "Removing species '$species' makes cell $cell feasible."
                 write_result_row(best_result, output_filename)
 
-            elseif !feasible && best_result.survival_rate > best_survival_rate_from_sp_removed
+            elseif !feasible && best_result.total_survivors > best_num_survivors_from_sp_removed
 		        push!(slightly_problematic_species_list, species)
                 write_result_row(best_result, output_filename)
-                best_survival_rate_from_sp_removed = best_result.survival_rate
+                best_num_survivors_from_sp_removed = best_result.total_survivors
             end
         end
 

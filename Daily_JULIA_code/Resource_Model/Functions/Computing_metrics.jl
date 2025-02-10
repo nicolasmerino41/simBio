@@ -181,7 +181,7 @@ cell_range = 1:5950
 display(avg_species_metrics)
 
 ##### COMPUTE THE NRI OF EACH CELL AND PLOT IT #####
-function compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = false)
+function compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = false, resolution = (600, 600))
     
     # Copy the DA_sum grid as a starting point (convert to float)
     grid = deepcopy(float(DA_sum))
@@ -223,7 +223,7 @@ function compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = 
     end
 
     if plot
-        fig = Figure(resolution = (600, 600))
+        fig = Figure(resolution = resolution)
         ax = Axis(fig[1, 1], title = title)
         Makie.heatmap!(ax, grid; interpolate=false, colormap=custom_palette)
         Colorbar(fig[1, 2], colormap=custom_palette)

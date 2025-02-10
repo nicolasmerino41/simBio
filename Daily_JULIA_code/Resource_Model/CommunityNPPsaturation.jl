@@ -26,7 +26,10 @@ function CommunityNPPsaturation(df;
         vect = []
         for i in 1:nrow(df)
             cell = df[i, :cell_id]
-            local_i, local_j = idx[cell][1], idx[cell][2]
+            if typeof(cell) == String15
+                cell = parse(Int, cell)
+            end
+            local_i, local_j = idx[Int(cell)][1], idx[Int(cell)][2] #idx[cell][1], idx[cell][2]
             richness = DA_richness_birmmals[local_i, local_j]
             push!(vect, richness)
         end
@@ -65,6 +68,8 @@ function CommunityNPPsaturation(df;
         sorted_idx = sortperm(df.NPP)
         lines!(ax_scatter, df.NPP[sorted_idx], predicted_biomass[sorted_idx],
                color = :red, linewidth = 2)
+
+        Colorbar(fig_scatter[1, 2], limits = (min_richness, max_richness), colormap = :viridis)
         
         # Compute and display the Pearson correlation coefficient.
         r = cor(df.NPP, df.biomass_at_the_end)

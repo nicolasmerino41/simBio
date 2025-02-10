@@ -18,90 +18,88 @@ end
 
 #################################################################
 #################################################################
-function create_species_count_df(df_to_work_with)
-    # FIND THE MOST INFLUENTIAL SPECIES
-    # Initialize the DataFrame with proper column types
+using DataFrames
+
+function create_species_count_df(df_to_work_with; only_most_influential::Bool=true)
+    # Initialize the DataFrame with proper column types.
     species_count_df = DataFrame(
         species_name = String[],
-        count = Int[],
-        ind_ext_names_length = Int[],
-        number_of_presences = Int[],
-        cell_id = Vector{Int}[],  # Assuming cell IDs are integers
-        ind_ext_names = Vector{String}[],
+        count = Int[],             # Number of cells where this species appears (for removal)
+        total_ind_ext = Int[],       # Sum of indirect extinctions (across cells)
+        number_of_presences = Int[], # Overall number of presences (from external info)
+        cell_id = Vector{Int}[],     # List of cell IDs where this species appeared
     )
 
-    # Loop through all results
-    for dd in df_to_work_with
-        # Find the entry with the lowest survival_rate
-        min_survival = minimum(dd.survival_rate)
-        min_survived = minimum(dd.survived_herbs + dd.survived_preds)
-
-        # Skip if the minimum survival condition matches the first row's survivors minus 1
-        if min_survived == dd[1, :survived_herbs] + dd[1, :survived_preds] - 1
-            continue
-        end
-
-        # Get all entries with the minimum survival_rate
-        min_survival_entries = findall(x -> x == min_survival, dd.survival_rate)
-    
-        for min_survival_entry in min_survival_entries
-            # Get the species name, individual extinction names, and cell ID
-            species_name = dd[min_survival_entry, :sp_removed]
-            ind_ext_names = dd[min_survival_entry, :ind_ext_name]
-            cell_id = dd[min_survival_entry, :cell]
-
-            # Check if species_name is already in the DataFrame
-            if species_name in species_count_df.species_name
-                # Find the index of the existing entry
-                indexx = findfirst(x -> x == species_name, species_count_df.species_name)
-
-                # Update the ind_ext_names and cell_id if they are not already present
-                for ind_ext_name in ind_ext_names
-                    if !(ind_ext_name in species_count_df[indexx, :ind_ext_names])
-                        push!(species_count_df[indexx, :ind_ext_names], ind_ext_name)
-                    end
-                end
-
-                if !(cell_id in species_count_df[indexx, :cell_id])
+    if only_most_influential
+        # For each cell, record only the entry (or entries) corresponding to the minimum survival rate.
+        for dd in df_to_work_with
+            # Find the minimum survival rate in this cell.
+            min_survival = minimum(dd.survival_rate)
+            # (The following check has been removed so that even if the removal causes 0 indirect extinctions, we record it.)
+            # Get all entries with the minimum survival_rate.
+            min_survival_entries = findall(x -> x == min_survival, dd.survival_rate)
+            for entry in min_survival_entries
+                species_name = dd[entry, :sp_removed]
+                ind_ext_names = dd[entry, :ind_ext_name]  # This is assumed to be a vector (possibly empty)
+                cell_id = dd[entry, :cell]
+                ind_ext_count = length(ind_ext_names)  # This may be 0, but we record it.
+                if species_name in species_count_df.species_name
+                    indexx = findfirst(x -> x == species_name, species_count_df.species_name)
                     push!(species_count_df[indexx, :cell_id], cell_id)
+                    species_count_df[indexx, :count] += 1
+                    species_count_df[indexx, :total_ind_ext] += ind_ext_count
+                else
+                    push!(species_count_df, (
+                        species_name,
+                        1,                # count starts at 1
+                        ind_ext_count,    # total_ind_ext is the number of indirect extinctions
+                        count_number_of_presences(species_name; info=false),
+                        [cell_id]         # cell_id as a single-element array
+                    ))
                 end
-
-                # Increment the count
-                species_count_df[indexx, :count] += 1
-            else
-                # Add a new entry for this species
-                push!(species_count_df, (
-                    species_name,                  # species_name
-                    1,                             # count starts at 1
-                    0,
-                    count_number_of_presences(species_name; info = false),
-                    [cell_id],                     # cell_id as a single-element array
-                    ind_ext_names,                  # ind_ext_names as-is
-                ))
+            end
+        end
+    else
+        # For each cell, record for every species (each row where sp_removed != "none").
+        for dd in df_to_work_with
+            for row in eachrow(dd)
+                if row.sp_removed == "none"
+                    continue
+                end
+                species_name = row.sp_removed
+                ind_ext_names = row.ind_ext_name  # A vector, possibly empty.
+                cell_id = row.cell
+                ind_ext_count = length(ind_ext_names)  # May be 0.
+                if species_name in species_count_df.species_name
+                    indexx = findfirst(x -> x == species_name, species_count_df.species_name)
+                    push!(species_count_df[indexx, :cell_id], cell_id)
+                    species_count_df[indexx, :count] += 1
+                    species_count_df[indexx, :total_ind_ext] += ind_ext_count
+                else
+                    push!(species_count_df, (
+                        species_name,
+                        1,
+                        ind_ext_count,
+                        count_number_of_presences(species_name; info=false),
+                        [cell_id]
+                    ))
+                end
             end
         end
     end
 
-    for i in birmmals_names
-        if !(i in species_count_df.species_name)
-            push!(species_count_df, (
-                i,
-                0,              # :count
-                0,              # :ind_ext_names_length
-                count_number_of_presences(i; info = false),
-                Int[],          # Empty Vector{Int} for :cell_id
-                String[]        # Vector{String} for :ind_ext_names
-            ))
-        end
-    end
+    # Compute average indirect extinctions per cell for each species.
+    species_count_df[!, :avg_ind_ext] = species_count_df.total_ind_ext ./ species_count_df.number_of_presences
 
-    species_count_df[!, :ind_ext_names_length] = length.(species_count_df.ind_ext_names)
+    # Also, add a standardized count (count divided by number of presences).
     insertcols!(species_count_df, 3,
-        :stand_count => species_count_df[!, :count] ./ species_count_df[!, :number_of_presences]
+        :stand_count => species_count_df.count ./ species_count_df.number_of_presences
     )
 
     return species_count_df
 end
+
+
 # species_count_df = create_species_count_df(all_results_list_even_pi)
 
 #### PLOT MOST INFLUENTIAL SPECIES AND PI BIOMASS VALUES
@@ -201,67 +199,113 @@ begin
 end
 
 ###### PLOT MOST INFLUENTIAL SPECIES, AND SOME OF THEIR NETWORK METRICS
-function plot_species_metrics(species_count_df, new_all_results_list, selected_metric::Symbol)
-    # Sort species by frequency of being most influential
-    sorted_species = sort(species_count_df, :count, rev=true)
-    
-    # Extract species names & frequencies
-    species_names = sorted_species.species_name
-    species_frequencies = count_number_of_presences.(species_names; info = false)
-    species_counts = sorted_species.count
+function plot_species_metrics(
+    species_count_df,
+    new_all_results_list,
+    selected_metric::Symbol;
+    only_most_influential = true,
+    count_or_stand_count = true,
+    herbivore_names = herbivore_names,
+    predator_names = predator_names,
+    by_name_or_by_TL = true,
+    palette = custom_palette
+)
+    # Sort species and choose left-plot values based on the flag.
+    if only_most_influential
+        if count_or_stand_count
+            sorted_species = sort(species_count_df, :count, rev=true)
+            left_values = sorted_species.count
+            left_ylabel = "Frequency"
+            left_title = "Most Influential Species Not Standardised by Prevalence counting only_most_influential"
+        else
+            sorted_species = sort(species_count_df, :stand_count, rev=true)
+            left_values = sorted_species.stand_count
+            left_ylabel = "Standardized Frequency"
+            left_title = "Most Influential Species Standardised by Prevalence counting only_most_influential"
+        end
+    else
+        sorted_species = sort(species_count_df, :avg_ind_ext, rev=true)
+        left_values = sorted_species.avg_ind_ext
+        left_ylabel = "Average Indirect Extinctions"
+        left_title = "All species, sorted by Average Species Indirect Extinctions"
+    end
 
-    new_df = DataFrame(species_names = species_names, species_frequencies = species_frequencies)
+    # Extract species names.
+    species_names = sorted_species.species_name
+
+    # Prepare a temporary DataFrame to aggregate the selected metric from new_all_results_list.
     temp_df = DataFrame(
         species = species_names,
         temp_vect = zeros(length(species_names)),
         count = zeros(length(species_names))
     )
 
-    for i in species_names
-        for j in 1:length(new_all_results_list)
-            # println(new_all_results_list[j].sp_removed)
-            if i in new_all_results_list[j].sp_removed
-                new_value = new_all_results_list[j][new_all_results_list[j].sp_removed .== i, selected_metric]
-                # println("new_value: ", new_value)
-                temp_df[temp_df.species .== i, :temp_vect] += new_value
-                # println("hello", temp_df[temp_df.species .== i, :count])
-                temp_df[temp_df.species .== i, :count] += Any[1.0]
+    # Loop over each species in the sorted list and over all cell results.
+    for sp in species_names
+        for dd in new_all_results_list
+            # If the species is recorded in the cell (in the sp_removed column),
+            # extract the value for the selected metric.
+            if sp in dd.sp_removed
+                new_value = dd[dd.sp_removed .== sp, selected_metric]
+                temp_df[temp_df.species .== sp, :temp_vect] .+= new_value
+                temp_df[temp_df.species .== sp, :count] .+= 1.0
             end
         end
     end
 
+    # Calculate the mean value for the selected metric.
     mean_values = temp_df.temp_vect ./ temp_df.count
+
+    # Prepare a new DataFrame that will contain the metric for each species.
+    new_df = DataFrame(species_names = species_names)
     new_df[!, selected_metric] = mean_values
 
-    # Define figure
+    # Color structure
+    # Assign colors: if by_name_or_by_TL, use discrete colors; otherwise, use trophic level (continuous).
+    if by_name_or_by_TL
+        colors = [species_names[i] in herbivore_names ? :blue :
+                  (species_names[i] in predator_names ? :red : :gray)
+                  for i in 1:length(species_names)]
+    else
+        # Use TrophInd: assume it has columns :Species and :TL.
+        # For each species in the sorted list, get its trophic level.
+        troph_levels = [TrophInd[TrophInd.Species .== species_names[i], :TL][1] for i in 1:length(species_names)]
+        tl_min = minimum(troph_levels)
+        tl_max = maximum(troph_levels)
+        norm_tl = [(tl - tl_min) / (tl_max - tl_min) for tl in troph_levels]
+        # Get a continuous colormap, e.g., viridis.
+        colormap = cgrad(palette)
+        # Instead of calling colormap(x), we index into it:
+        colors = [colormap[x] for x in norm_tl]
+    end
+
+    # Define the figure.
     fig = Figure(resolution = (1200, 600))
 
-    # --- Frequency Plot (Left) ---
-    ax1 = Axis(fig[1, 1], 
-        title="Most Influential Species", 
-        xlabel="Species", ylabel="Frequency",
-        xticks=(1:length(species_names), species_names),
-        xticklabelrotation=π/4, xticklabelsize=8)
+    # --- Left Plot: Barplot using left_values ---
+    ax1 = Axis(fig[1, 1],
+        title = left_title,
+        xlabel = "Species",
+        ylabel = left_ylabel,
+        xticks = (1:length(species_names), species_names),
+        xticklabelrotation = π/4, 
+        xticklabelsize = 8
+    )
+    barplot!(ax1, 1:length(species_names), left_values, color = colors)
 
-    barplot!(ax1, 1:length(species_names), species_counts, color=:blue)
-
-    # --- Species-Specific Metric Plot (Right) ---
-    ax2 = Axis(fig[1, 2], 
-        title="Average $selected_metric per Species", 
-        xlabel="Species", ylabel="Value",
-        xticks=(1:length(species_names), species_names),
-        xticklabelrotation=π/4, xticklabelsize=8)
-        # Regression line IT DOES NOT WORK FOR NOW
-        # regression_data = DataFrame(x=1:length(species_names), y=mean_values)
-        # model = lm(@formula(y ~ x), regression_data)
-        # line_x = range(1, length(species_names), length=100)
-        # line_y = coef(model)[1] .+ coef(model)[2] .* line_x
-        # lines!(ax2, line_x, line_y, linewidth=2, color=:red)
-
-    scatter!(ax2, 1:length(species_names), mean_values, color=:red)
-    # errorbars!(ax2, 1:length(species_names), metric_values, [0.0 for _ in metric_values], color=:black)  # Adjust error bars if needed
-
+    # --- Right Plot: Scatter Plot of the selected metric ---
+    ax2 = Axis(fig[1, 2],
+        title = "Average $(selected_metric) per Species",
+        xlabel = "Species",
+        ylabel = "Value",
+        xticks = (1:length(species_names), species_names),
+        xticklabelrotation = π/4, 
+        xticklabelsize = 8
+    )
+    scatter!(ax2, 1:length(species_names), mean_values, color = colors)
+    by_name_or_by_TL ? identity : Colorbar(fig[1, 3], limits = (tl_min, tl_max), colormap = cgrad(palette))
     display(fig)
+    return fig
 end
 
 # Example usage:

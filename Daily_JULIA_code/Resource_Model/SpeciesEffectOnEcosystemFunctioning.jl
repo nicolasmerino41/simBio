@@ -12,10 +12,12 @@ function plot_species_effects(
     see_to_plot;
     herbivore_names = herbivore_names,
     predator_names = predator_names,
-    log=false, standardise_by_H0=false,
-    resolution=(1100, 500)
+    log = false,
+    standardise_by_H0 = false,
+    resolution = (1100, 500),
+    by_name_or_by_TL = true,  # if true, assign colors by name; if false, use continuous TL from TrophInd
+    palette = custom_palette
 )
-    
     # 1) Sort descending by average_effect
     see = deepcopy(see_to_plot)
     sort!(see, standardise_by_H0 ? :average_effect_standardized : :average_effect, rev=true)
@@ -25,34 +27,48 @@ function plot_species_effects(
     avgs    = standardise_by_H0 ? see.average_effect_standardized : see.average_effect
     sds     = standardise_by_H0 ? see.average_effect_standardized_sd : see.average_effect_sd
 
-    # 3) Assign colors based on species type
-    colors = [species[i] in herbivore_names ? :blue : 
-              (species[i] in predator_names ? :red : :gray) for i in 1:length(species)]
+    # 3) Assign colors: if by_name_or_by_TL, use discrete colors; otherwise, use trophic level (continuous).
+    if by_name_or_by_TL
+        colors = [species[i] in herbivore_names ? :blue :
+                  (species[i] in predator_names ? :red : :gray)
+                  for i in 1:length(species)]
+    else
+        # Use TrophInd: assume it has columns :Species and :TL.
+        # For each species in the sorted list, get its trophic level.
+        troph_levels = [TrophInd[TrophInd.Species .== species[i], :TL][1] for i in 1:length(species)]
+        tl_min = minimum(troph_levels)
+        tl_max = maximum(troph_levels)
+        norm_tl = [(tl - tl_min) / (tl_max - tl_min) for tl in troph_levels]
+        # Get a continuous colormap, e.g., viridis.
+        colormap = cgrad(palette)
+        # Instead of calling colormap(x), we index into it:
+        colors = [colormap[x] for x in norm_tl]
+    end
 
-    # 4) Define figure and axis
-    fig = Figure(resolution=resolution)
+    # 4) Define figure and axis.
+    fig = Figure(resolution = resolution)
     ax = Axis(fig[1, 1],
         title = "Species Effects (± SD)",
         xlabel = "Species",
         ylabel = standardise_by_H0 ? "Average Effect (Standardized)" : "Average Effect",
-        xticks = (1:length(species), species),  # Label x-axis with species names
-        xticklabelrotation = π/4,               # Rotate x-axis labels
-        xticklabelalign = (:right, :center),     # Align labels to prevent overlap
+        xticks = (1:length(species), species),  # Label x-axis with species names.
+        xticklabelrotation = π/4,
+        xticklabelalign = (:right, :center),
         yscale = log ? log10 : identity,
-        xticklabelsize = 6 
+        xticklabelsize = 6
     )
 
-    # 5) Plot error bars
-    MK.errorbars!(ax, 1:length(species), avgs, sds, color=colors)
+    # 5) Plot error bars and points.
+    MK.errorbars!(ax, 1:length(species), avgs, sds, color = colors)
+    MK.scatter!(ax, 1:length(species), avgs, color = colors, markersize = 10)
 
-    # 6) Plot points with assigned colors
-    MK.scatter!(ax, 1:length(species), avgs, color=colors, markersize=10)
-    
-    # 7) Plot reference line at zero
-    MK.lines!(ax, 1:length(species), fill(0.0, length(species)), color=:red)
+    # 6) Plot a reference line at zero.
+    MK.lines!(ax, 1:length(species), fill(0.0, length(species)), color = :red)
 
-    # 8) Display figure
+    by_name_or_by_TL ? identity : Colorbar(fig[1, 2], limits = (tl_min, tl_max), colormap = cgrad(palette))
+
     display(fig)
+    return fig
 end
 
 ##### PLOTING AVERAGE EFFECT OF EACH SPECIES VS THEIR METRICS ########
@@ -60,50 +76,58 @@ function plot_average_effect_vs_metrics(
     see_to_plot = see_even;
     avg_species_metrics = avg_species_metrics,
     herbivore_names = herbivore_names,
-    predator_names = predator_names
+    predator_names = predator_names,
+    by_name_or_by_TL = true,  # if true, color by species type; if false, color continuously by TL from TrophInd
+    palette = custom_palette
 )
-    
     avg_in_y = true
 
-    # Join the two DataFrames on species name
-    joined_df = innerjoin(
-        see_to_plot, avg_species_metrics,
-        on = :species_name
-    )
-    println("Minimum avg_effect is", minimum(joined_df.average_effect))
+    # Join the two DataFrames on species name.
+    joined_df = innerjoin(see_to_plot, avg_species_metrics, on = :species_name)
+    println("Minimum average effect is ", minimum(joined_df.average_effect))
 
-    # Define the list of metrics to plot
+    # Define the list of metrics and labels to plot.
     metrics = [:mean_indegree, :mean_outdegree, :mean_total_degree, :mean_betweenness, :mean_closeness, :mean_clustering]
     labels  = ["Mean Indegree", "Mean Outdegree", "Mean Total Degree", "Mean Betweenness", "Mean Closeness", "Mean Clustering"]
 
-    # Assign colors based on species type
-    colors = [joined_df.species_name[i] in herbivore_names ? :blue : 
-              (joined_df.species_name[i] in predator_names ? :red : :gray) 
-              for i in 1:nrow(joined_df)]
+    # 3) Assign colors based on species type or trophic level.
+    if by_name_or_by_TL
+        colors = [joined_df.species_name[i] in herbivore_names ? :blue :
+                  (joined_df.species_name[i] in predator_names ? :red : :gray)
+                  for i in 1:nrow(joined_df)]
+    else
+        # Use TrophInd: assume it has columns :Species and :TL.
+        # For each species in the sorted list, get its trophic level.
+        troph_levels = [TrophInd[TrophInd.Species .== species[i], :TL][1] for i in 1:length(species)]
+        tl_min = minimum(troph_levels)
+        tl_max = maximum(troph_levels)
+        norm_tl = [(tl - tl_min) / (tl_max - tl_min) for tl in troph_levels]
+        # Get a continuous colormap, e.g., viridis.
+        colormap = cgrad(palette)
+        # Instead of calling colormap(x), we index into it:
+        colors = [colormap[x] for x in norm_tl]
+    end
 
-    # Create a figure with multiple subplots (2 rows × 3 columns)
+    # Create a figure with subplots (e.g., 2 rows × 3 columns).
     fig = Figure(resolution = (1200, 800))
     n = length(metrics)
-
     for (i, metric) in enumerate(metrics)
         row = div(i-1, 3) + 1
         col = mod(i-1, 3) + 1
         ax = Axis(fig[row, col],
             title = avg_in_y ? labels[i] * " vs Average Effect" : "Average Effect vs " * labels[i],
             xlabel = avg_in_y ? labels[i] : "Average Effect", 
-            ylabel = avg_in_y ? "Average Effect" : labels[i],
+            ylabel = avg_in_y ? "Average Effect" : labels[i]
         )
-        
-        scatter!(
-            ax,
+        scatter!(ax,
             avg_in_y ? joined_df[!, metric] : joined_df[!, :average_effect],
             avg_in_y ? joined_df[!, :average_effect] : joined_df[!, metric],
             markersize = 8,
             color = colors
         )
     end
-
     display(fig)
+    return fig
 end
 
 ####### COMPARE THE AVERAGE EFFECT WHEN EVEN PI AND NOT EVEN PI #######

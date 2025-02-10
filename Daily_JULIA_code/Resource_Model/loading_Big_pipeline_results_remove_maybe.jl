@@ -1,5 +1,6 @@
 Big_P_results = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/Big_pipeline_results_drago_cheato.csv", DataFrame)
 Big_P_results = Big_P_results[.!ismissing.(Big_P_results.cell_id), :]
+Big_P_results = Big_P_results[Big_P_results.cell_id .!= "tia cetti", :]
 unique_cells = string.(unique(Big_P_results.cell_id))
 
 #### We needed to loaded this way cause there was column problems but it works fine
