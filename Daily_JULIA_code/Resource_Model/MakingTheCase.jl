@@ -57,7 +57,7 @@ plot_species_effects(
     log = false,
     standardise_by_H0 = false,
     resolution = (1100, 600),
-    by_name_or_by_TL = false,  # if true, assign colors by name; if false, use continuous TL from TrophInd
+    by_name_or_by_TL = true,  # if true, assign colors by name; if false, use continuous TL from TrophInd
     palette = custom_palette
 )
 
@@ -78,6 +78,15 @@ plot_average_effect_vs_metrics(
     palette = custom_palette
 )
 
+# --------------------------
+# 4.1) PLOTING SPECIES'S EFFECT VS THEIR METRICS (CELL-SPECIFIC)
+# --------------------------
+# The plot_species_effect_vs_cell_metrics function comes from SpeciesEffectOnEcosystemFunctioning.jl
+for i in 1:20
+plot_species_effect_vs_cell_metrics(
+    i
+)
+end
 # map_plot(npp_DA; palette = custom_palette)
 # --------------------------
 # 5) ORIGINAL SENSITIVITY FROM GlobalMetricsRelationship.jl
@@ -219,3 +228,8 @@ pca_explain_over_under(
     df_cells,
     vars = [:raw_sensitivity, :CVI, :NRI, :CSM, :NPP, :richness, :over_under]
 )
+
+
+length(range(0.1, 0.9, step = 0.05))*
+length(range(0.0, 0.5, step = 0.001))*
+length(range(0.0, 1.0, step = 0.05))

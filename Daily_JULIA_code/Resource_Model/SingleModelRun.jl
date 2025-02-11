@@ -265,3 +265,4 @@ function single_run(cell, mu_val, mu_pred_val, eps_val, sym_competition; sp_remo
     @info "The survival rate is $(round(survival_rate, digits=4))"
     return AAAA
 end
+# single_run(1, 0.9, 0.16, 1.0, true; sp_removed_name=nothing, artificial_pi=true, NPP=nothing)

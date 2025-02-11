@@ -130,6 +130,66 @@ function plot_average_effect_vs_metrics(
     return fig
 end
 
+######## PLOT SPECIES EFFECT VS THEIR METRIC VALUES IN EACH CELL ########
+function plot_species_effect_vs_cell_metrics(species_identifier::Union{String, Int})
+    # Prepare empty vectors for each metric and for the delta_total_biomass.
+    indegree_vals    = Float64[]
+    outdegree_vals   = Float64[]
+    total_degree_vals = Float64[]
+    betweenness_vals = Float64[]
+    closeness_vals   = Float64[]
+    clustering_vals  = Float64[]
+    delta_vals       = Float64[]
+    
+    if species_identifier isa Int
+        species_identifier = birmmals_names[species_identifier]
+    elseif species_identifier isa String
+    else
+        error("species_identifier must be a String or an Int.")
+    end
+    # Loop over each DataFrame (each cell) in new_all_results_list.
+    for dd in new_all_results_list
+        
+        # Determine indices where this species is recorded.        
+        idxs = findall(x -> x == species_identifier, dd.sp_removed)
+        
+        # For each matching row, extract the values.
+        for k in idxs
+            push!(delta_vals, dd[k, :delta_total_biomass])
+            push!(indegree_vals, dd[k, :indegree])
+            push!(outdegree_vals, dd[k, :outdegree])
+            push!(total_degree_vals, dd[k, :total_degree])
+            push!(betweenness_vals, dd[k, :betweenness])
+            push!(closeness_vals, dd[k, :closeness])
+            push!(clustering_vals, dd[k, :clustering])
+        end
+    end
+
+    # Prepare a vector of metric names and a corresponding vector of x-data.
+    metrics = ["Indegree", "Outdegree", "Total Degree", "Betweenness", "Closeness", "Clustering"]
+    data_x = [indegree_vals, outdegree_vals, total_degree_vals, betweenness_vals, closeness_vals, clustering_vals]
+
+    # Create a figure with 2 rows × 3 columns.
+    n_metrics = length(metrics)
+    ncols = 3
+    nrows = ceil(Int, n_metrics / ncols)
+    fig = Figure(resolution = (1200, 800))
+
+    for i in 1:n_metrics
+        row = div(i-1, ncols) + 1
+        col = mod(i-1, ncols) + 1
+        ax = Axis(fig[row, col],
+            title = "$(metrics[i]) vs Δ Total Biomass",
+            xlabel = metrics[i],
+            ylabel = "Δ Total Biomass"
+        )
+        scatter!(ax, data_x[i], delta_vals, markersize = 8, color = species_identifier in herbivore_names ? :blue : :red)
+    end
+
+    display(fig)
+    return fig
+end
+
 ####### COMPARE THE AVERAGE EFFECT WHEN EVEN PI AND NOT EVEN PI #######
 begin
     # Assume SEEF returns a DataFrame with columns:

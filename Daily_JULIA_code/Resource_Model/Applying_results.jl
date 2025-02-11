@@ -490,7 +490,7 @@ for i in 1:length(all_results_list_even_pi)
     # Filter out the full community baseline row (if sp_removed == "none")
     removal_df = filter(row -> row.sp_removed != ["none"], results_df)
 
-     # Perform an inner join on the species name
+    # Perform an inner join on the species name
     merged_df = innerjoin(removal_df, species_metrics, on = [:sp_removed => :species_name])
 
     # For the full community baseline (sp_removed == "none"), add a row with NaN for the network metrics
@@ -508,4 +508,4 @@ for i in 1:length(all_results_list_even_pi)
     # Add the result for this cell to the list
     push!(new_all_results_list, merged_df)
 end
-A_all_results_list = new_all_results_list[30]
+A_all_results_list = new_all_results_list[31]
