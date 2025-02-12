@@ -1,0 +1,53 @@
+val epsilon = Val[Double]
+val mu = Val[Double]
+val mu_predation = Val[Double]
+val survival_rate = Val[Double]
+val herb_pred_ratio = Val[Double]
+
+// Seed declaration for random number generation
+// val myseed = Val[Int]
+
+val model = JuliaTask(
+  script = (workDirectory / "HOfIS_for_OM.jl"),
+  libraries = Seq("CSV", "DataFrames", "Distributions", "NamedArrays", "StaticArrays", "Serialization", "Rasters",
+  "DimensionalData", "OrderedCollections", "StatsBase", "ArchGDAL",
+  "Random", "Logging", "DiffEqCallbacks", "DifferentialEquations", "LinearAlgebra")
+) set(
+  inputs += epsilon.mapped,
+  inputs += mu.mapped,
+  inputs += mu_predation.mapped,
+  outputs += survival_rate mapped "survival_rate",
+  outputs += herb_pred_ratio mapped "herb_pred_ratio",
+  resources += (workDirectory / "DFs/"),
+  resources += (workDirectory / "Objects/"),
+  resources += (workDirectory / "Rasters/"),
+  resources += (workDirectory / "Scripts/")
+)
+
+val drago =
+  SLURMEnvironment(
+    "nmerino",
+    "drago.csic.es",
+    partition = "species",
+    memory = 22 gigabytes,
+    time = 2 hour,
+    workDirectory = "lustre/home/mncn/nmerino/Contenedor/simBio"
+  )
+  
+val env = LocalEnvironment(7)
+
+val ose = OSEEvolution(
+  evaluation = model,
+  parallelism = 7,
+  termination = 7,
+  origin = Seq(
+    mu  in (0.1 to 0.9 by 0.1),
+    mu_predation in (0.0 to 0.2 by 0.01),
+    epsilon in (0.0 to 1.0 by 0.1)  
+  ),
+  objective = Seq(
+    survival_rate under -0.99
+    )
+) hook (workDirectory / "results_ose.omr", frequency = 1)
+
+ose on env
