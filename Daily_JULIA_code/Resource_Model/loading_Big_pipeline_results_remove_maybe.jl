@@ -11,10 +11,19 @@ Big_P_even_pi = CSV.read(IOBuffer(join(data, "\n")), DataFrame, header=true)
 Big_P_even_pi = Big_P_even_pi[.!ismissing.(Big_P_even_pi.cell_id), :][:, 1:24]
 unique_cells_pi = string.(unique(Big_P_even_pi.cell_id))
 
+#### We needed to loaded this way cause there was column problems but it works fine
+lines = readlines("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/10-2/Big_pipeline_results_(special)_not_even_pi.csv")
+data = [join(split(line, ",")[1:24], ",") for line in lines if length(split(line, ",")) == 24]
+# Now parse from an IOBuffer.
+SPECIAL_Big_P_not_even_pi = CSV.read(IOBuffer(join(data, "\n")), DataFrame, header=true)
+SPECIAL_Big_P_not_even_pi = SPECIAL_Big_P_not_even_pi[.!ismissing.(SPECIAL_Big_P_not_even_pi.cell_id), :][:, 1:24]
+unique_cells_pi = string.(unique(SPECIAL_Big_P_not_even_pi.cell_id))
+
 begin
     # Initialize an empty DataFrame with the same structure as Big_P_results
     Big_P_results_maximised = similar(Big_P_results, 0)
     Big_P_even_pi_maximised = similar(Big_P_even_pi, 0)
+    SPECIAL_Big_P_not_even_pi_maximised = similar(SPECIAL_Big_P_not_even_pi, 0)
 
     for cell in unique(Big_P_results.cell_id)
         Big_P_results_cell = Big_P_results[Big_P_results.cell_id .== cell, :]
@@ -28,6 +37,12 @@ begin
         push!(Big_P_even_pi_maximised, Big_P_even_pi_cell[ind, :])  # Append the selected row
     end
 
+    for cell in unique(SPECIAL_Big_P_not_even_pi.cell_id)
+        SPECIAL_Big_P_not_even_pi_cell = SPECIAL_Big_P_not_even_pi[SPECIAL_Big_P_not_even_pi.cell_id .== cell, :]
+        ind = argmax(SPECIAL_Big_P_not_even_pi_cell.survival_rate)  # Get index of max survival_rate
+        push!(SPECIAL_Big_P_not_even_pi_maximised, SPECIAL_Big_P_not_even_pi_cell[ind, :])  # Append the selected row
+    end
+
     sr = DataFrame(survival_rate = Big_P_results_maximised.survival_rate)
     initial_part = Big_P_results_maximised[:, 1:3]
     final_part = hcat(Big_P_results_maximised[:, 4:14], Big_P_results_maximised[:, 16:end])
@@ -38,6 +53,11 @@ begin
     final_part = hcat(Big_P_even_pi_maximised[:, 4:14], Big_P_even_pi_maximised[:, 16:end])
     Big_P_even_pi_maximised = hcat(initial_part, sr, final_part)
 
+    sr = DataFrame(survival_rate = SPECIAL_Big_P_not_even_pi_maximised.survival_rate)
+    initial_part = SPECIAL_Big_P_not_even_pi_maximised[:, 1:3]
+    final_part = hcat(SPECIAL_Big_P_not_even_pi_maximised[:, 4:14], SPECIAL_Big_P_not_even_pi_maximised[:, 16:end])
+    SPECIAL_Big_P_not_even_pi_maximised = hcat(initial_part, sr, final_part)
+
     sr = DataFrame(survival_rate = Big_P_results.survival_rate)
     initial_part = Big_P_results[:, 1:3]
     final_part = hcat(Big_P_results[:, 4:14], Big_P_results[:, 16:end])
@@ -47,6 +67,11 @@ begin
     initial_part = Big_P_even_pi[:, 1:3]
     final_part = hcat(Big_P_even_pi[:, 4:14], Big_P_even_pi[:, 16:end])
     Big_P_even_pi = hcat(initial_part, sr, final_part)
+
+    sr = DataFrame(survival_rate = SPECIAL_Big_P_not_even_pi.survival_rate)
+    initial_part = SPECIAL_Big_P_not_even_pi[:, 1:3]
+    final_part = hcat(SPECIAL_Big_P_not_even_pi[:, 4:14], SPECIAL_Big_P_not_even_pi[:, 16:end])
+    SPECIAL_Big_P_not_even_pi = hcat(initial_part, sr, final_part)
 end
 A_fixed = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/Big_pipeline_results_drago_fixed.csv", DataFrame)
 
