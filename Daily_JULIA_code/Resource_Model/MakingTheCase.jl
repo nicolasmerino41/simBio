@@ -7,7 +7,7 @@ include("CSM.jl")
 include("CommunityNPPsaturation.jl")
 include("GlobalMetricsRelationship.jl")
 
-df_to_work_with = all_results_list_even_pi
+df_to_work_with = all_results_list
 # --------------------------
 # 1) SPECIES_COUNT_DF
 # --------------------------
@@ -45,7 +45,7 @@ end
 see_not_even = SEEF(all_results_list)
 see_even     = SEEF(all_results_list_even_pi)
 
-see_to_plot  = see_even
+see_to_plot  = see_not_even
 for i in 1:20
     println(sort(see_to_plot, :average_effect, rev=true).species_name[i])
 end
@@ -92,7 +92,7 @@ end
 # 5) ORIGINAL SENSITIVITY FROM GlobalMetricsRelationship.jl
 # --------------------------
 cell_sensitivity_df = measure_cell_sensitivity(
-    all_results_list_even_pi;
+    all_results_list;
     capped = true, cap_val = 5.0
 )
 
@@ -126,8 +126,9 @@ grid_CVI_even_pi = map_cell_metric(
 grid_CVI_not_even_pi = map_cell_metric(
     new_cell_stability_df_not_even_pi, :CVI; 
     title = "Cell Vulnerability Index (CVI) with not even pi",
-    capped = true, cap_val = 1.18
+    capped = true, cap_val = 1.02
 )
+maximum(filter(!isnan, grid_CVI_not_even_pi))
 grid_NRI = map_cell_metric(
     new_cell_stability_df_even_pi, :NRI; 
     title = "Network Robustness Index (NRI)"
@@ -148,14 +149,14 @@ compute_and_map_NRI(;
 # 10) Scatter plot correlating CVI and NRI across cells
 # ----------------------------
 scatter_CVI_NRI(
-    new_cell_stability_df_even_pi;
+    new_cell_stability_df_not_even_pi;
     info = false
 )
 
 # ----------------------------
 # 11) COMPUTE CSM AND PLOT IT (From CSM.jl)
 # ----------------------------
-csm_df = compute_CSM(all_results_list_even_pi)
+csm_df = compute_CSM(all_results_list)
 csm_grid = map_CSM(
     csm_df; 
     plot = true, palette = custom_palette,
@@ -168,13 +169,14 @@ csm_grid = map_CSM(
 npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
     Big_P_results_maximised; 
     scatter = true,
+    colour_scatter_by_richness_or_H0 = false,
     map = true,
     palette = custom_palette,
-    resolution_scatter = (600,400),
+     resolution_scatter = (600,400),
     resolution_map = (1000,400),
     scatter_title = "NPP vs. Total Biomass",
     map_title = "Residuals (Observed - Predicted Biomass)",
-    NPP_aside = true,
+    NPP_aside = false,
     richness_aside = true,
     evaluate_richness = true
 )
@@ -184,7 +186,7 @@ npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
 # ----------------------------
 DA_richness_birmmals = deserialize("Objects/DA_richness_birmmals.jls")
 npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
-    Big_P_even_pi_maximised;
+    Big_P_results_maximised;
     scatter = true,
     map = true,
     palette = custom_palette,
@@ -229,7 +231,16 @@ pca_explain_over_under(
     vars = [:raw_sensitivity, :CVI, :NRI, :CSM, :NPP, :richness, :over_under]
 )
 
-
-length(range(0.1, 0.9, step = 0.05))*
-length(range(0.0, 0.5, step = 0.001))*
-length(range(0.0, 1.0, step = 0.05))
+# ----------------------------
+# 17) OVER-UNDER VS LUIS' DATA
+# ----------------------------
+begin
+    fig = Figure(resolution = (1000, 600))
+    ax = Axis(fig[1, 1])
+    heatmap!(ax, npp_saturation_grid; interpolate = false, colormap = custom_palette)
+    ax2 = Axis(fig[1, 2])
+    MK.heatmap!(ax2, Matrix(DA_birmmals_with_pi_corrected); colormap = custom_palette)
+    ax.yreversed = true
+    ax2.yreversed = true
+    display(fig)
+end
