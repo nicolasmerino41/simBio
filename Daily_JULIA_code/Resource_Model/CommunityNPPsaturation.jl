@@ -2,6 +2,7 @@ using GLM
 
 function CommunityNPPsaturation(df;
         scatter::Bool = true,
+        colour_scatter_by_richness_or_H0::Bool = true, # true = richness, false = H0
         map::Bool = true,
         palette = custom_palette,
         resolution_scatter = (600,600),
@@ -10,7 +11,8 @@ function CommunityNPPsaturation(df;
         map_title = "Residuals (Observed - Predicted Biomass)",
         NPP_aside::Bool = true,
         richness_aside::Bool = false,
-        evaluate_richness::Bool = false
+        evaluate_richness::Bool = false,
+        quick_fix = true #TODO stabilise this
 )
     
     # --- Fit a linear regression model ---
@@ -20,6 +22,7 @@ function CommunityNPPsaturation(df;
     # Add predicted biomass and residuals to the DataFrame.
     df[!, :predicted_biomass] = predicted_biomass
     df[!, :residual] = df.biomass_at_the_end .- predicted_biomass
+    df[!, :b_value] = [DA_birmmals_with_pi_corrected[idx[Int(cell)]].b for cell in df.cell_id]
 
     if evaluate_richness
         # Calculate richness for each cell
@@ -40,18 +43,28 @@ function CommunityNPPsaturation(df;
     if scatter
         fig_scatter = Figure(resolution = resolution_scatter)
         ax_scatter = Axis(fig_scatter[1,1],
-            title = scatter_title,
+            title = scatter_title * " (Coloured by " * (colour_scatter_by_richness_or_H0 ? "Richness" : "H0") * ")",
             xlabel = "NPP",
             ylabel = "Total Biomass"
         )
         
-        # Normalize richness values for color mapping
-        min_richness = minimum(df.richness)
-        max_richness = maximum(df.richness)
-        norm_richness = (df.richness .- min_richness) ./ (max_richness - min_richness)
+        if colour_scatter_by_richness_or_H0 && richness_aside
+            # Normalize richness values for color mapping
+            min_richness = minimum(df.richness)
+            max_richness = maximum(df.richness)
+            norm_richness = (df.richness .- min_richness) ./ (max_richness - min_richness)
 
-        # Choose a colormap (e.g., :viridis, :plasma, :inferno)
-        colors = cgrad(:viridis)[norm_richness]
+            # Choose a colormap (e.g., :viridis, :plasma, :inferno)
+            colors = cgrad(:viridis)[norm_richness]
+        elseif !colour_scatter_by_richness_or_H0 && richness_aside
+            # Normalize H0 values for color mapping
+            min_H0 = minimum(df.b_value)
+            max_H0 = maximum(df.b_value)
+            norm_H0 = (df.b_value .- min_H0) ./ (max_H0 - min_H0)
+
+            # Choose a colormap (e.g., :viridis, :plasma, :inferno)
+            colors = cgrad(:viridis)[norm_H0]
+        end
 
         # Scatter plot with color mapped to richness
         scatter!(
@@ -64,12 +77,11 @@ function CommunityNPPsaturation(df;
         lines!(ax_scatter, df.NPP[sorted_idx], predicted_biomass[sorted_idx],
                color = :red, linewidth = 2)
         
-        # Plot the regression line (sort by NPP for a smooth line).
-        sorted_idx = sortperm(df.NPP)
-        lines!(ax_scatter, df.NPP[sorted_idx], predicted_biomass[sorted_idx],
-               color = :red, linewidth = 2)
-
-        Colorbar(fig_scatter[1, 2], limits = (min_richness, max_richness), colormap = :viridis)
+        if colour_scatter_by_richness_or_H0 && richness_aside
+            Colorbar(fig_scatter[1, 2], limits = (min_richness, max_richness), colormap = :viridis)
+        elseif !colour_scatter_by_richness_or_H0 && richness_aside
+            Colorbar(fig_scatter[1, 2], limits = (minimum(df.b_value), maximum(df.b_value)), colormap = :viridis)
+        end
         
         # Compute and display the Pearson correlation coefficient.
         r = cor(df.NPP, df.biomass_at_the_end)
@@ -94,7 +106,13 @@ function CommunityNPPsaturation(df;
         for i in 1:nrow(df)
             coord = idx[df[i, :cell_id]]  # Assumes idx[cell_id] returns [local_i, local_j]
             local_i, local_j = coord[1], coord[2]
-            grid[local_i, local_j] = df[i, :residual]
+            if quick_fix && df[i, :residual] < 500.0
+                grid[local_i, local_j] = df[i, :residual]
+            elseif quick_fix && df[i, :residual] >= 500.0
+                grid[local_i, local_j] = 480.0
+            else
+                grid[local_i, local_j] = df[i, :residual]
+            end
         end
 
         # Plot the residual grid as a heatmap.
