@@ -327,7 +327,7 @@ function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:My
     return Makie.convert_arguments(t, scalars)
 end
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyBirmmals, 2})
-    scalars = map(mystruct -> mystruct.b, A).*lambda_DA.multiplicative
+    scalars = map(mystruct -> mystruct.b, A)
     return Makie.convert_arguments(t, scalars)
 end
 function Makie.convert_arguments(t::Type{<:Makie.Heatmap}, A::AbstractArray{<:MyHerps, 2})

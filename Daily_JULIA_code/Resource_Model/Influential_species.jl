@@ -1,7 +1,7 @@
 #### THIS CODE IS A COPY FROM A CHUNK OF SEARCHING_KEYSTONE_SPECIES.JL
 #### IT CAN BE USED AFTER RUNNIN Applying_results.jl and IT WILL GIVE 
 #### INFORMATION ON THE MOST INFLUENTIAL SPECIES
-df_to_work_with = all_results_list_even_pi
+df_to_work_with = all_results_list
 # SEEMS ALL_RESULTS_LIST IS CORRECT
 comparison_df = DataFrame(big_p_sr = [], cell_from_big_p = [], cell_from_all = [], all_results_list_sr = [], diff = [])
 for bp_row in eachrow(Big_P_results_maximised)

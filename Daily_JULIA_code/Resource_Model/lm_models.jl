@@ -11,7 +11,7 @@ lm_model = lm(@formula(average_effect ~ TL), df_join)
 println("Linear Model Summary:")
 println(coeftable(lm_model))
 
-using DataFrames, GLM, Statistics
+using Statistics
 
 # Join the two DataFrames on species name.
 # Here, we assume that see_even has a column :species_name and :average_effect,

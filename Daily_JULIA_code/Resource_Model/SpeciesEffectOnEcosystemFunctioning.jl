@@ -3,10 +3,20 @@
 
 # --------------------------
 # The SEEF function is defined in Functions/SEEF_function.jl
+for i in 1:length(all_results_list)
+    if length(names(all_results_list[i])) > 2
+       
+    else
+        println("DataFrame $i does not have column :spo_removed")
+    end
+end
+for i in 1:length(all_results_list)
+    names(all_results_list[i])[2]
+end
 see_not_even = SEEF(all_results_list)
 see_even     = SEEF(all_results_list_even_pi)
 
-see_to_plot  = see_even
+see_to_plot  = see_not_even
 ########## PLOTTING THE DATA ############
 function plot_species_effects(
     see_to_plot;
