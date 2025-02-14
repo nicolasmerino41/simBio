@@ -11,7 +11,7 @@ function SEEF(df_to_work_with)
 
     # Get all unique species names across all cells in df_to_work_with.
     # Here, each element of df_to_work_with is expected to have a field/column named "sp_removed".
-    all_species = unique(vcat([dd.sp_removed for dd in df_to_work_with]...))
+    all_species = unique(vcat([dd.sp_removed for dd in df_to_work_with if hasproperty(dd, :sp_removed)]...))
     filter!(x -> x != "none", all_species)
 
     # Loop over each species.
