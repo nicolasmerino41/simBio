@@ -465,7 +465,7 @@ function run_keystone_removal(Big_P_results_maximised::DataFrame; jls_filename="
     return all_results_list
 end
 
-@time SPECIAL_all_results_list = run_keystone_removal(SPECIAL_Big_P_not_even_pi_maximised; jls_filename="Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/10-2/SPECIAL_all_results_list_not_even_pi.jls")
+@time SPECIAL_all_results_list = run_keystone_removal(Big_P_results_maximised; jls_filename="Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/10-2/SPECIAL_all_results_list_not_even_pi_new.jls")
 
 all_results_list = deserialize(
     "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/29-1/all_results_list.jls"
@@ -479,7 +479,6 @@ all_results_list = deserialize(
     "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/10-2/SPECIAL_all_results_list_not_even_pi.jls"
 ) # For now we'll call this all_results_list so it's easy to re-do the exploration
 all_results_list = filter(df -> hasproperty(df, :sp_removed), all_results_list)
-
 
 A_all_results_list = all_results_list_even_pi[10]
 ###### ADDING METRICS TO ALL_RESULTS_LIST ######

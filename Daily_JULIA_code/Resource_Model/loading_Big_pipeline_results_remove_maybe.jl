@@ -23,7 +23,7 @@ begin
     # Initialize an empty DataFrame with the same structure as Big_P_results
     Big_P_results_maximised = similar(Big_P_results, 0)
     Big_P_even_pi_maximised = similar(Big_P_even_pi, 0)
-    SPECIAL_Big_P_not_even_pi_maximised = similar(SPECIAL_Big_P_not_even_pi, 0)
+    # SPECIAL_Big_P_not_even_pi_maximised = similar(SPECIAL_Big_P_not_even_pi, 0)
 
     for cell in unique(Big_P_results.cell_id)
         Big_P_results_cell = Big_P_results[Big_P_results.cell_id .== cell, :]
