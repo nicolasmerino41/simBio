@@ -11,8 +11,6 @@ gpu_array = CuArray(cpu_array)  # Move to GPU
 
 result = Array(gpu_array)  # Move back to CPU
 
-using CUDA
-
 function gpu_add_kernel(a, b, c)
     i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
     if i <= length(a)
