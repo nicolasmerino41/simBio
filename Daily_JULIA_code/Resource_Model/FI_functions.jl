@@ -385,7 +385,7 @@ function setup_community_from_cell(
 )
 
     # 1) Grab the cell => find which species are present
-    cell = DA_birmmals_with_pi[i, j]
+    cell = DA_birmmals_with_pi_corrected[i, j]
     if isnothing(species_names)
         species_names = extract_species_names_from_a_cell(cell)  # list of species with .a[k] != 0
     end
