@@ -7,9 +7,9 @@ const EXTINCTION_THRESHOLD = 1e-6
 const T_ext               = 250.0
 const MAX_ITERS           = 2000
 const SURVIVAL_THRESHOLD  = 0.0
-const art_pi              = false
+global const art_pi              = true
 
-global cell = 2
+global cell = 4
 global local_i, local_j = idx[cell][1], idx[cell][2]
 
 # Gather cell data
@@ -32,13 +32,13 @@ global localH0_vector        = Vector{Float64}(H0_DA[local_i, local_j].a)
 # ===========================
 # 2️⃣ FITNESS FUNCTION
 # ===========================
-function fitness(params)
-    # Ensure parameters stay within bounds (in case of mutation errors)
+function fitness(params, local_i, local_j, sp_nm, localNPP, localH0_vector)
+    # Ensure parameters stay within bounds
     params = clamp.(params, [0.1, 0.0, 0.0], [0.9, 0.2, 1.0])
     mu, mu_predation, epsilon = params
 
     # Debug: Print current evaluation
-    # println("🔍 Evaluating: mu=$(mu), mu_predation=$(mu_predation), epsilon=$(epsilon)")
+    # println("🔍 Evaluating (cell $local_i, $local_j): mu=$(mu), mu_predation=$(mu_predation), epsilon=$(epsilon)")
 
     # Run the ecosystem model with these parameters
     results = attempt_setup_community(
@@ -60,7 +60,7 @@ function fitness(params)
         H_i0, m_i, p_vec, x_final, g_i,
         localHatH, G, M_modified, a_matrix, A, epsilon_vector, m_alpha
     ) = results
-
+    
     # Solve ODE
     H_init = H_i0
     P_init = H_init[1:R2] ./ 10.0
@@ -87,11 +87,6 @@ function fitness(params)
     total_species = S2 + R2
     survival_rate = total_surv / total_species  # Maximize this
 
-    # Debug: Print high survival rate cases
-    if survival_rate = 1.0
-        println("🎯 High SR found! SR = $(survival_rate)")
-    end
-
     return -survival_rate  # GA minimizes, so return negative SR
 end
 
@@ -99,7 +94,7 @@ end
 # 3️⃣ SPECIFY PARAMETER BOUNDS (BoxConstraints)
 # ===========================
 lower_bounds = [0.1, 0.0, 0.0]  # Lower bounds for mu, mu_predation, epsilon
-upper_bounds = [0.9, 0.2, 1.0]  # Upper bounds
+upper_bounds = [0.9, 0.5, 1.0]  # Upper bounds
 
 bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
 
@@ -108,7 +103,7 @@ bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
 # ===========================
 # Configure the Genetic Algorithm (GA)
 ga_algorithm = GA(
-    populationSize = 300,      # Large population size for better diversity
+    populationSize = 100,      # Large population size for better diversity
     selection = tournament(3), # Higher tournament size for better selection
     mutationRate = 0.2,        # 🔥 Drastically increase mutation rate
     crossoverRate = 0.5,       # Reduce crossover rate to favor mutations
@@ -138,9 +133,3 @@ best_survival_rate = -Evolutionary.minimum(result)  # Convert back to positive
 
 println("🎯 Best Parameters: mu=$(best_params[1]), mu_predation=$(best_params[2]), epsilon=$(best_params[3])")
 println("🔥 Best Survival Rate: $best_survival_rate")
-
-# Print top 5 best solutions GA found
-println("🔥 GA Best Solutions Found:")
-for (i, sol) in enumerate(result.history[1:min(5, length(result.history))])
-    println("Solution $i: params=", sol.minimizer, " → SR=", -sol.minimum)
-end
