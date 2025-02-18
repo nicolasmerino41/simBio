@@ -4,6 +4,7 @@ function attempt_setup_community(
     localNPP, localH0_vector, 
     species_names=nothing, artificial_pi=false
 )
+    # println("i = $i, j = $j", "mu_val = $mu_val, mu_pred_val = $mu_pred_val, eps_val = $eps_val, localNPP = $localNPP, localH0_vector = ", length(localH0_vector), "art_pi = $artificial_pi")
     try
         S2, R2,
         species_names, herb_list, pred_list,

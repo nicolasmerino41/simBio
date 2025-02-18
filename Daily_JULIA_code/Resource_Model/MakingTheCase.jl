@@ -176,8 +176,8 @@ npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
     resolution_map = (1000,400),
     scatter_title = "NPP vs. Total Biomass",
     map_title = "Residuals (Observed - Predicted Biomass)",
-    NPP_aside = false,
-    richness_aside = true,
+    NPP_aside = true,
+    richness_aside = false,
     evaluate_richness = true
 )
 

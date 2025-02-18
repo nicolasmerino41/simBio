@@ -19,6 +19,9 @@ Big_P_results = CSV.read(IOBuffer(join(data, "\n")), DataFrame, header=true)
 Big_P_results = Big_P_results[.!ismissing.(Big_P_results.cell_id), :][:, 1:24]
 unique_cells_pi = string.(unique(Big_P_results.cell_id))
 
+#### We needed to loaded this way cause there was column problems but it works fine
+ga_cell_results = CSV.read("C:/Users/MM-1/Downloads/ga_cell_results.csv", DataFrame, header=false)
+
 begin
     # Initialize an empty DataFrame with the same structure as Big_P_results
     Big_P_results_maximised = similar(Big_P_results, 0)
