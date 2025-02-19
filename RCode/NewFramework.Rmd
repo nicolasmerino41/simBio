@@ -1,0 +1,200 @@
+---
+title: "New Framework"
+author: "Jeff & Nico"
+date: "February 2025"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: true
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+We start from the rules of motion
+
+$$
+\frac{1}{H_i}\frac{dH_i}{dt} = g_i - m_i - d_i \Bigl( H_i + \sum_{j \neq i} \mu_{ij} H_j \Bigr)
+$$
+
+Here:
+
+- **$g_i$** is the intrinsic growth rate (directly related to NPP).
+
+- **$m_i$** is the natural mortality rate.
+
+- **$d_i$** and **$d_i\mu_{ij}$** represent the intraspecific and interspecific competition terms, respectively.
+
+### Factoring out the net growth rate
+
+We rewrite the equation by factoring out $(g_i - m_i)$:
+
+$$
+\frac{1}{H_i}\frac{dH_i}{dt} = (g_i - m_i) \Biggl[ 1 - \frac{d_i\Bigl( H_i + \sum_{j \neq i} \mu_{ij} H_j \Bigr)}{g_i - m_i} \Biggr]
+$$
+
+If we define the species-specific threshold density as
+
+$$
+H_i^0 = \frac{m_i}{d_i}
+$$
+
+we have
+
+$$
+d_i = \frac{m_i}{H_i^0}
+$$
+
+Substituting this into the bracket yields
+
+$$
+\frac{d_i\Bigl( H_i + \sum_{j \neq i} \mu_{ij} H_j \Bigr)}{g_i - m_i} 
+= \frac{m_i}{H_i^0 (g_i - m_i)} \Bigl( H_i + \sum_{j \neq i} \mu_{ij} H_j \Bigr)
+$$
+
+Now note that
+
+$$
+\frac{g_i - m_i}{m_i} = \frac{g_i}{m_i} - 1
+$$
+
+We define
+
+$$
+\mathcal{H}_i = H_i^0 \Bigl( \frac{g_i}{m_i} - 1 \Bigr)
+$$
+
+Thus, the fraction becomes
+
+$$
+\frac{H_i + \sum_{j \neq i} \mu_{ij} H_j}{\mathcal{H}_i}
+$$
+
+Hence, the herbivore-only dynamics can be written as
+
+$$
+\frac{1}{H_i}\frac{dH_i}{dt} = (g_i - m_i) \Biggl( 1 - \frac{H_i + \sum_{j \neq i} \mu_{ij} H_j}{\mathcal{H}_i} \Biggr)
+$$
+
+
+### Incorporating allometric scaling and NPP
+
+We assume that the intrinsic growth rate scales allometrically as
+
+$$
+g_i = M_i^{-\alpha} \; x_i
+$$
+
+where:
+
+- $M_i$ is a measure of body size,
+
+- $\alpha$ is an allometric exponent, and
+
+- $x_i$ is an adjustment factor.
+
+Under the equilibrium hypothesis, total production must equal NPP:
+
+$$
+\text{NPP} = \sum_i g_i\,H_i^{\text{obs}} = \sum_i x_i\,M_i^{-\alpha}\,H_i^{\text{obs}}
+$$
+
+A solution for $x_i$ is
+
+$$
+x_i = \frac{\text{NPP}\,M_i^{\alpha}\,H_i^{\text{obs}}}{\|M^{-\alpha}H^{\text{obs}}\|^2}
+$$
+
+which implies
+
+$$
+g_i = NPP\,\zeta_i^{\text{obs}}
+$$
+
+with $\zeta_i^{\text{obs}}$ capturing the normalized allometric effect.
+
+Substituting this into our herbivore dynamics gives (for the herbivore-only case):
+
+$$
+\frac{1}{H_i}\frac{dH_i}{dt} = NPP\,\zeta_i^{\text{obs}}\, \frac{\beta_i}{1+\beta_i} \Biggl( 1 - \frac{H_i + \sum_{j \neq i} \mu_{ij} H_j}{H_i^{\text{obs}}(\mu)} \Biggr)
+$$
+
+Here, the factor $\frac{\beta_i}{1+\beta_i}$ (with $\beta_i = \frac{g_i}{m_i} - 1$) normalizes the net niche advantage.
+
+
+
+### Extending the model for predators
+
+To incorporate predators, we adjust two elements:
+
+**1. Modify the interaction coefficient**
+
+We define an effective competition coefficient that incorporates predator effects:
+
+$$
+M_{ij} = \mu_{ij} + \frac{C_{ij}\,H_i^{\text{obs}}(\mu)}{m_i}
+$$
+
+where
+
+$$
+C_{ij} = \sum_{\alpha,\beta} \epsilon\,a_{i\alpha}\,A^{-1}_{\alpha\beta}\,a_{j\beta}
+$$
+
+Here, $a_{i\alpha}$ is the feeding rate of predator $\alpha$ on herbivore $i$, $\epsilon$ is the predator assimilation efficiency, and $A$ is the predator interaction matrix.
+
+**2. Adjust the growth term with predator feedback**
+
+Predators also affect herbivore growth via a feedback term:
+
+$$
+G_i = \sum_{\beta} a_{i\beta}\,A^{-1}_{\alpha\beta}\,m_\beta
+$$
+
+Thus, the effective growth rate becomes $g_i + G_i$.
+
+With these modifications, the herbivore dynamics in the presence of predators become:
+
+$$
+\frac{1}{H_i}\frac{dH_i}{dt} = \Bigl[ (g_i + G_i) \; \frac{\beta_i}{1+\beta_i} \; \Bigl( 1 - \frac{H_i + \sum_{j \neq i} M_{ij} H_j}{H_i^{\text{obs}}(\mu)} \Bigr) \Bigr]
+$$
+
+### Predator dynamics
+
+The dynamics of the predator populations are modeled by our prior Lotka–Volterra formulation:
+
+$$
+\frac{1}{P_\alpha}\frac{dP_\alpha}{dt} = \epsilon \sum_j a_{j\alpha} H_j - m_\alpha + \sum_{\beta} A_{\alpha\beta} P_\beta
+$$
+
+This equation implies:
+
+- $\epsilon \sum_j a_{j\alpha} H_j$ represents the biomass intake from herbivores,  
+
+  
+- $m_\alpha$ is the predator mortality rate  
+
+  
+- $\sum_{\beta} A_{\alpha\beta} P_\beta$ captures interactions among predators.
+
+### Implications
+
+Both the herbivore-only and predator-inclusive formulations ensure that NPP drives the intrinsic growth rate via $g_i = NPP\,\zeta_i^{\text{obs}}$. However, in the presence of predators, the additional term $G_i$ further modifies the growth rate.
+
+This formulation directly incorporates predator effects by adjusting both the effective growth rate of herbivores and their competitive interactions, while maintaining the direct link between NPP, observed abundances, and species-specific responses.
+
