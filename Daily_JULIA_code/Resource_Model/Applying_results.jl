@@ -476,7 +476,7 @@ all_results_list_even_pi = deserialize(
 )
 
 all_results_list = deserialize(
-    "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/10-2/SPECIAL_all_results_list_not_even_pi.jls"
+    "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/10-2/SPECIAL_all_results_list_not_even_pi_new.jls"
 ) # For now we'll call this all_results_list so it's easy to re-do the exploration
 all_results_list = filter(df -> hasproperty(df, :sp_removed), all_results_list)
 
