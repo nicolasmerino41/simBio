@@ -64,7 +64,7 @@ end
 
 # map_plot(DA_birmmals_with_pi; type = "heatmap", palette = :thermal)
 
-DA_birmmals_with_pi[idx[20]].a
+DA_birmmals_with_pi[idx[1]].a
 
 #### INVESTIGATING BIG BIOMASS DIFFERENCES ####
 birmmals_biomass_only_herbivores = 
