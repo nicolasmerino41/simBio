@@ -1,33 +1,23 @@
 using Evolutionary, DifferentialEquations, Random, Logging
 
+# Import SpinLock for thread-safety
+using Base.Threads: SpinLock
+using Base.Threads: @threads
 # ===========================
-# 1️⃣ GLOBAL PARAMETERS
+# 2️⃣ PARSE ARGUMENTS & INIT
 # ===========================
+start_val = parse(Int, ARGS[1])  # Starting cell index (for HPC batch processing)
+end_val   = parse(Int, ARGS[2])  # Ending cell index
+start_val = 1
+end_val = 8
+
 const EXTINCTION_THRESHOLD = 1e-6
 const T_ext               = 250.0
-const MAX_ITERS           = 2000
-const SURVIVAL_THRESHOLD  = 0.0
-global const art_pi              = true
+const MAX_ITERS           = 2000      # Up to 2000 generations
+const SURVIVAL_THRESHOLD  = 0.0       # Only save configs with SR >= threshold
+const global art_pi = false
 
-global cell = 4
-global local_i, local_j = idx[cell][1], idx[cell][2]
-
-# Gather cell data
-sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
-global local_S, local_R      = identify_n_of_herbs_and_preds(sp_nm)
-global predator_has_prey     = check_predator_has_prey(sp_nm)
-
-if !predator_has_prey[1]
-    local_R -= predator_has_prey[2]
-    filter!(name -> !(name in predator_has_prey[3]), sp_nm)
-    @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
-    global species_names = sp_nm
-else
-    global species_names = sp_nm
-end
-
-global localNPP              = Float64(npp_DA_relative_to_1000[local_i, local_j]) 
-global localH0_vector        = Vector{Float64}(H0_DA[local_i, local_j].a)
+const file_lock = SpinLock()  # Ensures only one thread writes to CSV at a time
 
 # ===========================
 # 2️⃣ FITNESS FUNCTION
@@ -41,33 +31,42 @@ function fitness(params, local_i, local_j, sp_nm, localNPP, localH0_vector)
     # println("🔍 Evaluating (cell $local_i, $local_j): mu=$(mu), mu_predation=$(mu_predation), epsilon=$(epsilon)")
 
     # Run the ecosystem model with these parameters
-    results = attempt_setup_community(
+    # Attempt setup using the updated parametrisation
+    results = new_attempt_setup_community(
         local_i, local_j,
         mu, mu_predation, epsilon, true;
-        localNPP = localNPP,
+        localNPP       = localNPP,
         localH0_vector = localH0_vector,
-        species_names = sp_nm,
-        artificial_pi = art_pi
+        species_names  = sp_nm,
+        artificial_pi  = art_pi
     )
 
-    if results === nothing
+    if isnothing(results)
         return 0.0  # Harsh penalty for failure
     end
 
-    # Destructure results
-    (
-        S2, R2, species_names, herbivore_list, predator_list,
-        H_i0, m_i, p_vec, x_final, g_i,
-        localHatH, G, M_modified, a_matrix, A, epsilon_vector, m_alpha
-    ) = results
+    # Destructure the returned NamedTuple.
+    S2          = results.S
+    R2          = results.R
+    H_i0        = results.H_i0
+    m_i         = results.m_i
+    g_i         = results.g_i
+    x_final     = results.x_final   # scaling parameter (if needed)
+    beta        = results.beta      # niche parameters
+    G           = results.G
+    M_modified  = results.M_modified
+    a_matrix    = results.a_matrix
+    A           = results.A
+    epsilon = results.epsilon   # predator conversion vector
+    m_alpha     = results.m_alpha
     
     # Solve ODE
     H_init = H_i0
     P_init = H_init[1:R2] ./ 10.0
     u0     = vcat(H_init, P_init)
 
-    params = (S2, R2, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon_vector, m_alpha)
-    prob   = ODEProblem(ecosystem_dynamics!, u0, (0.0, 500.0), params)
+    params = (S2, R2, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha)
+    prob   = ODEProblem(new_dynamics!, u0, (0.0, 500.0), params)
 
     logger = SimpleLogger(stderr, Logging.Error)
     sol = with_logger(logger) do
@@ -91,45 +90,67 @@ function fitness(params, local_i, local_j, sp_nm, localNPP, localH0_vector)
 end
 
 # ===========================
-# 3️⃣ SPECIFY PARAMETER BOUNDS (BoxConstraints)
+# 4️⃣ GA CONFIGURATION
 # ===========================
-lower_bounds = [0.1, 0.0, 0.0]  # Lower bounds for mu, mu_predation, epsilon
-upper_bounds = [0.9, 0.5, 1.0]  # Upper bounds
-
+lower_bounds = [0.1, 0.0, 0.0]
+upper_bounds = [0.9, 0.5, 1.0]
 bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
 
-# ===========================
-# 4️⃣ CONFIGURE GENETIC ALGORITHM
-# ===========================
-# Configure the Genetic Algorithm (GA)
 ga_algorithm = GA(
-    populationSize = 100,      # Large population size for better diversity
-    selection = tournament(3), # Higher tournament size for better selection
-    mutationRate = 0.2,        # 🔥 Drastically increase mutation rate
-    crossoverRate = 0.5,       # Reduce crossover rate to favor mutations
-    ε = 0.1                    # Allow some randomness in selection
+    populationSize = 100,
+    selection = tournament(3),
+    mutationRate = 0.25,
+    crossoverRate = 0.6,
+    epsilon = 0.1
 )
 
-# ===========================
-# 5️⃣ RUN OPTIMIZATION
-# ===========================
 options = Evolutionary.Options(
-    iterations = 100,  # Number of generations
-    show_trace = true  # Display progress
+    iterations = 100,
+    show_trace = true  # Suppress verbose output for HPC efficiency
 )
 
-result = Evolutionary.optimize(
-    fitness,        # Fitness function
-    bounds,         # Box constraints (no need for manual initial params)
-    ga_algorithm,   # GA optimization settings
-    options         # Options for iterations and logging
-)
+@time Threads.@threads for cell in start_val:end_val
 
-# ===========================
-# 6️⃣ DISPLAY BEST SOLUTION
-# ===========================
-best_params = Evolutionary.minimizer(result)
-best_survival_rate = -Evolutionary.minimum(result)  # Convert back to positive
+    @info "Processing cell $cell..."
+    local_i, local_j = idx[cell][1], idx[cell][2]
 
-println("🎯 Best Parameters: mu=$(best_params[1]), mu_predation=$(best_params[2]), epsilon=$(best_params[3])")
-println("🔥 Best Survival Rate: $best_survival_rate")
+    # Gather cell data
+    sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
+    local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
+    predator_has_prey = check_predator_has_prey(sp_nm)
+    
+    if !predator_has_prey[1]
+        local_R -= predator_has_prey[2]
+        filter!(name -> !(name in predator_has_prey[3]), sp_nm)
+        @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
+    end
+
+    localNPP       = Float64(npp_DA_relative_to_1000[local_i, local_j])
+    localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
+
+    # Pass thread-local parameters via a closure
+    fitness_closure = params -> fitness(params, local_i, local_j, sp_nm, localNPP, localH0_vector)
+
+    # Run GA Optimization for Current Cell
+    result = Evolutionary.optimize(fitness_closure, bounds, ga_algorithm, options)
+
+    # Extract best results
+    best_params = Evolutionary.minimizer(result)
+    best_survival_rate = -Evolutionary.minimum(result)  # Convert back to positive
+
+    # Build CSV row
+    row = string(cell) * "," * string(best_survival_rate) * "," * string(best_survival_rate == 1.0) * "," *
+          string(best_params[1]) * "," * string(best_params[2]) * "," * string(best_params[3]) * "," *
+          string(local_S + local_R) * "," * string(local_i) * "," * string(local_j) * "," * string(localNPP) * "\n"
+
+    # Write row to CSV immediately
+    lock(file_lock) do
+        open("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/21-02/ga_results_NF.csv", "a") do file
+            write(file, row)
+        end
+    end
+
+    println("✅ Finished Cell $cell: Best SR = $best_survival_rate\n")
+end
+
+println("\n📂 Results saved to 'ga_cell_results.csv'! 🚀")
