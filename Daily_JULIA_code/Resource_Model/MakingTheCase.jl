@@ -172,7 +172,7 @@ npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
     colour_scatter_by_richness_or_H0 = false,
     map = true,
     palette = custom_palette,
-     resolution_scatter = (600,400),
+    resolution_scatter = (600,400),
     resolution_map = (1000,400),
     scatter_title = "NPP vs. Total Biomass",
     map_title = "Residuals (Observed - Predicted Biomass)",
@@ -188,6 +188,7 @@ DA_richness_birmmals = deserialize("Objects/DA_richness_birmmals.jls")
 npp_saturation_df, npp_saturation_grid = CommunityNPPsaturation(
     Big_P_results_maximised;
     scatter = true,
+    colour_scatter_by_richness_or_H0 = false, # true = richness, false = H0
     map = true,
     palette = custom_palette,
     resolution_scatter = (600,400),

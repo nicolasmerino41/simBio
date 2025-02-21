@@ -573,11 +573,13 @@ append!(AAAA, single_run_results)
 return AAAA, fig
 end
 
-# # old_DA_birmmals_with_pi_corrected = deepcopy(DA_birmmals_with_pi_corrected)
+# old_DA_birmmals_with_pi_corrected = deepcopy(DA_birmmals_with_pi_corrected)
 # DA_birmmals_with_pi_corrected[18,1] = MyBirmmals(SVector{205, Float64}(rand(205)))
 # DA_birmmals_with_pi_corrected = deepcopy(old_DA_birmmals_with_pi_corrected)
 
 # # Call the function with the specified arguments.
-# cucu, cucut = new_single_run_with_plot(1, 0.3, 0.03, 0.1, true; sp_removed_name=nothing, NPP=nothing, artificial_pi=false)
-
-# println(cucu)
+# cucu, cucut = new_single_run_with_plot(1000, 0.1, 0.008, 0.9, true; sp_removed_name=nothing, NPP=nothing, artificial_pi=false)
+# for mu in 0.1:0.1:1.0, mu_pred in 0.0:0.01:0.2, eps in 0.1:0.1:1.0
+#     cucu, cucut = new_single_run_with_plot(1, mu, mu_pred, eps, true; sp_removed_name=nothing, NPP=nothing, artificial_pi=false);
+#     println(cucu[1, :survival_rate])
+# end
