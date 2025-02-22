@@ -174,7 +174,7 @@ end
 
     # Write row to CSV immediately
     lock(file_lock) do
-        open("Results/new_GA/new_ga_cell_results.csv", "a") do file
+        open("Results/new_GA/new_ga_results.csv", "a") do file
             write(file, row)
         end
     end
