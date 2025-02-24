@@ -1,0 +1,258 @@
+---
+title: "New Framework1"
+author: "Jeff & Nico"
+date: "February 2025"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: true
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This document explains the derivation of a model for herbivore dynamics and its extension to include predators. The approach starts from basic Lotka–Volterra dynamics and incorporates observations of net primary productivity (NPP) and herbivore abundances. We then introduce allometric scaling for growth rates and finally account for predation by incorporating predator dynamics. The aim is to link model parameters directly to measurable quantities.
+
+# 1. Model Without Predators
+
+## 1.1 NPP and Herbivore Equilibrium
+
+The starting hypothesis is that at equilibrium, net primary productivity (NPP) is balanced by the growth of the herbivore populations. In other words, given observed herbivore abundances \( H_i^{\text{obs}} \) and intrinsic growth rates \( g_i \), we assume:
+
+$$
+\text{NPP} \approx \sum_i g_i\, H_i^{\text{obs}}
+$$
+
+Some texts denote this relation as:
+
+$$
+\text{NPP} = \sum_i g_i H_i^{\text{obs}}
+$$
+
+## 1.2 The Basic Herbivore Dynamics
+
+We start with a Lotka–Volterra type model for herbivores:
+$$
+\dot{H}_i = \left( g_i - m_i - d_i\left( H_i + \sum_{j \neq i} \mu_{ij} H_j \right) \right) H_i
+$$
+where:
+
+- \( g_i \) is the intrinsic growth rate (directly related to NPP),
+
+- \( m_i \) is the natural mortality rate,
+
+- \( d_i \) is the coefficient of intraspecific competition,
+
+- \( d_i \mu_{ij} \) represents interspecific competition.
+
+## 1.3 Factoring Out the Net Rate
+
+It is useful to factor out the net intrinsic rate \( g_i - m_i \) from the model. This gives:
+$$
+\dot{H}_i = (g_i - m_i) \left[ 1 - \frac{d_i\left( H_i + \sum_{j\neq i} \mu_{ij}H_j \right)}{\mathcal{H}_i} \right] H_i
+$$
+An artificial parameter is then introduced:
+$$
+\mathcal{H}_i = \frac{g_i - m_i}{d_i}
+$$
+which can be thought of as a reference density for species \( i \).
+
+## 1.4 Introducing the Niche Parameter
+
+Next, a niche parameter \(\beta_i\) is defined as:
+$$
+\beta_i = \frac{g_i}{m_i} - 1
+$$
+which is positive when the species persists. This parameter captures the advantage that the environment confers on species \( i \).
+
+With this definition, the herbivore model can be rewritten as:
+$$
+\dot{H}_i = g_i\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij}H_j}{H_i^{\text{obs}}(\mu)} \right] H_i
+$$
+where the effective observed abundance is defined as:
+$$
+H_i^{\text{obs}}(\mu) = H_i^{\text{obs}} + \sum_{j\neq i}\mu_{ij}H_j^{\text{obs}}
+$$
+This correction accounts for the effect of interspecific competition on the observed densities.
+
+## 1.5 Allometric Scaling of the Growth Rate
+
+The growth rate \( g_i \) is assumed to scale with body size through an allometric relation:
+$$
+g_i = M_i^{-\alpha} x_i
+$$
+where:
+
+- \( M_i \) is a measure of the body size of species \( i \),
+
+- \(\alpha\) is the allometric exponent,
+
+- \( x_i \) is a scaling factor adjusted to meet the NPP constraint.
+
+To satisfy the overall NPP, we impose:
+$$
+\text{NPP} = \sum_i x_i\, M_i^{-\alpha}\, H_i^{\text{obs}}
+$$
+and a possible solution for \( x_i \) is:
+$$
+x_i = \frac{\text{NPP}\, M_i^{-\alpha}\, H_i^{\text{obs}}}{\| M^{-\alpha} H^{\text{obs}} \|^2}
+$$
+Then the effective growth rate becomes:
+$$
+g_i^{\text{obs}}(\text{NPP}) = \frac{\text{NPP}\, M_i^{-2\alpha}\, H_i^{\text{obs}}}{\| M^{-\alpha} H^{\text{obs}} \|^2}
+$$
+
+Thus, the herbivore dynamics (without predators) can be expressed as:
+$$
+\dot{H}_i = g_i^{\text{obs}}(\text{NPP})\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij}H_j}{H_i^{\text{obs}}(\mu)} \right] H_i
+$$
+
+# 2. Extending the Model: Inclusion of Predators
+
+## 2.1 Adding Predation to Herbivore Mortality
+
+In the presence of predators, the herbivore mortality is increased by predation. The mortality term is modified as:
+$$
+m_i \to m_i + \sum_\alpha a_{\alpha i} P_\alpha
+$$
+where:
+
+- \( a_{\alpha i} \) is the attack rate of predator \(\alpha\) on herbivore \(i\),
+
+- \( P_\alpha \) is the density of predator \(\alpha\).
+
+It is useful to nondimensionalize the attack rate by defining:
+$$
+A^*_{i\alpha} = \frac{a_{\alpha i}}{d_i}
+$$
+
+## 2.2 Predator Dynamics
+
+Predators are assumed to follow Lotka–Volterra dynamics. The basic predator model is given by:
+$$
+\dot{P}_\alpha = \left[ \epsilon \sum_i a_{\alpha i} H_i - m_\alpha - d_\alpha P_\alpha - \sum_\beta b_{\alpha\beta} P_\beta \right] P_\alpha
+$$
+with:
+
+- \(\epsilon < 1\) as the trophic efficiency,
+
+- \( m_\alpha \) as the predator mortality,
+
+- \( d_\alpha \) as self-regulation,
+
+- \( b_{\alpha\beta} \) encoding predator–predator interactions.
+
+
+An overpopulation threshold is introduced:
+$$
+P_{\alpha 0} = \frac{m_\alpha}{d_\alpha}
+$$
+Furthermore, define nondimensional parameters:
+$$
+B_{\alpha\beta} = \frac{b_{\alpha\beta}}{d_\alpha} \quad \text{and} \quad A_{\alpha i} = \frac{\epsilon\, a_{\alpha i}}{d_\alpha}
+$$
+The predator dynamics can then be rewritten in nondimensional form as:
+$$
+\dot{P}_\alpha = m_\alpha \left[ \frac{\sum_i A_{\alpha i} H_i - P_{\alpha 0} - \sum_\beta B_{\alpha\beta} P_\beta}{P_{\alpha 0}} \right] P_\alpha
+$$
+
+## 2.3 Redefining the Observed Herbivore Abundance
+
+With predators affecting herbivore mortality, we must update the effective observed herbivore density. The modified observed abundance is defined as:
+$$
+H_i^{\text{obs}}(\mu, C, G) = H_i^{\text{obs}} + \sum_{j\neq i}\mu_{ij}H_j^{\text{obs}} + \sum_\alpha A^*_{i\alpha} P_\alpha^{\text{obs}}
+$$
+This expression now accounts for:
+
+- The original observed herbivore density,
+
+- The effect of interspecific competition,
+
+- The additional reduction due to predation (through \( A^*_{i\alpha} \) and the observed predator densities).
+
+## 2.4 Updated Herbivore Dynamics with Predation
+
+The herbivore dynamics now become:
+$$
+\dot{H}_i = g_i^{\text{obs}}(\text{NPP})\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij} H_j + \sum_\alpha A^*_{i\alpha} P_\alpha}{H_i^{\text{obs}}(\mu, C, G)} \right] H_i
+$$
+This formulation explicitly includes both competitive and predatory effects on the herbivores.
+
+## 2.5 Equilibrium and Linking to Apparent Competition
+
+At equilibrium, the predator densities \( P_\alpha^* \) can be expressed as:
+$$
+P_\alpha^* = \sum_i \sum_\beta B^{-1}_{\alpha\beta} A_{\beta i} H_i - \sum_\beta B^{-1}_{\alpha\beta} P_{0\beta}
+$$
+Consequently, one shows that:
+$$
+\sum_\alpha A^*_{i\alpha} P_\alpha^* = \sum_j \left( \sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} A_{\beta j} \right) H_j - \left( \sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} P_{0\beta} \right)
+$$
+In the above expression, the term
+$$
+\sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} A_{\beta j}
+$$
+can be interpreted as the "apparent competition" \( C_{ij} \), and the offset term
+$$
+\sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} P_{0\beta}
+$$
+relates to predator release \( G_i \). Under the equilibrium assumption, the net effect of predation can then be incorporated into the model as:
+$$
+\sum_\alpha A^*_{i\alpha} P_\alpha^{\text{obs}} = \sum_j C_{ij} H_j - G_i
+$$
+
+# 3. Summary and Discussion
+
+- **No-Predator Model:**  
+  We begin with a Lotka–Volterra model for herbivores where the growth rate \( g_i \) and mortality \( m_i \) are key parameters. By factoring out the net intrinsic rate \( g_i - m_i \) and defining a niche parameter
+  $$
+  \beta_i = \frac{g_i}{m_i} - 1
+  $$
+  we rewrite the model in a way that incorporates observed densities corrected for interspecific competition:
+  $$
+  \dot{H}_i = g_i^{\text{obs}}(\text{NPP})\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij}H_j}{H_i^{\text{obs}}(\mu)} \right] H_i
+  $$
+
+- **Allometric Scaling:**  
+  The intrinsic growth rate is assumed to follow an allometric scaling relation:
+  $$
+  g_i = M_i^{-\alpha} x_i
+  $$
+  with adjustments made so that the NPP constraint is satisfied.
+
+- **Inclusion of Predators:**  
+  With predators, the herbivore mortality is increased by a predation term. After nondimensionalizing the attack rate, the effective observed herbivore density is modified to:
+  $$
+  H_i^{\text{obs}}(\mu, C, G) = H_i^{\text{obs}} + \sum_{j\neq i}\mu_{ij}H_j^{\text{obs}} + \sum_\alpha A^*_{i\alpha} P_\alpha^{\text{obs}}
+  $$
+  The herbivore dynamics then become:
+  $$
+  \dot{H}_i = g_i^{\text{obs}}(\text{NPP})\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij}H_j + \sum_\alpha A^*_{i\alpha}P_\alpha}{H_i^{\text{obs}}(\mu, C, G)} \right] H_i
+  $$
+
+- **Predator Dynamics:**  
+  The predators follow their own Lotka–Volterra dynamics with parameters for trophic efficiency, self-regulation, and predator–predator interactions. Their dynamics can be rewritten in nondimensional form and, at equilibrium, allow us to relate the predation impact to apparent competition \( C_{ij} \) and predator release \( G_i \).
+
+- **Interpretation:**  
+  In summary, the full model couples herbivore and predator dynamics by linking growth and mortality rates to measurable quantities (such as NPP, body sizes, and observed densities). Competition and predation effects are absorbed into effective observed abundances, and the equilibrium analysis of predator dynamics provides a way to quantify indirect effects like apparent competition.
+
+# Conclusion
+
+This comprehensive formulation links ecological observations (e.g., NPP, herbivore abundances, and body sizes) to model parameters in a theoretically consistent manner. It provides a framework to analyze herbivore dynamics under both competitive and predatory pressures, allowing one to use observed data to inform and constrain the model.
+
+Feel free to ask if you have further questions or if you need additional details on any part of the derivation!
+
