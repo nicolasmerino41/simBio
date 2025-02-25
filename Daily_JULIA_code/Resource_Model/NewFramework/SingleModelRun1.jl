@@ -1,21 +1,24 @@
-function new_single_run_with_plot(cell, mu_val, mu_pred_val, eps_val, sym_competition; 
-    plot=false, sp_removed_name=nothing, artificial_pi=false, NPP=nothing)
+function new_single_run_with_plot(
+    cell, mu_val, mu_pred_val, eps_val, sym_competition, mean_m_alpha;
+    plot=false, sp_removed_name=nothing,
+    artificial_pi=false, NPP=nothing,
+    alpha = 0.25)
     
     # Placeholder for results DataFrame
     AAAA = DataFrame()
 
-    @info "Processing cell $cell..."
+    # @info "Processing cell $cell..."
     local_i, local_j = idx[cell][1], idx[cell][2]
 
     # Extract species names from the cell data.
     sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
     local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
     predator_has_prey = check_predator_has_prey(sp_nm)
-    println("here S = $local_S, R = $local_R")
+    # println("here S = $local_S, R = $local_R")
     if !predator_has_prey[1]
         local_R -= predator_has_prey[2]
         filter!(name -> !(name in predator_has_prey[3]), sp_nm)
-        @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
+        # @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
     end
 
     if !isnothing(sp_removed_name)
@@ -24,7 +27,7 @@ function new_single_run_with_plot(cell, mu_val, mu_pred_val, eps_val, sym_compet
 
     # Obtain local NPP and empirical herbivore abundances.
     localNPP       = Float64(npp_DA_relative_to_1000[local_i, local_j])
-    localH0_vector = nothing
+    # localH0_vector = nothing
     if !isnothing(NPP)
         localNPP = NPP
     end
@@ -32,15 +35,16 @@ function new_single_run_with_plot(cell, mu_val, mu_pred_val, eps_val, sym_compet
     # Set up community parameters using the updated parametrisation.
     results = new_attempt_setup_community(
         local_i, local_j,
-        mu_val, mu_pred_val, eps_val, sym_competition;
+        mu_val, mu_pred_val, eps_val, sym_competition, mean_m_alpha;
         localNPP       = localNPP,
-        localH0_vector = localH0_vector,
+        # localH0_vector = localH0_vector,
         species_names  = sp_nm,
-        artificial_pi  = artificial_pi
+        artificial_pi  = artificial_pi,
+        alpha          = alpha
     )
 
-    if results === nothing
-        @error "Error: results === nothing"
+    if isnothing(results)
+        # @error "Error: results === nothing"
         return nothing
     end
 
@@ -64,10 +68,10 @@ function new_single_run_with_plot(cell, mu_val, mu_pred_val, eps_val, sym_compet
     # (Here we assume P0 = m_alpha, which implies a self-regulation coefficient of 1.)
     P0 = m_alpha
 
-    println("here S = $S2, R = $R2")
+    # println("here S = $S2, R = $R2")
     if (S2 + R2) == 0 || R2 > length(H_i0)
-        @error "Error: (S2 + R2) == 0 || R2 > length(H_i0)"
-        return nothing
+        # @error "Error: (S2 + R2) == 0 || R2 > length(H_i0)"
+        return nothing, nothing
     end
 
     # Build initial conditions.
@@ -90,8 +94,8 @@ function new_single_run_with_plot(cell, mu_val, mu_pred_val, eps_val, sym_compet
     end
 
     if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
-        @error "Error: sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])"
-        return nothing
+        # @error "Error: sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])"
+        return nothing, nothing
     end
 
     # --- Plotting the Dynamics using Makie ---
@@ -129,7 +133,6 @@ function new_single_run_with_plot(cell, mu_val, mu_pred_val, eps_val, sym_compet
     P_biomass = sum(P_end)
     biomass_at_the_end = H_biomass + P_biomass
     ratio = (H_biomass == 0.0) ? NaN : (P_biomass / H_biomass)
-
     # Store the results in a DataFrame row.
     single_run_results = DataFrame(
         cell_id                 = cell,
@@ -157,11 +160,27 @@ function new_single_run_with_plot(cell, mu_val, mu_pred_val, eps_val, sym_compet
     )
 
     append!(AAAA, single_run_results)
-    @info "The survival rate is $(round(survival_rate, digits=4))"
+    # @info "The survival rate is $(round(survival_rate, digits=4))"
     
     # Return both the DataFrame with summary results and the Makie figure.
-    return AAAA
+    return AAAA, params
 end
 
-# Example call:
-new_single_run_with_plot(1, 0.0, 0.02, 0.01, true; plot=true, sp_removed_name=nothing, NPP=nothing, artificial_pi=false)
+# # Example call:
+# AAAA, params = new_single_run_with_plot(
+#     1, 0.09323598913606038, 0.000921816363970646, 0.09184032452148462, true, 0.9903685838253702;
+#     plot=true, sp_removed_name=nothing, 
+#     NPP=1000.0, artificial_pi=true,
+#     alpha = 0.0
+# )
+
+# S, R, Hi0, m_i, g_i, beta, M_mod, A_star, A_pred, P0, B, m_alpha = params
+# Threads.@threads for mu_pred in 0.0:0.00001:0.2
+#         for mu in 0.1:0.1:1.0, eps in 0.01:0.1:1.0, m_alpha in 0.0:0.1:1.0, alpha in 0.0:0.1:1.0
+#         AAAA, params = new_single_run_with_plot(1, mu, mu_pred, eps, true, m_alpha; plot=false, sp_removed_name=nothing, NPP=nothing, artificial_pi=true, alpha = alpha);
+#         if !isnothing(AAAA) && AAAA.survived_predators[1] > 0
+#             println("mu = $mu, mu_pred = $mu_pred, eps = $eps, m_alpha = $m_alpha, alpha = $alpha", )
+#             break
+#         end
+#     end
+# end
