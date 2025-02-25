@@ -54,7 +54,7 @@ function check_predator_has_prey(species_names::Vector{String})
     end
 end
 
-function new_parametrise_the_community(
+function new_parametrise_the_community( 
     species_names::Vector{String};
     # Basic arguments:
     NPP::Float64 = 1000.0,
@@ -77,12 +77,8 @@ function new_parametrise_the_community(
     
     # Cell-level herbivore abundances (empirical values, one per herbivore)
     cell_abundance::Vector{Float64} = Float64[],
-    
-    # Instead of real_H0, we now use the empirical abundances directly:
-    real_H0::Bool = true,
-    
-    # Optional: provide an empirical H0 vector (if available) otherwise, cell_abundance is used.
-    H0_vector::Vector{Float64} = nothing,
+    # Cell-level predator abundances (empirical values, one per predator)
+    cell_abundance_preds::Vector{Float64} = Float64[],
     
     # New parameter: allometric exponent
     alpha::Float64 = 0.25
@@ -94,14 +90,14 @@ function new_parametrise_the_community(
     R = length(predator_list)
     
     #### (B) Define H_i^0 and m_i for herbivores
-    # H_i^0 (the effective observed abundance) is set equal to the empirical abundances.
+    # H_i^0 (the effective observed herbivore abundance) is initially set to the empirical abundances.
     if S > 0
-        # if length(cell_abundance) == S
-        #     H_i0 = copy(cell_abundance)
-        # else
+        if length(cell_abundance) == S
+            H_i0 = copy(cell_abundance)
+        else
             println("WARNING: cell_abundance length != S, defaulting to uniform abundances.")
             H_i0 = ones(S)
-        # end
+        end
         # Define herbivore mortality rates (either empirical or from random draws)
         m_i = [abs(rand(Normal(M_mean, m_standard_deviation))) for _ in 1:S]
     else
@@ -120,7 +116,7 @@ function new_parametrise_the_community(
     #### (D) Construct predator-related matrices (a_matrix and A)
     a_matrix = zeros(S, R)
     A = Matrix{Float64}(I, R, R)
-    # Set diagonal entries of A to -1
+    # Set diagonal entries of A to -1 (self-regulation)
     for row_pred in 1:R
         A[row_pred, row_pred] = -1.0
     end
@@ -220,12 +216,46 @@ function new_parametrise_the_community(
         end
     end
 
-    #### (H) Return the computed parameters
-    # The returned tuple contains:
-    # S, R, H_i0, m_i, g_i, beta, G, M_modified, A_star, a_matrix, A, epsilon, m_alpha, x, raw_g
+    #### (H) Incorporate predator observed abundances into the effective herbivore abundance
+    # Here we update H_i0 to account for the additional reduction due to predation.
+    # That is, we define:
+    #   H_i0_eff = H_i0 + ∑_{j≠i} μ_{ij} * H_i0[j] + ∑_{α} A_star[i,α] * P_i0[α]
+    # where P_i0[α] are the observed predator abundances.
+    if R > 0
+        if length(cell_abundance_preds) == R
+            P_i0 = copy(cell_abundance_preds)
+        else
+            println("WARNING: cell_abundance_preds length != R, defaulting to uniform abundances for predators.")
+            P_i0 = ones(R)
+        end
+        H_i0_eff = zeros(S)
+        for i in 1:S
+            # Sum contributions from other herbivores (using mu_matrix off-diagonals)
+            comp_sum = 0.0
+            for j in 1:S
+                if i != j
+                    comp_sum += mu_matrix[i, j] * H_i0[j]
+                end
+            end
+            # Sum contributions from predators (using nondimensional attack rates A_star)
+            pred_sum = 0.0
+            for α in 1:R
+                pred_sum += A_star[i, α] * P_i0[α]
+            end
+            H_i0_eff[i] = H_i0[i] + comp_sum + pred_sum
+        end
+    else
+        H_i0_eff = H_i0
+    end
+    
+    # Optionally, you can print or log H_i0_eff to check its values.
+    # println("Effective observed herbivore abundances (with predator data): ", H_i0_eff)
+    
+    #### (I) Return the computed parameters
+    # We now return H_i0_eff in place of the original H_i0.
     return (
         S, R,
-        H_i0, m_i,
+        H_i0_eff, m_i,
         g_i,          # adjusted effective growth rates
         beta,         # niche parameters
         G,            # predator feedback term
@@ -255,9 +285,10 @@ function new_setup_community_from_cell(
     m_standard_deviation::Float64 = 0.0,
     h_standard_deviation::Float64 = 0.0,
     artificial_pi = false,
-    real_H0::Bool = false,
-    H0_vector::Vector{Float64} = nothing,
-    species_names::Vector{String} = nothing
+    # real_H0::Bool = false,
+    # H0_vector::Vector{Float64} = [],
+    species_names::Vector{String} = nothing,
+    alpha = 0.25
 )
     # 1) Retrieve the cell and extract species present.
     cell = DA_birmmals_with_pi_corrected[i, j]
@@ -272,17 +303,22 @@ function new_setup_community_from_cell(
     predator_list  = [sp for sp in species_names if sp in predator_names]
     
     cell_abundance_herbs = Float64[]
+    cell_abundance_preds = Float64[]
     herbivore_list_cell = String[]
     for sp in herbivore_list
         local_idx = species_dict_herbivores_in_birmmals[sp]
+        local_idx_pred = species_dict_predators_in_birmmals[sp]
         val = cell.a[local_idx]
+        val_pred = cell.a[local_idx_pred]
         if val > 0.0
             push!(cell_abundance_herbs, val)
+            push!(cell_abundance_preds, val_pred)
             push!(herbivore_list_cell, sp)
         end
     end
     if artificial_pi
         cell_abundance_herbs = ones(length(cell_abundance_herbs))
+        cell_abundance_preds = ones(length(predator_list))
     end
     
     # 3) Parametrise the community using the new framework.
@@ -303,8 +339,10 @@ function new_setup_community_from_cell(
             m_standard_deviation = m_standard_deviation,
             h_standard_deviation = h_standard_deviation,
             cell_abundance = cell_abundance_herbs,
-            real_H0 = real_H0,
-            H0_vector = H0_vector
+            cell_abundance_preds = cell_abundance_preds,
+            alpha = alpha
+            # real_H0 = real_H0
+            # H0_vector = H0_vector
         )
     
     return (
@@ -318,33 +356,6 @@ function new_setup_community_from_cell(
         raw_g
     )
 end
-
- # Obtain local NPP and empirical herbivore abundances.
- local_i,local_j = 18, 1
- localNPP       = Float64(npp_DA_relative_to_1000[local_i, local_j])
- localH0_vector = Vector{Float64}(H0_DA[local_i, local_j].a)
- # 1) Retrieve the cell and extract species present.
- cell = DA_birmmals_with_pi_corrected[local_i, local_j]
- species_names = extract_species_names_from_a_cell(cell)
-
-S2, R2, species_names, herb_list, pred_list, H_i0, m_i, g_i, x_final, beta, G, M_modified, A_star, a_matrix, A, epsilon, m_alpha, raw_g = new_setup_community_from_cell(
-    idx[1][1], idx[1][2];
-    NPP = localNPP,
-    M_mean = 0.1,
-    mu = 0.0,
-    symmetrical_competition = true,
-    mean_m_alpha = 0.1,
-    epsilon_val = 1.0,
-    mu_predation = 0.0,
-    iberian_interact_NA = iberian_interact_NA,
-    species_dict = species_dict,
-    m_standard_deviation = 0.0,
-    h_standard_deviation = 0.0,
-    artificial_pi = false,
-    real_H0 = false,
-    H0_vector = localH0_vector,
-    species_names = species_names
-)
 
 ################################################################################
 # A FUNCTION TO EXTRACT INFO OF A SPECIES
