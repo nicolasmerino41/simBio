@@ -1,8 +1,10 @@
 function new_attempt_setup_community(
     i, j, 
-    mu_val, mu_pred_val, eps_val, sym_competition; 
-    localNPP, localH0_vector, 
-    species_names = nothing, artificial_pi = false
+    mu_val, mu_pred_val, eps_val, sym_competition, mean_m_alpha; 
+    localNPP,
+    # localH0_vector, 
+    species_names = nothing, artificial_pi = false,
+    alpha = 0.25
 )
     try
         S2, R2, species_names, herb_list, pred_list,
@@ -15,7 +17,7 @@ function new_attempt_setup_community(
                 M_mean = 0.1,
                 mu = mu_val,
                 symmetrical_competition = sym_competition,
-                mean_m_alpha = 0.1,
+                mean_m_alpha = mean_m_alpha,
                 epsilon_val = eps_val,
                 mu_predation = mu_pred_val,
                 iberian_interact_NA = iberian_interact_NA,
@@ -23,9 +25,10 @@ function new_attempt_setup_community(
                 m_standard_deviation = 0.0,
                 h_standard_deviation = 0.0,
                 artificial_pi = artificial_pi,
-                real_H0 = true,
-                H0_vector = localH0_vector,
-                species_names = species_names
+                # real_H0 = true,
+                # H0_vector = localH0_vector,
+                species_names = species_names,
+                alpha = alpha
             )
         return (
             S = S2, 
@@ -49,7 +52,7 @@ function new_attempt_setup_community(
         )
     catch e
         # Optionally log the error here.
-        @warn "Failed in new_attempt_setup_community: $e\n$(catch_backtrace())"
+        # @warn "Failed in new_attempt_setup_community: $e\n$(catch_backtrace())"
         return nothing
     end
 end
