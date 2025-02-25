@@ -37,12 +37,6 @@ $$
 \text{NPP} \approx \sum_i g_i\, H_i^{\text{obs}}
 $$
 
-Some texts denote this relation as:
-
-$$
-\text{NPP} = \sum_i g_i H_i^{\text{obs}}
-$$
-
 ## 1.2 The Basic Herbivore Dynamics
 
 We start with a Lotka–Volterra type model for herbivores:
