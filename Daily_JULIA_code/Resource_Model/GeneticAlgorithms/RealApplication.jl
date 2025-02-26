@@ -7,7 +7,7 @@ const EXTINCTION_THRESHOLD = 1e-6
 const T_ext               = 250.0
 const MAX_ITERS           = 2000
 const SURVIVAL_THRESHOLD  = 0.0
-global const art_pi              = true
+global const art_pi = true
 
 global cell = 4
 global local_i, local_j = idx[cell][1], idx[cell][2]

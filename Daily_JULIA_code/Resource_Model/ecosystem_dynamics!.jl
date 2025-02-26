@@ -2,6 +2,7 @@
 function ecosystem_dynamics!(du, u, p, t)
     S, R, H_i0, m_i, g_i, G, M_modified, a_matrix, A, epsilon, m_alpha = p
 
+    ext_threshold = 1.0e-6
     H = @view u[1:S]
     P = @view u[S+1:S+R]
 

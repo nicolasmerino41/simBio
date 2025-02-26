@@ -1,8 +1,10 @@
 function attempt_setup_community(
     i, j, 
     mu_val, mu_pred_val, eps_val, sym_competition; 
-    localNPP, localH0_vector, 
-    species_names=nothing, artificial_pi=false
+    localNPP = nothing, localH0_vector = nothing, 
+    species_names=nothing, artificial_pi=false,
+    herbivore_m = 0.1,
+    predator_m = 0.1
 )
     # println("i = $i, j = $j", "mu_val = $mu_val, mu_pred_val = $mu_pred_val, eps_val = $eps_val, localNPP = $localNPP, localH0_vector = ", length(localH0_vector), "art_pi = $artificial_pi")
     try
@@ -15,10 +17,10 @@ function attempt_setup_community(
         epsilon_vector, m_alpha = setup_community_from_cell(
             i, j;
             NPP = localNPP,
-            M_mean = 0.1,
+            M_mean = herbivore_m,
             mu = mu_val,
             symmetrical_competition = sym_competition,
-            mean_m_alpha = 0.1,
+            mean_m_alpha = predator_m,
             epsilon_val = eps_val,
             mu_predation = mu_pred_val,
             iberian_interact_NA = iberian_interact_NA,
