@@ -45,7 +45,7 @@ function new_single_run_with_plot(
 
     if isnothing(results)
         # @error "Error: results === nothing"
-        return nothing
+        return nothing, nothing
     end
 
     # Destructure the returned NamedTuple.
@@ -168,13 +168,13 @@ end
 
 # # Example call:
 # AAAA, params = new_single_run_with_plot(
-#     1, 0.09323598913606038, 0.000921816363970646, 0.09184032452148462, true, 0.9903685838253702;
+#     1, 0.09, 0.000921, 0.0918, true, 0.99;
 #     plot=true, sp_removed_name=nothing, 
-#     NPP=1000.0, artificial_pi=true,
-#     alpha = 0.0
+#     NPP=nothing, artificial_pi=true,
+#     alpha = 0.98
 # )
 
-# S, R, Hi0, m_i, g_i, beta, M_mod, A_star, A_pred, P0, B, m_alpha = params
+# # S, R, Hi0, m_i, g_i, beta, M_mod, A_star, A_pred, P0, B, m_alpha = params
 # Threads.@threads for mu_pred in 0.0:0.00001:0.2
 #         for mu in 0.1:0.1:1.0, eps in 0.01:0.1:1.0, m_alpha in 0.0:0.1:1.0, alpha in 0.0:0.1:1.0
 #         AAAA, params = new_single_run_with_plot(1, mu, mu_pred, eps, true, m_alpha; plot=false, sp_removed_name=nothing, NPP=nothing, artificial_pi=true, alpha = alpha);
