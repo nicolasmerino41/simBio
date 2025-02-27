@@ -15,7 +15,7 @@ const EXTINCTION_THRESHOLD = 1e-6
 const T_ext               = 250.0
 const MAX_ITERS           = 2000      # Up to 2000 generations
 const SURVIVAL_THRESHOLD  = 0.0       # Only save configs with SR >= threshold
-const global art_pi = true
+const global art_pi = false
 
 const file_lock = SpinLock()  # Ensures only one thread writes to CSV at a time
 
@@ -86,6 +86,8 @@ function fitness(params, local_i, local_j, sp_nm, localNPP)
     # Evaluate survival rate
     H_end = sol[1:S2, end]
     P_end = sol[S2+1:S2+R2, end]
+    H_end[H_end .< EXTINCTION_THRESHOLD] .= 0.0
+    P_end[P_end .< EXTINCTION_THRESHOLD] .= 0.0
     survived_herb = count(H_end .> EXTINCTION_THRESHOLD)
     survived_pred = count(P_end .> EXTINCTION_THRESHOLD)
     total_surv = survived_herb + survived_pred

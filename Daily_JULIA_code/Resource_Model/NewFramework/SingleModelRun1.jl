@@ -2,7 +2,8 @@ function new_single_run_with_plot(
     cell, mu_val, mu_pred_val, eps_val, sym_competition, mean_m_alpha;
     plot=false, sp_removed_name=nothing,
     artificial_pi=false, NPP=nothing,
-    alpha = 0.25)
+    alpha = 0.25
+)
     
     # Placeholder for results DataFrame
     AAAA = DataFrame()
@@ -18,7 +19,7 @@ function new_single_run_with_plot(
     if !predator_has_prey[1]
         local_R -= predator_has_prey[2]
         filter!(name -> !(name in predator_has_prey[3]), sp_nm)
-        # @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
+        @info("In cell $cell, we removed $(predator_has_prey[2]) predators: $(predator_has_prey[3]).")
     end
 
     if !isnothing(sp_removed_name)
@@ -44,7 +45,7 @@ function new_single_run_with_plot(
     )
 
     if isnothing(results)
-        # @error "Error: results === nothing"
+        @error "Error: results === nothing"
         return nothing, nothing
     end
 
@@ -70,7 +71,7 @@ function new_single_run_with_plot(
 
     # println("here S = $S2, R = $R2")
     if (S2 + R2) == 0 || R2 > length(H_i0)
-        # @error "Error: (S2 + R2) == 0 || R2 > length(H_i0)"
+        @error "Error: (S2 + R2) == 0 || R2 > length(H_i0)"
         return nothing, nothing
     end
 
@@ -94,32 +95,35 @@ function new_single_run_with_plot(
     end
 
     if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
-        # @error "Error: sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])"
+        @error "Error: sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])"
         return nothing, nothing
     end
 
     # --- Plotting the Dynamics using Makie ---
-    fig = Figure(resolution=(1200, 600))
-    ax = Axis(fig[1, 1], xlabel="Time", ylabel="Biomass", title="Dynamics for cell $cell")
-    times_combined = sol.t
-
-    # Plot herbivore dynamics (indices 1:S2) as blue solid lines.
-    for i in 1:S2
-        lines!(ax, times_combined, sol[i, :], label="H$(i)", color=:blue)
-    end
-
-    # Plot predator dynamics (indices S2+1:S2+R2) as red dashed lines.
-    for α in 1:R2
-        lines!(ax, times_combined, sol[S2+α, :], label="P$(α)", linestyle=:dash, color=:red)
-    end
-
-    if plot
+    if plot    
+        fig = Figure(resolution=(1200, 600))
+        ax = Axis(fig[1, 1], xlabel="Time", ylabel="Biomass", title="Dynamics for cell $cell")
+        times_combined = sol.t
+        @info "1"
+        # Plot herbivore dynamics (indices 1:S2) as blue solid lines.
+        for i in 1:S2
+            lines!(ax, times_combined, sol[i, :], label="H$(i)", color=:blue)
+        end
+        @info "2"
+        # Plot predator dynamics (indices S2+1:S2+R2) as red dashed lines.
+        for α in 1:R2
+            lines!(ax, times_combined, sol[S2+α, :], label="P$(α)", linestyle=:dash, color=:red)
+        end
+        @info "3"
+    
         display(fig)
     end
-
+    @info "4"
     # --- Evaluate Outputs ---
     H_end = sol[1:S2, end]
     P_end = sol[S2+1:S2+R2, end]
+    H_end[H_end .< EXTINCTION_THRESHOLD] .= 0.0
+    P_end[P_end .< EXTINCTION_THRESHOLD] .= 0.0
     Hobs = H_i0
     survived_herb = count(H_end .> EXTINCTION_THRESHOLD)
     survived_pred = count(P_end .> EXTINCTION_THRESHOLD)
@@ -158,29 +162,29 @@ function new_single_run_with_plot(
         epsilon_val             = eps_val,
         symmetrical_competition = sym_competition
     )
-
+    @info "5"
     append!(AAAA, single_run_results)
-    # @info "The survival rate is $(round(survival_rate, digits=4))"
+    @info "The survival rate is $(round(survival_rate, digits=4))"
     
     # Return both the DataFrame with summary results and the Makie figure.
     return AAAA, params
 end
 
-# # Example call:
-# AAAA, params = new_single_run_with_plot(
-#     1, 0.09, 0.000921, 0.0918, true, 0.99;
-#     plot=true, sp_removed_name=nothing, 
-#     NPP=nothing, artificial_pi=true,
-#     alpha = 0.98
-# )
+# Example call:
+AAAA, params = new_single_run_with_plot(
+    1, 0.0001, 0.0, 0.0, true, 0.3;
+    plot=false, sp_removed_name=nothing, 
+    NPP=nothing, artificial_pi=false,
+    alpha = 0.25
+)
 
-# # S, R, Hi0, m_i, g_i, beta, M_mod, A_star, A_pred, P0, B, m_alpha = params
-# Threads.@threads for mu_pred in 0.0:0.00001:0.2
-#         for mu in 0.1:0.1:1.0, eps in 0.01:0.1:1.0, m_alpha in 0.0:0.1:1.0, alpha in 0.0:0.1:1.0
-#         AAAA, params = new_single_run_with_plot(1, mu, mu_pred, eps, true, m_alpha; plot=false, sp_removed_name=nothing, NPP=nothing, artificial_pi=true, alpha = alpha);
-#         if !isnothing(AAAA) && AAAA.survived_predators[1] > 0
-#             println("mu = $mu, mu_pred = $mu_pred, eps = $eps, m_alpha = $m_alpha, alpha = $alpha", )
-#             break
-#         end
-#     end
-# end
+# S, R, Hi0, m_i, g_i, beta, M_mod, A_star, A_pred, P0, B, m_alpha = params
+Threads.@threads for mu_pred in 0.0:0.01:0.2
+        for mu in 0.1:0.1:1.0, eps in 0.01:0.1:1.0, m_alpha in 0.0:0.1:1.0, alpha in 0.0:0.1:1.0
+        AAAA, params = new_single_run_with_plot(1, mu, mu_pred, eps, true, m_alpha; plot=false, sp_removed_name=nothing, NPP=nothing, artificial_pi=true, alpha = alpha);
+        if !isnothing(AAAA) && AAAA.survived_predators[1] > 0
+            println("mu = $mu, mu_pred = $mu_pred, eps = $eps, m_alpha = $m_alpha, alpha = $alpha", )
+            break
+        end
+    end
+end
