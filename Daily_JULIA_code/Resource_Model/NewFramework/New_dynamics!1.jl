@@ -25,7 +25,7 @@ function new_dynamics!(du, u, p, t)
     #   dH_i/dt = g_i * (beta_i/(1+beta_i)) *
     #             [ 1 - ( H_i + Σ_j μ_{ij}H_j + Σ_α A*_{iα} P_α ) / H_i0 ] * H_i
     for i in 1:S
-        if H[i] > 0.0
+        if H[i] > EXTINCTION_THRESHOLD
             # Compute the total density affecting species i:
             competition_term = 0.0
             for j in 1:S
@@ -47,7 +47,7 @@ function new_dynamics!(du, u, p, t)
     # New equation:
     # dP_α/dt = m_alpha * [ (Σ_i A_pred[α,i]*H_i - P0[α] - Σ_β B[α,β]*P_β) / P0[α] ] * P_α
     for α in 1:R
-        if P[α] > 0.0
+        if P[α] > EXTINCTION_THRESHOLD  
             attack_sum = 0.0
             for i in 1:S
                 attack_sum += A_pred[α, i] * H[i]
