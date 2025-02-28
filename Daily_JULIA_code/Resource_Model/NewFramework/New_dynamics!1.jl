@@ -38,7 +38,9 @@ function new_dynamics!(du, u, p, t)
             effective_density = H[i] + competition_term + predation_term
             duH[i] = H[i] * g_i[i] * (beta[i] / (1 + beta[i])) *
                      (1 - effective_density / H_i0[i])
-        else
+        elseif H[i] < EXTINCTION_THRESHOLD  
+            duH[i] = H[i] < 0.0 ? abs(H[i]) : -H[i]
+        else iszero(H[i])
             duH[i] = 0.0
         end
     end
@@ -57,7 +59,9 @@ function new_dynamics!(du, u, p, t)
                 interaction_sum += B[α, β] * P[β]
             end
             duP[α] = P[α] * m_alpha[α] * ((attack_sum - P0[α] - interaction_sum) / P0[α])
-        else
+        elseif P[α] < EXTINCTION_THRESHOLD
+            duP[α] = P[α] < 0.0 ? abs(P[α]) : -P[α]
+        else iszero(P[α])
             duP[α] = 0.0
         end
     end
