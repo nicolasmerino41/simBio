@@ -64,7 +64,8 @@ end
 #
 # For herbivore-only runs, we exclude predators.
 #--------------------------------------------------------------------
-function explore_stability(cell::Int; 
+function explore_stability(
+    cell::Int; 
     NPP::Float64 = 1000.0,
     mu_range = range(0.0, stop=1.0, length=20),
     M_mean::Float64 = 0.1,
@@ -177,9 +178,9 @@ AAAA = explore_stability(1;
     mu_range=range(0.0, stop=1.0, length=50),
     symmetrical_competition=true,
     mean_m_alpha=0.1, epsilon_val=0.0,
-    mu_predation=0.0, artificial_pi=false,
+    mu_predation=0.01, artificial_pi=false,
     alpha=0.25,
-    plot = false, # Beware plotting will be very slow for more than a few iterations
+    plot = false, # Beware plotting will be very slow for more than a few iterations (i.e. more than a few mu values)
     include_predators = true
 )
 
