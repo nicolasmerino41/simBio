@@ -24,9 +24,9 @@ const file_lock = SpinLock()  # Ensures only one thread writes to CSV at a time
 # ===========================
 function fitness(params, local_i, local_j, sp_nm, localNPP)
     # Ensure parameters stay within bounds
-    params = clamp.(params, [0.1, 0.0, 0.0, 0.0, 0.0], [0.9, 0.2, 1.0, 1.0, 1.0])
-    mu, mu_predation, epsilon, m_alpha, alpha = params
-
+    params = clamp.(params, [0.1, 0.0, 0.0, 0.0], [0.9, 0.2, 1.0, 1.0])
+    mu, mu_predation, epsilon, m_alpha = params
+    # mu, mu_predation, epsilon, m_alpha, alpha = 0.0, 0.0, 0.0, 0.1, 0.25
     # Debug: Print current evaluation
     # println("🔍 Evaluating (cell $local_i, $local_j): mu=$(mu), mu_predation=$(mu_predation), epsilon=$(epsilon)")
 
@@ -39,7 +39,7 @@ function fitness(params, local_i, local_j, sp_nm, localNPP)
         # localH0_vector = localH0_vector,
         species_names  = sp_nm,
         artificial_pi  = art_pi,
-        alpha          = alpha
+        alpha          = 0.25
     )
 
     if isnothing(results)
@@ -67,7 +67,9 @@ function fitness(params, local_i, local_j, sp_nm, localNPP)
     P0 = m_alpha
 
     # Solve ODE
-    H_init = H_i0
+    # H_init = H_i0 # THIS MAKES MORE SENSE BUT THE FOLLOWING IS A STANDARD
+    H_init = fill(1.0, length(H_i0))# H_i0
+    # P_init = H_init[1:R2] ./ 10.0 # THIS MAKES MORE SENSE BUT THE FOLLOWING IS A STANDARD
     P_init = H_init[1:R2] ./ 10.0
     u0     = vcat(H_init, P_init)
 
@@ -100,12 +102,12 @@ end
 # ===========================
 # 4️⃣ GA CONFIGURATION
 # ===========================
-lower_bounds = [0.1, 0.0, 0.0, 0.0, 0.0]
-upper_bounds = [0.9, 0.5, 1.0, 1.0, 1.0]
+lower_bounds = [0.1, 0.0, 0.0, 0.0]
+upper_bounds = [0.9, 0.5, 1.0, 1.0]
 bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
 
 ga_algorithm = GA(
-    populationSize = 10,
+    populationSize = 3,
     selection = tournament(3),
     mutationRate = 0.25,
     crossoverRate = 0.6,
@@ -113,7 +115,7 @@ ga_algorithm = GA(
 )
 
 options = Evolutionary.Options(
-    iterations = 10,
+    iterations = 2,
     show_trace = false  # Suppress verbose output for HPC efficiency
 )
 
@@ -121,12 +123,18 @@ cuts_for_mu = range(0.0, 0.1, length = 9)
 cuts_for_mu_predation = range(0.0, 0.001, length = 9)
 cuts_for_epsilon = range(0.0, 0.1, length = 9)
 cuts_for_m_alpha = range(0.0, 1.0, length = 9)
-cuts_for_alpha = range(0.0, 1.0, length = 9)
+# cuts_for_alpha = range(0.0, 1.0, length = 9)
+
+csv_filepath = "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/21-02/ga_results_NF.csv"
+open(csv_filepath, "w") do file
+    header = "cell_id,survival_rate,flag,mu,mu_predation,epsilon_val,m_alpha,total_species,i,j,NPP\n"
+    write(file, header)
+end
 
 @time Threads.@threads for portion in 1:8
 
-    lower_bounds = [cuts_for_mu[portion], cuts_for_mu_predation[portion], cuts_for_epsilon[portion], cuts_for_m_alpha[portion], cuts_for_alpha[portion]]
-    upper_bounds = [cuts_for_mu[portion+1], cuts_for_mu_predation[portion+1], cuts_for_epsilon[portion+1], cuts_for_m_alpha[portion+1], cuts_for_alpha[portion+1]]
+    lower_bounds = [cuts_for_mu[portion], cuts_for_mu_predation[portion], cuts_for_epsilon[portion], cuts_for_m_alpha[portion]]
+    upper_bounds = [cuts_for_mu[portion+1], cuts_for_mu_predation[portion+1], cuts_for_epsilon[portion+1], cuts_for_m_alpha[portion+1]]
     bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
 
     cell = 1    
@@ -162,8 +170,7 @@ cuts_for_alpha = range(0.0, 1.0, length = 9)
     # Build CSV row
     row = string(cell) * "," * string(best_survival_rate) * "," * string(best_survival_rate == 1.0) * "," *
           string(best_params[1]) * "," * string(best_params[2]) * "," * string(best_params[3]) * "," *
-          string(best_params[4]) * "," * string(best_params[5]) * "," *
-          string(local_S + local_R) * "," * string(local_i) * "," * string(local_j) * "," * string(localNPP) * "\n"
+          string(best_params[4]) * "," * string(local_S + local_R) * "," * string(local_i) * "," * string(local_j) * "," * string(localNPP) * "\n"
 
     # Write row to CSV immediately
     lock(file_lock) do
