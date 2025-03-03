@@ -209,44 +209,4 @@ $$
 \sum_\alpha A^*_{i\alpha} P_\alpha^{\text{obs}} = \sum_j C_{ij} H_j - G_i
 $$
 
-# 3. Summary and Discussion
-
-- **No-Predator Model:**  
-  We begin with a Lotka–Volterra model for herbivores where the growth rate \( g_i \) and mortality \( m_i \) are key parameters. By factoring out the net intrinsic rate \( g_i - m_i \) and defining a niche parameter
-  $$
-  \beta_i = \frac{g_i}{m_i} - 1
-  $$
-  we rewrite the model in a way that incorporates observed densities corrected for interspecific competition:
-  $$
-  \dot{H}_i = g_i^{\text{obs}}(\text{NPP})\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij}H_j}{H_i^{\text{obs}}(\mu)} \right] H_i
-  $$
-
-- **Allometric Scaling:**  
-  The intrinsic growth rate is assumed to follow an allometric scaling relation:
-  $$
-  g_i = M_i^{-\alpha} x_i
-  $$
-  with adjustments made so that the NPP constraint is satisfied.
-
-- **Inclusion of Predators:**  
-  With predators, the herbivore mortality is increased by a predation term. After nondimensionalizing the attack rate, the effective observed herbivore density is modified to:
-  $$
-  H_i^{\text{obs}}(\mu, C, G) = H_i^{\text{obs}} + \sum_{j\neq i}\mu_{ij}H_j^{\text{obs}} + \sum_\alpha A^*_{i\alpha} P_\alpha^{\text{obs}}
-  $$
-  The herbivore dynamics then become:
-  $$
-  \dot{H}_i = g_i^{\text{obs}}(\text{NPP})\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij}H_j + \sum_\alpha A^*_{i\alpha}P_\alpha}{H_i^{\text{obs}}(\mu, C, G)} \right] H_i
-  $$
-
-- **Predator Dynamics:**  
-  The predators follow their own Lotka–Volterra dynamics with parameters for trophic efficiency, self-regulation, and predator–predator interactions. Their dynamics can be rewritten in nondimensional form and, at equilibrium, allow us to relate the predation impact to apparent competition \( C_{ij} \) and predator release \( G_i \).
-
-- **Interpretation:**  
-  In summary, the full model couples herbivore and predator dynamics by linking growth and mortality rates to measurable quantities (such as NPP, body sizes, and observed densities). Competition and predation effects are absorbed into effective observed abundances, and the equilibrium analysis of predator dynamics provides a way to quantify indirect effects like apparent competition.
-
-# Conclusion
-
-This comprehensive formulation links ecological observations (e.g., NPP, herbivore abundances, and body sizes) to model parameters in a theoretically consistent manner. It provides a framework to analyze herbivore dynamics under both competitive and predatory pressures, allowing one to use observed data to inform and constrain the model.
-
-Feel free to ask if you have further questions or if you need additional details on any part of the derivation!
 
