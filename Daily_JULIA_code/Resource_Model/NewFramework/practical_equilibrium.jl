@@ -79,7 +79,8 @@ function explore_stability(
     plot = false # Beware plotting will be very slow for more than a few iterations
 )
     results_table = DataFrame(mu = Float64[], f_converged = Bool[], x_converged = Bool[],
-                              stable = Bool[], max_rel_change = Float64[], survival_rate = Float64[],
+                              stable = Bool[], max_rel_change = Float64[], stable_by_nico = Bool[],
+                              survival_rate = Float64[],
                               mu_predation = Float64[], epsilon_val = Float64[])
     
     # Get cell indices and species names.
@@ -148,9 +149,9 @@ function explore_stability(
         # Now, run a full simulation of the herbivore-only ODE (using herbivore_run) with these parameters.
         sim_results, sol_full = herbivore_run(
             cell, mu_val, mu_predation, epsilon_val, symmetrical_competition, mean_m_alpha;
-                                              include_predators=include_predators, time_end=500.0, plot=plot,
-                                              NPP=NPP, artificial_pi=artificial_pi, alpha=alpha,
-                                              ignore_inf_error = true
+            include_predators=include_predators, time_end=500.0, plot=plot,
+            NPP=NPP, artificial_pi=artificial_pi, alpha=alpha,
+            ignore_inf_error = true
         )
         if mu_val == 0.0
             println(sol_full[1:end, end])
@@ -161,13 +162,16 @@ function explore_stability(
         end
         sr = sim_results.survival_rate[1]
         # Use our stability check on the full ODE simulation:
-        # stable_full, max_rel = is_stable(sol_full)
-        stable_full = is_stable_by_nico(sol_full)
+        stable_full, max_rel = is_stable(sol_full)
+        stable_by_nico = is_stable_by_nico(sol_full)
         push!(results_table, (
-            mu_val, sol.f_converged, sol.x_converged, stable_full, 0.0, sr,
+            mu_val, sol.f_converged, sol.x_converged, stable_full, max_rel, stable_by_nico, sr,
             mu_predation, epsilon_val 
             )
         )
+    end
+    if any(results_table.stable_by_nico)
+        @info "Stable by Nico at mu = $(results_table.mu[findfirst(results_table.stable_by_nico)])"
     end
     return results_table
 end
@@ -177,8 +181,8 @@ AAAA = explore_stability(1;
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]),
     mu_range=range(0.0, stop=1.0, length=50),
     symmetrical_competition=true,
-    mean_m_alpha=0.1, epsilon_val=0.0,
-    mu_predation=0.01, artificial_pi=false,
+    mean_m_alpha=0.0001, epsilon_val=0.0,
+    mu_predation=0.0, artificial_pi=false,
     alpha=0.25,
     plot = false, # Beware plotting will be very slow for more than a few iterations (i.e. more than a few mu values)
     include_predators = true
@@ -186,12 +190,12 @@ AAAA = explore_stability(1;
 
 h_run, sol = herbivore_run(
     1, 
-    0.0, 0.01, 0.0, true, 0.1;
+    0.2, 0.01, 0.01, true, 0.1;
     include_predators=true, time_end=500.0, plot=true,
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]), artificial_pi=false,
     alpha=0.25,
-    disable_inf_error = true
-)
+    ignore_inf_error = false
+);
 
 println("Stability exploration results:")
 println(results_table)

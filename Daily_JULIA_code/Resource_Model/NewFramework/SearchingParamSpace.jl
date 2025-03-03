@@ -53,7 +53,8 @@ function explore_herbivore_equilibrium(cell::Int;
     epsilon_val::Float64 = 1.0,
     mu_predation::Float64 = 0.0,    # herbivore-only, so no predation effect
     artificial_pi = false,
-    alpha::Float64 = 0.25
+    alpha::Float64 = 0.25,
+    include_predators::Bool = true
 )
     
     results_table = DataFrame(mu = Float64[], f_converged = Bool[], x_converged = Bool[], stable = Bool[], max_eig = Float64[])
@@ -64,8 +65,10 @@ function explore_herbivore_equilibrium(cell::Int;
     # Extract species names from the cell data.
     sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
     local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
-     
-    filter!(name -> !(name in predator_names), sp_nm)
+    
+    if !include_predators 
+        filter!(name -> !(name in predator_names), sp_nm)
+    end
 
     for mu_val in mu_range
         # For a herbivore-only model, force predators to zero:
@@ -84,26 +87,56 @@ function explore_herbivore_equilibrium(cell::Int;
         end
         
         S = results.S
-        R = results.R
-        # For herbivore-only, we expect R == 0; 
-        # however, if R > 0 we can simply ignore predator terms.
-        if R > 0
-            @warn "Herbivore-only run: ignoring R = $R predator species."
+        if !include_predators
+            R = results.R
+            # For herbivore-only, we expect R == 0; 
+            # however, if R > 0 we can simply ignore predator terms.
+            if R > 0
+                @warn "Herbivore-only run: ignoring R = $R predator species."
+            end
         end
-        H0_eff = results.H_i0  # effective herbivore abundances computed by new_parametrise_the_community
-        M_mod = results.M_modified
         
-        # Use H0_eff as the initial guess for equilibrium.
-        x0 = H0_eff
-        # Solve the equilibrium system: F(H) = H + M_mod*H - H0_eff = 0
-        sol = nlsolve((F, x) -> herbivore_equilibrium_system!(F, x, (M_mod, H0_eff)), x0)
+        # Extract number of species and effective herbivore abundance.
+        S_val = results.S  # Number of herbivores
+        # In a herbivore-only run, we expect R == 0.
+        H0_eff = results.H_i0   # Effective observed herbivore abundances (vector of length S)
+        M_mod = results.M_modified
+
+        # Destructure the returned NamedTuple.
+        S2          = results.S
+        R2          = results.R
+        H_i0        = results.H_i0
+        m_i         = results.m_i
+        g_i         = results.g_i
+        beta        = results.beta
+        M_mod       = results.M_modified    # Modified competition matrix (S×S)
+        A_star      = results.A_star        # Nondimensional predation rates (S×R)
+        a_matrix    = results.a_matrix      # Herbivore–predator interaction matrix (S×R)
+        A           = results.A             # Predator interaction matrix (R×R)
+        m_alpha     = results.m_alpha
+
+        # Build predator attack matrix (R×S) by transposing a_matrix.
+        A_pred = transpose(a_matrix)
+
+        # Set predator overpopulation thresholds.
+        # (Here we assume P0 = m_alpha, which implies a self-regulation coefficient of 1.)
+        P0 = m_alpha
+        params = (S2, R2, H_i0, m_i, g_i, beta, M_mod, A_star, A_pred, P0, A, m_alpha)
+        # Use H0_eff as the initial guess for the equilibrium.
+        x0 = float.(vcat(H0_eff, H0_eff[1:R2].*0.1))
+
+        # Solve the equilibrium system: H + M_mod*H - H0_eff = 0.
+        sol = nlsolve((F, x) -> equilibrium_system!(F, x, params), x0)
+        # Check convergence:
         if !sol.f_converged
             @warn "nlsolve did not converge for mu = $mu_val"
             continue
         end
+        
         H_eq = sol.zero
+        
         # Compute the Jacobian at equilibrium.
-        J = compute_jacobian(herbivore_equilibrium_system!, H_eq, (M_mod, H0_eff))
+        J = compute_jacobian(equilibrium_system!, H_eq, params)
         eigvals_J = eigvals(J)
         max_real = maximum(real.(eigvals_J))
         stable = max_real < 0.0
@@ -120,8 +153,10 @@ AAAA = explore_herbivore_equilibrium(
     1;
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]),
     mu_range=range(0.0, stop=1.0, length=50),
-    M_mean=0.1, symmetrical_competition=true, mean_m_alpha=0.1, epsilon_val=1.0,
-    mu_predation=0.0, artificial_pi=false, alpha=0.25)
+    M_mean=0.1, symmetrical_competition=true, mean_m_alpha=0.0000001, epsilon_val=1.0,
+    mu_predation=0.01, artificial_pi=false, alpha=0.25,
+    include_predators = false
+)
 
 println("Parameter exploration results:")
 println(results_table)
