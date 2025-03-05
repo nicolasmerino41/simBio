@@ -181,20 +181,21 @@ AAAA = explore_stability(1;
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]),
     mu_range=range(0.0, stop=1.0, length=50),
     symmetrical_competition=true,
-    mean_m_alpha=0.0001, epsilon_val=0.0,
+    mean_m_alpha=0.1, epsilon_val=0.0,
     mu_predation=0.0, artificial_pi=false,
     alpha=0.25,
     plot = false, # Beware plotting will be very slow for more than a few iterations (i.e. more than a few mu values)
     include_predators = true
 )
 
-h_run, sol = herbivore_run(
+h_run = herbivore_run(
     1, 
-    0.2, 0.01, 0.01, true, 0.1;
+    0.05069, 0.01448, 0.0888886, true, 0.022613;
     include_predators=true, time_end=500.0, plot=true,
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]), artificial_pi=false,
     alpha=0.25,
-    ignore_inf_error = false
+    ignore_inf_error = true,
+    hollingII = true, h = 0.1
 );
 
 println("Stability exploration results:")

@@ -1,15 +1,38 @@
-using Evolutionary, DifferentialEquations, Random, Logging
+using ArgTools, CSV, Evolutionary, DifferentialEquations, Random, Logging, Base.Threads, NLsolve, ForwardDiff
+
+# ===========================
+# LOAD MODULES
+# ===========================
+include("Scripts/prior.jl")
+include("Scripts/prior2.jl")
+include("Scripts/DA_birmmals_with_pi.jl")
+include("Scripts/generate_competition_matrix.jl")
+include("Scripts/species_dict.jl")
+
+include("Scripts/ecosystem_dynamics!.jl")
+include("Scripts/FI_functions.jl")
+include("Scripts/extract_H0_DA.jl")
+include("Scripts/attempt_setup_community.jl")
+include("Scripts/Callbacks_function.jl")
+include("Scripts/npp_DA_relative_to_1000.jl")
+include("Scripts/attempt_feasibility.jl")
+include("Scripts/New_dynamics!.jl")
+include("Scripts/New_FI_functions.jl")
+include("Scripts/New_attempt_setup_community.jl")
+include("Scripts/NLsolve.jl")
+include("Scripts/ExploringOnlyHerbivores.jl")
 
 # Import SpinLock for thread-safety
 using Base.Threads: SpinLock
 using Base.Threads: @threads
+n_cores = Threads.nthreads()
 # ===========================
-# 2️⃣ PARSE ARGUMENTS & INIT
+# PARSE ARGUMENTS & INIT
 # ===========================
-start_val = parse(Int, ARGS[1])  # Starting cell index (for HPC batch processing)
-end_val   = parse(Int, ARGS[2])  # Ending cell index
-start_val = 1
-end_val = 1
+# start_val = parse(Int, ARGS[1])  # Starting cell index (for HPC batch processing)
+# end_val   = parse(Int, ARGS[2])  # Ending cell index
+# start_val = 1
+# end_val = 8
 
 const EXTINCTION_THRESHOLD = 1e-6
 const T_ext               = 250.0
@@ -20,15 +43,15 @@ const global art_pi = false
 const file_lock = SpinLock()  # Ensures only one thread writes to CSV at a time
 
 # ===========================
-# 2️⃣ FITNESS FUNCTION
+# FITNESS FUNCTION (THREAD-SAFE)
 # ===========================
 function fitness(params, local_i, local_j, sp_nm, localNPP)
     # Ensure parameters stay within bounds
-    params = clamp.(params, [0.1, 0.0, 0.0, 0.0], [0.9, 0.2, 1.0, 1.0])
+    params = clamp.(params, [0.0, 0.0, 0.0, 0.0], [0.99, 1.0, 1.0, 1.0])
     mu, mu_predation, epsilon, m_alpha = params
     # mu, mu_predation, epsilon, m_alpha, alpha = 0.0, 0.0, 0.0, 0.1, 0.25
     # Debug: Print current evaluation
-    # println("🔍 Evaluating (cell $local_i, $local_j): mu=$(mu), mu_predation=$(mu_predation), epsilon=$(epsilon)")
+    # println("?? Evaluating (cell $local_i, $local_j): mu=$(mu), mu_predation=$(mu_predation), epsilon=$(epsilon)")
 
     # Run the ecosystem model with these parameters
     # Attempt setup using the updated parametrisation
@@ -54,14 +77,13 @@ function fitness(params, local_i, local_j, sp_nm, localNPP)
     m_i         = results.m_i
     g_i         = results.g_i
     beta        = results.beta
-    M_mod       = results.M_modified    # Modified competition matrix (S×S)
-    A_star      = results.A_star        # Nondimensional predation rates (S×R)
-    a_matrix    = results.a_matrix      # Herbivore–predator interaction matrix (S×R)
-    A           = results.A             # Predator interaction matrix (R×R)
+    M_mod       = results.M_modified
+    A_star      = results.A_star
+    a_matrix    = results.a_matrix
+    A           = results.A
     m_alpha     = results.m_alpha
     h           = results.h
     
-    # Build predator attack matrix (R×S) by transposing a_matrix.
     A_pred = transpose(a_matrix)
 
     # Set predator overpopulation thresholds.
@@ -123,14 +145,13 @@ function fitness(params, local_i, local_j, sp_nm, localNPP)
 end
 
 # ===========================
-# 4️⃣ GA CONFIGURATION
+# GA CONFIGURATION
 # ===========================
 # lower_bounds = [0.1, 0.0, 0.0, 0.0]
 # upper_bounds = [0.9, 0.5, 1.0, 1.0]
 # bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
-
 ga_algorithm = GA(
-    populationSize = 10,
+    populationSize = 50,
     selection = tournament(3),
     mutationRate = 0.25,
     crossoverRate = 0.6,
@@ -142,17 +163,19 @@ options = Evolutionary.Options(
     show_trace = false  # Suppress verbose output for HPC efficiency
 )
 
-cuts_for_mu = range(0.0, 0.99, length = 9)
-cuts_for_mu_predation = range(0.0, 1.0, length = 9)
-cuts_for_epsilon = range(0.0, 1.0, length = 9)
-cuts_for_m_alpha = range(0.0, 1.0, length = 9)
-# cuts_for_alpha = range(0.0, 1.0, length = 9)
+cuts_for_mu = range(0.0, 0.1, length = n_cores+1)
+cuts_for_mu_predation = range(0.0, 1.0, length = n_cores+1)
+cuts_for_epsilon = range(0.0, 1.0, length = n_cores+1)
+cuts_for_m_alpha = range(0.0, 1.0, length = n_cores+1)
+# cuts_for_alpha = range(0.0, 1.0, length = n_cores)
 
-csv_filepath = "Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/21-02/ga_results_NF.csv"
+# Initialize CSV file with headers
+csv_filepath = "Results/3-3/ga_results_NF_hollingII.csv"
 open(csv_filepath, "w") do file
     header = "cell_id,survival_rate,flag,mu,mu_predation,epsilon_val,m_alpha,total_species,i,j,NPP\n"
     write(file, header)
 end
+
 function compute_equilibrium(
     mu, mu_predation, epsilon, m_alpha,
     local_i, local_j, sp_nm, localNPP;
@@ -229,8 +252,8 @@ df = DataFrame(
     P_eq = Vector{Vector{Float64}}[]
 )
 
+@time Threads.@threads for portion in 1:n_cores
 
-@time Threads.@threads for portion in 1:8
     lower_bounds = [cuts_for_mu[portion], cuts_for_mu_predation[portion], cuts_for_epsilon[portion], cuts_for_m_alpha[portion]]
     upper_bounds = [cuts_for_mu[portion+1], cuts_for_mu_predation[portion+1], cuts_for_epsilon[portion+1], cuts_for_m_alpha[portion+1]]
     bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
@@ -305,26 +328,9 @@ df = DataFrame(
         end
     end
 
-    println("✅ Finished Cell $cell: Best SR = $best_survival_rate")
+    println("Finished Cell $cell: Best SR = $best_survival_rate")
 end
 
 serialize(df, "Results/3-3/ga_results_NF_hollingII.jls")
 
-row = df[8, :]
-mu_val = row.mu
-mu_pred_val = row.mu_predation
-eps_val = row.epsilon_val
-m_alpha_val = row.m_alpha
-H_init = copy(row.H_eq[1])
-P_init = copy(row.P_eq[1])
-
-sim_result = herbivore_run(
-    row.cell_id, mu_val, mu_pred_val, eps_val, true, m_alpha_val;
-    include_predators = true,
-    plot = true,
-    H_init = H_init,
-    P_init = P_init,
-    alpha = 0.25,
-    hollingII = true,
-    h = 0.1
-)
+println("Results saved to 'ga_cell_results.csv'!")

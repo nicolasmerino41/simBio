@@ -3,9 +3,9 @@ title: "New Framework1"
 author: "Jeff & Nico"
 date: "February 2025"
 output:
-  pdf_document:
+  word_document:
     toc: true
-    toc_depth: 3
+    toc_depth: '5'
   html_document:
     theme: flatly
     toc: true
@@ -14,9 +14,9 @@ output:
     toc_float:
       collapsed: false
     highlight: tango
-  word_document:
+  pdf_document:
     toc: true
-    toc_depth: '5'
+    toc_depth: 3
 ---
 
 ```{r setup, include=FALSE}

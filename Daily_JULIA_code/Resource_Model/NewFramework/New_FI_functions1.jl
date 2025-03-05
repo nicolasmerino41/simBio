@@ -1,5 +1,3 @@
-# FI_functions.jl – Revised Version Incorporating New Parametrization
-
 ################################################################################
 # Basic Functions for Extracting Species Information
 ################################################################################
@@ -79,6 +77,10 @@ function new_parametrise_the_community(
     cell_abundance::Vector{Float64} = Float64[],
     # (We now drop externally supplied predator abundances.)
     
+    # New keyword arguments for Holling type II functional response:
+    hollingII::Bool = false,
+    h::Float64 = 0.1,
+    
     # New parameter: allometric exponent
     alpha::Float64 = 0.25
 )
@@ -140,9 +142,6 @@ function new_parametrise_the_community(
     epsilon = fill(epsilon_val, R)
     
     #### (E) Compute predator-mediated coefficients C and G (using the raw a_matrix)
-    # Here we compute:
-    #   C_raw[i,j] = sum_{α,β} a_matrix[i,α] * A_inv[α,β] * a_matrix[j,β]
-    #   G_raw[i] = sum_{α,β} a_matrix[i,α] * A_inv[α,β] * m_alpha[β]
     if R > 0
         A_inv = inv(A)
     else
@@ -190,34 +189,29 @@ function new_parametrise_the_community(
     d_i = [ m_i[i] / H_i0[i] for i in 1:S ]
     A_star = zeros(S, R)
     for i in 1:S
-        for α in 1:R
-            A_star[i, α] = a_matrix[i, α] / d_i[i]
+        for alph in 1:R
+            A_star[i, alph] = a_matrix[i, alph] / d_i[i]
         end
     end
 
     #### (I) Compute predator contribution using the model derivation
-    # We want to compute:
-    #   pred_contrib_i = sum_{j=1}^{S} C_new[i,j] * H_i0[j] - G_new[i],
-    # where:
-    #   C_new[i,j] = sum_{α,β} A_star[i,α] * A_inv[α,β] * a_matrix[j,β]
-    #   G_new[i]   = sum_{α,β} A_star[i,α] * A_inv[α,β] * m_alpha[β]
     C_new = zeros(S, S)
     G_new = zeros(S)
     if R > 0
         for i in 1:S
             for j in 1:S
                 val = 0.0
-                for α in 1:R
-                    for β in 1:R
-                        val += A_star[i, α] * A_inv[α, β] * a_matrix[j, β]
+                for alph in 1:R
+                    for bet in 1:R
+                        val += A_star[i, alph] * A_inv[alph, bet] * a_matrix[j, bet]
                     end
                 end
                 C_new[i, j] = val
             end
             valG = 0.0
-            for α in 1:R
-                for β in 1:R
-                    valG += A_star[i, α] * A_inv[α, β] * m_alpha[β]
+            for alph in 1:R
+                for bet in 1:R
+                    valG += A_star[i, alph] * A_inv[alph, bet] * m_alpha[bet]
                 end
             end
             G_new[i] = valG
@@ -225,7 +219,6 @@ function new_parametrise_the_community(
     end
 
     #### (J) Define effective observed herbivore abundance incorporating predation
-    # Also include the competition correction from other herbivores:
     H_i0_eff = zeros(S)
     for i in 1:S
         comp_sum = 0.0
@@ -234,7 +227,14 @@ function new_parametrise_the_community(
                 comp_sum += mu_matrix[i, j] * H_i0[j]
             end
         end
-        pred_contrib = (R > 0) ? (sum(C_new[i, j] * H_i0[j] for j in 1:S) - G_new[i]) : 0.0
+        # Compute the linear predator contribution
+        linear_pred_contrib = (R > 0) ? (sum(C_new[i, j] * H_i0[j] for j in 1:S) - G_new[i]) : 0.0
+        # If Holling type II is requested, saturate the predator contribution:
+        if hollingII
+            pred_contrib = linear_pred_contrib / (1 + h * linear_pred_contrib)
+        else
+            pred_contrib = linear_pred_contrib
+        end
         H_i0_eff[i] = H_i0[i] + comp_sum + pred_contrib
     end
     
@@ -250,7 +250,8 @@ function new_parametrise_the_community(
         a_matrix, A,
         epsilon, m_alpha,
         x,            # scaling parameter x
-        raw_g         # raw growth rates before adjustment
+        raw_g,         # raw growth rates before adjustment
+        h
     )
 end
 
@@ -272,7 +273,9 @@ function new_setup_community_from_cell(
     h_standard_deviation::Float64 = 0.0,
     artificial_pi = false,
     species_names::Vector{String} = nothing,
-    alpha = 0.25
+    alpha = 0.25,
+    hollingII::Bool = false,
+    h::Float64 = 0.1
 )
     # 1) Retrieve the cell and extract species present.
     cell = DA_birmmals_with_pi_corrected[i, j]
@@ -301,7 +304,7 @@ function new_setup_community_from_cell(
     # 3) Call the new parametrisation function.
     # Note: the updated new_parametrise_the_community now computes the effective herbivore abundance,
     # incorporating predator contributions from the model derivation.
-    S, R, H_i0, m_i, g_i, beta, G, M_modified, A_star, a_matrix, A, epsilon, m_alpha, x_final, raw_g =
+    S, R, H_i0, m_i, g_i, beta, G, M_modified, A_star, a_matrix, A, epsilon, m_alpha, x_final, raw_g, h =
         new_parametrise_the_community(
             species_names;
             NPP = NPP,
@@ -316,7 +319,9 @@ function new_setup_community_from_cell(
             m_standard_deviation = m_standard_deviation,
             h_standard_deviation = h_standard_deviation,
             cell_abundance = cell_abundance_herbs,
-            alpha = alpha
+            alpha = alpha,
+            hollingII = hollingII,
+            h = h
         )
     
     return (
@@ -327,7 +332,7 @@ function new_setup_community_from_cell(
         G,
         M_modified, A_star, a_matrix, A,
         epsilon, m_alpha,
-        raw_g
+        raw_g, h
     )
 end
 

@@ -4,7 +4,9 @@ function new_attempt_setup_community(
     localNPP,
     # localH0_vector, 
     species_names = nothing, artificial_pi = false,
-    alpha = 0.25
+    alpha = 0.25,
+    hollingII = false,
+    h = 0.1
 )
     try
         S2, R2, species_names, herb_list, pred_list,
@@ -28,7 +30,9 @@ function new_attempt_setup_community(
                 # real_H0 = true,
                 # H0_vector = localH0_vector,
                 species_names = species_names,
-                alpha = alpha
+                alpha = alpha,
+                hollingII = hollingII,
+                h = h
             )
         return (
             S = S2, 
@@ -48,7 +52,8 @@ function new_attempt_setup_community(
             A = A,
             epsilon = epsilon,
             m_alpha = m_alpha,
-            raw_g = raw_g
+            raw_g = raw_g,
+            h = h
         )
     catch e
         # Optionally log the error here.
