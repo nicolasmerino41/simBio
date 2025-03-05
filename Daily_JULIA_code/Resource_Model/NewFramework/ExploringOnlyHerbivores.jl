@@ -72,14 +72,13 @@ function herbivore_run(
     m_i         = results.m_i
     g_i         = results.g_i
     beta        = results.beta
-    M_mod       = results.M_modified    # Modified competition matrix (S×S)
-    A_star      = results.A_star        # Nondimensional predation rates (S×R)
-    a_matrix    = results.a_matrix      # Herbivore–predator interaction matrix (S×R)
-    A           = results.A             # Predator interaction matrix (R×R)
+    M_mod       = results.M_modified    
+    A_star      = results.A_star        
+    a_matrix    = results.a_matrix      
+    A           = results.A             
     m_alpha     = results.m_alpha
     h           = results.h
 
-    # Build predator attack matrix (R×S) by transposing a_matrix.
     A_pred = transpose(a_matrix)
 
     # Set predator overpopulation thresholds.
@@ -117,12 +116,13 @@ function herbivore_run(
     else
         params = (S2, R2, H_i0, m_i, g_i, beta, M_mod, A_star, A_pred, P0, A, m_alpha, h)
     end
+    # cb_no_trigger, cb_trigger = build_callbacks(S2, R2, EXTINCTION_THRESHOLD, T_ext, 1)
     prob = ODEProblem(new_dynamics!, u0, (0.0, time_end), params)
 
     # Solve the ODE problem with strict tolerances.
     logger = SimpleLogger(stderr, Logging.Error)
     sol = with_logger(logger) do
-        solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+        solve(prob, Tsit5(); callback=cb_no_trigger, abstol=1e-8, reltol=1e-6)
     end
 
     if !ignore_inf_error

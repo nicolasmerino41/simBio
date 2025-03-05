@@ -41,6 +41,7 @@ const SURVIVAL_THRESHOLD  = 0.0       # Only save configs with SR >= threshold
 const global art_pi = false
 
 const file_lock = SpinLock()  # Ensures only one thread writes to CSV at a time
+const global cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
 
 # ===========================
 # FITNESS FUNCTION (THREAD-SAFE)
@@ -123,7 +124,7 @@ function fitness(params, local_i, local_j, sp_nm, localNPP)
 
     logger = SimpleLogger(stderr, Logging.Error)
     sol = with_logger(logger) do
-        solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+        solve(prob, Tsit5(); callback=cb_no_trigger, abstol=1e-8, reltol=1e-6)
     end
 
     if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
