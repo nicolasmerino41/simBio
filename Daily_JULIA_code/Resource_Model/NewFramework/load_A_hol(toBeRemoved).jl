@@ -1,4 +1,22 @@
-A_hol = deserialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/21-02/ga_results_NF_hollingII.jls")
+A_hol = deserialize("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/21-02/ga_results_NF_hollingII_with_callback.jls")
+A_csv = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/21-02/ga_results_NF_hollingII_with_callback.csv", DataFrame)
+A_csv.Column12
+
+# Load the CSV file
+A_csv = CSV.read("Daily_JULIA_code/Resource_Model/Best_params_&_other_outputs/21-02/ga_results_NF_hollingII_with_callback.csv", DataFrame)
+
+# Function to clean and convert each row
+function parse_abundance(row)
+    cleaned = replace(row, "None" => "NaN")  # Replace "None" with NaN
+    return parse.(Float64, split(cleaned, ";"))  # Convert to array of Float64
+end
+
+# Apply the function to the column
+A_csv.Column12 = [parse_abundance(row) for row in A_csv.Column12]
+A_csv.Column13 = [parse_abundance(row) for row in A_csv.Column13]
+
+# Verify transformation
+println(A_csv.Column12[47])  # Should now be an array of numbers
 
 begin
     
