@@ -67,7 +67,7 @@ $$
 = \frac{m_i}{H_i^0 (g_i - m_i)} \Bigl( H_i + \sum_{j \neq i} \mu_{ij} H_j \Bigr)
 $$
 
-Now note that
+Given that
 
 $$
 \frac{g_i - m_i}{m_i} = \frac{g_i}{m_i} - 1

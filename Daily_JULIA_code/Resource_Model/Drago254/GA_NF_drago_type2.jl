@@ -171,11 +171,11 @@ cuts_for_m_alpha = range(0.0, 1.0, length = n_cores+1)
 # cuts_for_alpha = range(0.0, 1.0, length = n_cores)
 
 # Initialize CSV file with headers
-csv_filepath = "Results/3-3/ga_results_NF_hollingII.csv"
-open(csv_filepath, "w") do file
-    header = "cell_id,survival_rate,flag,mu,mu_predation,epsilon_val,m_alpha,total_species,i,j,NPP\n"
-    write(file, header)
-end
+# csv_filepath = "Results/3-3/ga_results_NF_hollingII.csv"
+# open(csv_filepath, "w") do file
+#     header = "cell_id,survival_rate,flag,mu,mu_predation,epsilon_val,m_alpha,total_species,i,j,NPP\n"
+#     write(file, header)
+# end
 
 function compute_equilibrium(
     mu, mu_predation, epsilon, m_alpha,
@@ -332,6 +332,6 @@ df = DataFrame(
     println("Finished Cell $cell: Best SR = $best_survival_rate")
 end
 
-serialize(df, "Results/3-3/ga_results_NF_hollingII.jls")
+serialize("Results/3-3/ga_results_NF_hollingII.jls", df)
 
 println("Results saved to 'ga_cell_results.csv'!")
