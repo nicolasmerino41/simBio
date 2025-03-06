@@ -59,7 +59,8 @@ end
 # =============================================================================
 function run_removal_scenario_with_mask(cell::Int, sp_list::Vector{String},
     S_full::Int, R_full::Int, H_init_full::Vector{Float64}, P_init_full::Vector{Float64},
-    baseline_params, removal_mask::Vector{Int})
+    baseline_params, removal_mask::Vector{Int};
+    callbacks = false)
     
     sp_removed_names = sp_list[removal_mask]  # species forced to zero
     H_init = copy(H_init_full)
@@ -72,15 +73,22 @@ function run_removal_scenario_with_mask(cell::Int, sp_list::Vector{String},
             P_init[pred_idx] = 0.0
         end
     end
+    
     u0_removal = vcat(H_init, P_init)
     prob_removal = ODEProblem(new_dynamics!, u0_removal, (0.0, 500.0), baseline_params)
     logger = SimpleLogger(stderr, Logging.Error)
     sol_removal = with_logger(logger) do
-        solve(prob_removal, Tsit5(); abstol=1e-8, reltol=1e-6)
+        if callbacks
+            solve(prob_removal, Tsit5(); callback=cb_no_trigger, abstol=1e-8, reltol=1e-6)
+        else
+            solve(prob_removal, Tsit5(); abstol=1e-8, reltol=1e-6)
+        end
     end
     if sol_removal.t[end] < 500.0 || any(isnan, sol_removal.u[end]) || any(isinf, sol_removal.u[end])
+        @warn "Removal simulation failed for cell $cell because <500 or infs detected."
         return nothing
     end
+
     H_end_rem = copy(sol_removal[1:S_full, end])
     P_end_rem = (R_full > 0) ? copy(sol_removal[S_full+1:S_full+R_full, end]) : Float64[]
     H_end_rem[H_end_rem .< EXTINCTION_THRESHOLD] .= 0.0
@@ -107,7 +115,7 @@ end
 # =============================================================================
 # Modified Baseline and Removal Experiment for a Cell (NEW VERSION)
 # =============================================================================
-function run_experiments_for_cell_new(cell::Int, best_row::DataFrameRow)
+function run_experiments_for_cell_new(cell::Int, best_row::DataFrameRow; callbacks = false)
     results_df = DataFrame()
     
     # 1) Get cell indices and full species list (all species; no filtering here)
@@ -164,6 +172,7 @@ function run_experiments_for_cell_new(cell::Int, best_row::DataFrameRow)
         @warn "Cell $cell: Equilibrium solver did not converge."
         return results_df
     end
+
     H_eq = copy(sol_eq.zero[1:S_new])
     P_eq = (R_new > 0) ? copy(sol_eq.zero[S_new+1:S_new+R_new]) : Float64[]
     H_eq[H_eq .< EXTINCTION_THRESHOLD] .= 0.0
@@ -178,12 +187,18 @@ function run_experiments_for_cell_new(cell::Int, best_row::DataFrameRow)
     prob = ODEProblem(new_dynamics!, u0, (0.0, 500.0), params_tuple)
     logger = SimpleLogger(stderr, Logging.Error)
     sol = with_logger(logger) do
-        solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+        if callbacks
+            solve(prob, Tsit5(); callback=cb_no_trigger, abstol=1e-8, reltol=1e-6)
+        else
+            solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+        end
     end
+
     if sol.t[end] < 500.0 || any(isnan, sol.u[end]) || any(isinf, sol.u[end])
         @warn "Cell $cell: Baseline simulation failed."
         return results_df
     end
+
     H_end = copy(sol[1:S_new, end])
     P_end = (R_new > 0) ? copy(sol[S_new+1:S_new+R_new, end]) : Float64[]
     H_end[H_end .< EXTINCTION_THRESHOLD] .= 0.0
@@ -226,38 +241,45 @@ function run_experiments_for_cell_new(cell::Int, best_row::DataFrameRow)
     candidate_indices = setdiff(1:(S_new+R_new), extinct_mask)
 
     # 8) For each candidate additional removal, form the removal mask as the union of extinct indices and that candidate.
+    @info "Candidate species for removal in cell $cell: $(candidate_indices)"
+
     for cand in candidate_indices
-        removal_mask = union(extinct_mask, [cand])
+        # Ensure only extinct species + the one selected for removal are affected
+        removal_mask = vcat(extinct_mask, cand)
+        
         removal_out = run_removal_scenario_with_mask(
             cell,
             sp_full,   # full species list (order as in the cell)
             S_new, R_new,
             H_init, P_init,
             params_tuple,
-            removal_mask
+            removal_mask;
+            callbacks = callbacks
         )
+    
         if removal_out === nothing
-            @warn "Cell $cell: Removal scenario for mask $(removal_mask) failed. Skipping."
+            @warn "Cell $cell: Removal scenario for species $(cand) failed. Skipping."
             continue
         end
+    
         H_end_rem = removal_out.H_end
         P_end_rem = removal_out.P_end
         sr_rem = removal_out.survival_rate
         total_bio_rem = removal_out.total_biomass
         sp_removed_names = removal_out.sp_removed
-
+    
         full_ext_mask = map(x -> x > 0.0 ? 0 : 1, vcat(H_end, P_end))
         current_ext_mask = map(x -> x > 0.0 ? 0 : 1, vcat(H_end_rem, P_end_rem))
         (ind_ext_num_str, ind_ext_name_str) = collateral_extinctions(removal_mask, full_ext_mask, current_ext_mask, sp_full)
-
+    
         H_diff = H_end .- H_end_rem
         P_diff = P_end .- P_end_rem
         delta_total_biomass = total_bio - total_bio_rem
-
+    
         push!(results_df, (
             cell = cell,
             sp_removed = join(string.(sp_removed_names), ";"),
-            sp_id_removed = join(string.(removal_mask), ";"),
+            sp_id_removed = string(cand),  # Now correctly records one species per row
             survival_rate = round(sr_rem, digits=3),
             total_biomass = round(total_bio_rem, digits=3),
             h_biomass = round(sum(H_end_rem), digits=3),
@@ -275,7 +297,7 @@ function run_experiments_for_cell_new(cell::Int, best_row::DataFrameRow)
             survived_herbs = removal_out.survived_herb,
             survived_preds = removal_out.survived_pred
         ))
-    end
+    end    
 
     return results_df
 end
@@ -283,14 +305,22 @@ end
 # =============================================================================
 # DRIVER FUNCTION FOR ALL CELLS
 # =============================================================================
-function run_keystone_removal(new_config_df::DataFrame; jls_filename="all_results.jls")
+function run_keystone_removal(new_config_df::DataFrame; jls_filename="all_results.jls", callbacks = false)
     all_results_list = Vector{DataFrame}()
     grouped = groupby(new_config_df, :cell_id)
     for subdf in grouped
         best_row = subdf[argmax(subdf.survival_rate), :]
         cell = best_row.cell_id
+        if callbacks
+            @info "Making callbacks for cell $cell"
+            local_i, local_j = idx[cell][1], idx[cell][2]
+            # Extract species names from the cell data.
+            sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
+            local_S, local_R = identify_n_of_herbs_and_preds(sp_nm)
+            cb_no_trigger, cb_trigger = build_callbacks(local_S, local_R, EXTINCTION_THRESHOLD, T_ext, 1)
+        end
         @info "Processing cell $cell using best configuration"
-        cell_results = run_experiments_for_cell_new(cell, best_row)
+        cell_results = run_experiments_for_cell_new(cell, best_row; callbacks = callbacks)
         if cell_results !== nothing
             push!(all_results_list, cell_results)
             write_result_jls(cell_results, jls_filename)
@@ -303,3 +333,5 @@ end
 # DRIVER CALL
 # =============================================================================
 A_results = run_keystone_removal(A_hol; jls_filename="Daily_Julia_code/Resource_Model/Best_params_&_other_outputs/NEW_keystone_results.jls")
+
+AA_results = A_results[1]#[:, 2][2]
