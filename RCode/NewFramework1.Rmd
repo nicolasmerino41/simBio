@@ -3,9 +3,9 @@ title: "New Framework1"
 author: "Jeff & Nico"
 date: "February 2025"
 output:
-  word_document:
+  pdf_document:
     toc: true
-    toc_depth: '5'
+    toc_depth: 3
   html_document:
     theme: flatly
     toc: true
@@ -14,9 +14,9 @@ output:
     toc_float:
       collapsed: false
     highlight: tango
-  pdf_document:
+  word_document:
     toc: true
-    toc_depth: 3
+    toc_depth: '5'
 ---
 
 ```{r setup, include=FALSE}
@@ -27,9 +27,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document explains the derivation of a model for herbivore dynamics and its extension to include predators. The approach starts from basic Lotka–Volterra dynamics and incorporates observations of net primary productivity (NPP) and herbivore abundances. We then introduce allometric scaling for growth rates and finally account for predation by incorporating predator dynamics. The aim is to link model parameters directly to measurable quantities.
 
-# 1. Model Without Predators
+# 1. Model without predators
 
-## 1.1 NPP and Herbivore Equilibrium
+## 1.1 NPP and herbivore equilibrium
 
 The starting hypothesis is that at equilibrium, net primary productivity (NPP) is balanced by the growth of the herbivore populations. In other words, given observed herbivore abundances \( H_i^{\text{obs}} \) and intrinsic growth rates \( g_i \), we assume:
 
@@ -37,7 +37,7 @@ $$
 \text{NPP} \approx \sum_i g_i\, H_i^{\text{obs}}
 $$
 
-## 1.2 The Basic Herbivore Dynamics
+## 1.2 The basic herbivore dynamics
 
 We start with a Lotka–Volterra type model for herbivores:
 $$
@@ -53,7 +53,7 @@ where:
 
 - \( d_i \mu_{ij} \) represents interspecific competition.
 
-## 1.3 Factoring Out the Net Rate
+## 1.3 Factoring out the net rate
 
 It is useful to factor out the net intrinsic rate \( g_i - m_i \) from the model. This gives:
 $$
@@ -65,7 +65,7 @@ $$
 $$
 which can be thought of as a reference density for species \( i \).
 
-## 1.4 Introducing the Niche Parameter
+## 1.4 Introducing the niche parameter
 
 Next, a niche parameter \(\beta_i\) is defined as:
 $$
@@ -83,7 +83,7 @@ H_i^{\text{obs}}(\mu) = H_i^{\text{obs}} + \sum_{j\neq i}\mu_{ij}H_j^{\text{obs}
 $$
 This correction accounts for the effect of interspecific competition on the observed densities.
 
-## 1.5 Allometric Scaling of the Growth Rate
+## 1.5 Allometric scaling of the growth rate
 
 The growth rate \( g_i \) is assumed to scale with body size through an allometric relation:
 $$
@@ -115,9 +115,9 @@ $$
 \dot{H}_i = g_i^{\text{obs}}(\text{NPP})\, \frac{\beta_i}{1+\beta_i} \left[ 1 - \frac{H_i + \sum_{j\neq i}\mu_{ij}H_j}{H_i^{\text{obs}}(\mu)} \right] H_i
 $$
 
-# 2. Extending the Model: Inclusion of Predators
+# 2. Extending the model: inclusion of predators
 
-## 2.1 Adding Predation to Herbivore Mortality
+## 2.1 Adding predation to herbivore mortality
 
 In the presence of predators, the herbivore mortality is increased by predation. The mortality term is modified as:
 $$
@@ -134,7 +134,7 @@ $$
 A^*_{i\alpha} = \frac{a_{\alpha i}}{d_i}
 $$
 
-## 2.2 Predator Dynamics
+## 2.2 Predator dynamics
 
 Predators are assumed to follow Lotka–Volterra dynamics. The basic predator model is given by:
 $$
@@ -164,7 +164,7 @@ $$
 \dot{P}_\alpha = m_\alpha \left[ \frac{\sum_i A_{\alpha i} H_i - P_{\alpha 0} - \sum_\beta B_{\alpha\beta} P_\beta}{P_{\alpha 0}} \right] P_\alpha
 $$
 
-## 2.3 Redefining the Observed Herbivore Abundance
+## 2.3 Redefining the observed herbivore abundance
 
 With predators affecting herbivore mortality, we must update the effective observed herbivore density. The modified observed abundance is defined as:
 $$
@@ -178,7 +178,7 @@ This expression now accounts for:
 
 - The additional reduction due to predation (through \( A^*_{i\alpha} \) and the observed predator densities).
 
-## 2.4 Updated Herbivore Dynamics with Predation
+## 2.4 Updated herbivore dynamics with predation
 
 The herbivore dynamics now become:
 $$
@@ -186,27 +186,78 @@ $$
 $$
 This formulation explicitly includes both competitive and predatory effects on the herbivores.
 
-## 2.5 Equilibrium and Linking to Apparent Competition
+## 2.5 Equilibrium and linking to apparent competition
 
 At equilibrium, the predator densities \( P_\alpha^* \) can be expressed as:
 $$
 P_\alpha^* = \sum_i \sum_\beta B^{-1}_{\alpha\beta} A_{\beta i} H_i - \sum_\beta B^{-1}_{\alpha\beta} P_{0\beta}
 $$
 Consequently, one shows that:
+
 $$
 \sum_\alpha A^*_{i\alpha} P_\alpha^* = \sum_j \left( \sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} A_{\beta j} \right) H_j - \left( \sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} P_{0\beta} \right)
 $$
 In the above expression, the term
+
 $$
 \sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} A_{\beta j}
 $$
 can be interpreted as the "apparent competition" \( C_{ij} \), and the offset term
+
 $$
 \sum_{\alpha,\beta} A^*_{i\alpha} B^{-1}_{\alpha\beta} P_{0\beta}
 $$
 relates to predator release \( G_i \). Under the equilibrium assumption, the net effect of predation can then be incorporated into the model as:
+
 $$
 \sum_\alpha A^*_{i\alpha} P_\alpha^{\text{obs}} = \sum_j C_{ij} H_j - G_i
 $$
 
+## 2.6 Holling type II functional response for predators
+
+In the basic predator dynamics (Section 2.2), the feeding term is originally represented as:
+
+$$
+\text{attack\_sum}_\alpha = \sum_i A_{\alpha i} H_i
+$$
+
+where \( A_{\alpha i} \) represents the effective attack rate of predator \( \alpha \) on prey \( i \), and \( H_i \) is the density of prey species \( i \).
+
+To account for the saturation of predator consumption at high prey densities, we incorporate the Holling type II functional response. For a single predator–prey interaction, the classical form is given by:
+
+$$
+f(H) = \frac{aH}{1 + ahH}
+$$
+
+where:
+
+- \( a \) is the attack rate,
+
+- \( h \) is the handling time,
+
+- \( H \) is the prey density.
+
+In our multi-prey context, we first define the total encounter rate for predator \( \alpha \) as:
+
+$$
+\text{attack\_sum}_\alpha = \sum_i A_{\alpha i} H_i
+$$
+
+Introducing the handling time \( h \), the Holling type II response becomes:
+
+$$
+\text{sat\_attack}_\alpha = \frac{\text{attack\_sum}_\alpha}{1 + h\,\text{attack\_sum}_\alpha}
+$$
+
+This formulation exhibits two key features:
+
+- **At low prey densities:** When \( h\,\text{attack\_sum}_\alpha \ll 1 \), we have \( \text{sat\_attack}_\alpha \approx \text{attack\_sum}_\alpha \), recovering the linear response.
+
+- **At high prey densities:** The denominator increases, causing the consumption rate to saturate, which reflects the predator’s limited capacity to process prey.
+
+Thus, the predator dynamics incorporating the Holling type II functional response are expressed as:
+
+$$
+\dot{P}_\alpha = P_\alpha\, m_\alpha \left( \frac{\text{sat\_attack}_\alpha - P_{0\alpha} - \sum_{\beta} B_{\alpha\beta} P_\beta}{P_{0\alpha}} \right)
+$$
 
