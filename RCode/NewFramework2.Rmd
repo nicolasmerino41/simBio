@@ -1,0 +1,242 @@
+---
+title: "New Framework2"
+author: "Jeff & Nico"
+date: "March 2025"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Herbivore-Only Model Framework
+
+**Relative abundance representation:**  
+Let the total observed herbivore biomass be \(H_{TOT}^{obs}\). We represent the biomass of species \(i\) as
+$$
+H_i^{obs} = H_{TOT}^{obs}\, h_i,
+$$
+where the vector \(h = (h_1, h_2, \dots, h_{S_H})\) represents the relative abundances and satisfies
+$$
+\sum_{i=1}^{S_H} h_i = 1.
+$$
+This normalization makes \(h_i\) directly interpretable as the proportion of the total biomass contributed by species \(i\).
+
+**Linking NPP and growth rates via allometric scaling:**  
+Assume that the net primary production (NPP) available to herbivores is used for their growth:
+$$
+\text{NPP} = \sum_{i=1}^{S_H} g_i H_i = H_{TOT}^{obs} \sum_{i=1}^{S_H} g_i h_i.
+$$
+Defining the average per-unit biomass growth as
+$$
+G^{obs} = \frac{\text{NPP}}{H_{TOT}^{obs}} = \sum_{i=1}^{S_H} g_i h_i,
+$$
+we then postulate that each species’ intrinsic growth rate scales allometrically with its (dimensionless) body mass:
+$$
+g_i = G_0\, m_i^{-\alpha},
+$$
+with \(m_i = M_i/M_0\) (i.e. the body mass relative to a reference \(M_0\)) and \(\alpha\) as the allometric exponent. Substituting this into \(G^{obs}\) gives
+$$
+G^{obs} = G_0 \sum_{i=1}^{S_H} m_i^{-\alpha}\, h_i.
+$$
+Defining a dimensionless ratio \(R^{obs} = \frac{G^{obs}}{G_0}\), we obtain the key constraint:
+$$
+\langle m^{-\alpha}, h \rangle = \sum_{i=1}^{S_H} m_i^{-\alpha}\, h_i = R^{obs}.
+$$
+
+**Constraining the relative abundance vector:**  
+
+The model imposes two conditions on \(h\):
+
+1. **Normalization:**  
+   $$
+   \langle h, 1 \rangle = \sum_{i=1}^{S_H} h_i = 1.
+   $$
+
+2. **Growth–Weight constraint:**  
+   $$
+   \langle m^{-\alpha}, h \rangle = R^{obs}.
+   $$
+
+A useful strategy is to decompose \(h\) into a sum of two basis components plus a residual:
+$$
+h = x\, m^{-\alpha} + y\, 1 + w,
+$$
+with \(w\) orthogonal to both \(m^{-\alpha}\) and \(1\). Taking inner products yields:
+$$
+\begin{aligned}
+x\, \langle m^{-\alpha}, m^{-\alpha} \rangle + y\, \langle m^{-\alpha}, 1 \rangle &= R^{obs}, \
+x\, \langle m^{-\alpha}, 1 \rangle + y\, S_H &= 1.
+\end{aligned}
+$$
+These two equations uniquely determine \(x\) and \(y\), thereby constraining the part of \(h\) that affects both the total biomass and the weighted growth rate.
+
+**Incorporating species-specific deviations:**  
+To allow for deviations from the strict allometric scaling, we can modify the growth rate as follows:
+$$
+g_i = G_0\,(1+\delta q_i)\, m_i^{-\alpha},
+$$
+where \(\delta q_i\) (or equivalently, \(1+\delta q_i\)) is a species‐specific adjustment factor. This extension lets some species grow faster or slower than the average prediction, thereby adding flexibility to the model. The community-level growth constraint then becomes:
+$$
+R^{obs} = \sum_{i=1}^{S_H} (1+\delta q_i)\, m_i^{-\alpha}\, h_i.
+$$
+
+**Ecological implications:**
+
+- **Normalization (\(\langle h, 1 \rangle = 1\))** ensures that \(h\) represents a valid probability distribution, describing the relative contributions of each species.  
+
+- **Growth–Weighted constraint (\(\langle m^{-\alpha}, h \rangle = R^{obs}\))** forces the community structure to balance the disproportionately large contributions from small species (which have high \(m_i^{-\alpha}\)) with those from larger species.  
+
+# Reframing
+
+### **Equation of Fluxes**
+$$
+NPP = \sum G_i H_i
+$$
+
+$$
+= H_{tot} \sum G_i h_i
+$$
+
+$$
+NPP = H_{tot} \langle G \rangle
+$$
+
+- **Expectation notation:**  
+  $$\langle G \rangle = \sum G_i h_i $$
+- **Size-dependent effects?**  
+  $$
+  G_i = G^{(\alpha)} \left( \frac{B_i}{\bar{B}} \right)^{-\alpha}
+  $$
+
+- **Expected value considerations**
+  $$
+  \langle G \rangle = G^{(\alpha)} \langle g_i^{(\alpha)} \rangle
+  $$
+
+- **Question:**
+
+  - *Is \( G^{(\alpha)} \) fixed?*  
+    
+  - *What explains variance in \( \langle G \rangle \)?*
+
+
+# Reframing 2
+## Equation of Fluxes and Community Structure
+
+We start with the basic flux balance equation:
+  
+$$
+NPP = \sum_{i=1}^{S} G_i\, H_i,
+$$
+
+where \(H_i\) is the abundance of species \(i\) and \(G_i\) is its growth rate. Writing the abundances in terms of the total observed biomass \(H_{tot}^{obs}\) and the relative abundance \(h_i\) (so that \(H_i = H_{tot}^{obs} \cdot h_i\) and \(\sum_{i=1}^{S} h_i = 1\)), we have
+
+$$
+NPP = H_{tot}^{obs} \sum_{i=1}^{S} G_i\, h_i = H_{tot}^{obs} \langle G \rangle,
+$$
+
+with the expectation (or weighted average) defined as
+
+$$
+\langle G \rangle = \sum_{i=1}^{S} G_i\, h_i.
+$$
+
+In our framework, we assume that the individual growth rates depend on species size. In particular, we postulate a scaling law of the form
+
+$$
+G_i = G^{(\alpha)} \left(\frac{B_i}{\bar{B}}\right)^{-\alpha},
+$$
+
+where \(B_i\) is the body mass (or biomass) of species \(i\), \(\bar{B}\) is a reference value, and \(\alpha\) is the allometric exponent. In many cases, we can also write this scaling relationship more generally as
+
+$$
+G_i = G_0 \left(1 + \delta q_i\right) m_i^{-\alpha},
+$$
+
+where \(m_i\) is a dimensionless measure of body size (for example, \(m_i = B_i/\bar{B}\)) and \(1+\delta q_i\) accounts for species‐specific deviations from the average scaling law.
+
+Given these relationships, the average growth rate becomes
+
+$$
+\langle G \rangle = \sum_{i=1}^{S} G_i\, h_i = G^{(\alpha)} \sum_{i=1}^{S} \left(\frac{B_i}{\bar{B}}\right)^{-\alpha} h_i.
+$$
+
+Defining the dimensionless ratio
+
+$$
+R^{obs} = \frac{G^{obs}}{G^{(\alpha)}} = \sum_{i=1}^{S} m_i^{-\alpha} h_i,
+$$
+
+we have a key constraint on the community structure:
+
+1. **Normalization:**
+
+   $$
+   \langle h, 1 \rangle = \sum_{i=1}^{S} h_i = 1.
+   $$
+
+2. **Growth–Weight Constraint:**
+
+   $$
+   \langle m^{-\alpha}, h \rangle = \sum_{i=1}^{S} m_i^{-\alpha} h_i = R^{obs}.
+   $$
+
+These two conditions together force the relative abundance vector \(h\) to take on a structure that reflects both the overall biomass distribution and the size‐dependent growth properties of the species.
+
+### Implications
+
+- **Normalization** guarantees that the \(h_i\) represent true relative contributions to total biomass.
+
+- **Growth–Weight Constraint** implies that species with smaller relative sizes (i.e. lower \(m_i\))—which have higher \(m_i^{-\alpha}\) values—must, on average, have smaller relative abundances \(h_i\) to prevent the weighted sum \(\langle m^{-\alpha}, h \rangle\) from exceeding the observed value \(R^{obs}\). Conversely, larger species can afford to have a higher \(h_i\) since their contribution \(m_i^{-\alpha}\) is lower.
+
+### Exploring the Variance in \(\langle G \rangle\) and the Role of \(\alpha\)
+
+An important question is whether \(G^{(\alpha)}\) can be considered fixed across communities or if its effective value varies. In our framework, the community-level growth is given by
+
+$$
+\langle G \rangle = G^{(\alpha)} \langle g_i^{(\alpha)} \rangle,
+$$
+
+with
+
+$$
+g_i^{(\alpha)} = \left(\frac{B_i}{\bar{B}}\right)^{-\alpha}.
+$$
+
+Thus, the variation in \(\langle G \rangle\) is driven by both the distribution of species body sizes (through \(m_i^{-\alpha}\)) and their relative abundances \(h_i\). One way to explore this is by finding the value of \(\alpha\) that minimizes the variation in \(G^{(\alpha)}\) across communities. In other words, if there exists an \(\alpha^*\) such that the predicted ratio
+
+$$
+\frac{NPP}{H_{tot}^{obs}} \approx G^{(\alpha^*)} \langle g_i^{(\alpha^*)} \rangle
+$$
+
+exhibits minimal variance across different communities, that would support the idea that the allometric framework (with the chosen exponent) can explain the variation in the NPP-to-biomass ratio.
+
+### Summary
+
+By imposing the constraints
+
+- \(\langle h, 1 \rangle = 1\)
+
+- \(\langle m^{-\alpha}, h \rangle = R^{obs}\),
+
+we link the community’s relative species composition directly to size-dependent growth rates. Furthermore, by allowing for a potential deviation term (\(1+\delta q_i\)), we can capture species-specific differences beyond what is predicted solely by body mass. The ultimate goal is to find an optimal \(\alpha\) (and possibly characterize the distribution of \(\delta q_i\)) such that the community-level growth rate is robust across different ecosystems, thereby providing a mechanistic explanation for the observed variation in \(NPP/H_{tot}^{obs}\).
+
+Does this explanation capture the idea you’re aiming for?
+
+
