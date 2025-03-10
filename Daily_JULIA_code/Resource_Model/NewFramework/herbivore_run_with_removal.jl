@@ -220,7 +220,7 @@ end
 # 2, 9, 11, 12
 h_run, sol = herbivore_run(
     1, 
-    A_hol[2, :].mu, A_hol[2, :].mu_predation, A_hol[2, :].epsilon_val, true, A_hol[2, :].m_alpha;
+    A_hol[47, :].mu, A_hol[47, :].mu_predation, A_hol[47, :].epsilon_val, true, A_hol[47, :].m_alpha;
     include_predators=true, time_end=2000.0, plot=true,
     do_you_want_params = false,
     do_you_want_sol = true,
@@ -228,6 +228,22 @@ h_run, sol = herbivore_run(
     alpha=0.25,
     ignore_inf_error = true,
     hollingII = true, h = 0.1,
-    H_init = A_hol[2, :].H_eq[1],
-    P_init = A_hol[2, :].P_eq[1]
+    H_init = A_hol[47, :].H_eq[1],
+    P_init = A_hol[47, :].P_eq[1]
+)
+
+sol[:, end]
+
+h_run, sol = herbivore_run(
+    1, 
+    0.0, 0.0, 0.0, true, 0.1;
+    include_predators=true, time_end=2000.0, plot=true,
+    do_you_want_params = false,
+    do_you_want_sol = true,
+    NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]), artificial_pi=false,
+    alpha=0.25,
+    ignore_inf_error = true,
+    hollingII = true, h = 0.1,
+    # H_init = A_hol[47, :].H_eq[1],
+    # P_init = A_hol[47, :].P_eq[1]
 )

@@ -27,3 +27,5 @@ begin
     scatter!(ax2, npp_points, pi_points_all; markersize = 10, color = :red)
     display(fig)
 end
+
+maximum(npp_DA[.!isnan.(npp_DA)])
