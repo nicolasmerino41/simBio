@@ -237,6 +237,4 @@ By imposing the constraints
 
 we link the community’s relative species composition directly to size-dependent growth rates. Furthermore, by allowing for a potential deviation term (\(1+\delta q_i\)), we can capture species-specific differences beyond what is predicted solely by body mass. The ultimate goal is to find an optimal \(\alpha\) (and possibly characterize the distribution of \(\delta q_i\)) such that the community-level growth rate is robust across different ecosystems, thereby providing a mechanistic explanation for the observed variation in \(NPP/H_{tot}^{obs}\).
 
-Does this explanation capture the idea you’re aiming for?
-
 
