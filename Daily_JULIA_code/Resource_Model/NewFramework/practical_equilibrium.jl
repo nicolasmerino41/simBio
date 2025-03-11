@@ -81,12 +81,13 @@ function explore_stability(
     results_table = DataFrame(mu = Float64[], f_converged = Bool[], x_converged = Bool[],
                               stable = Bool[], max_rel_change = Float64[], stable_by_nico = Bool[],
                               survival_rate = Float64[],
-                              mu_predation = Float64[], epsilon_val = Float64[])
+                              mu_predation = Float64[], epsilon_val = Float64[],
+                              H_eq = Vector{Float64}[], P_eq = Vector{Float64}[])
     
     # Get cell indices and species names.
     local_i, local_j = idx[cell][1], idx[cell][2]
     sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
-    if include_predators
+    if !include_predators
         # Exclude predators for herbivore-only runs.
         filter!(name -> !(name in predator_names), sp_nm)
     end
@@ -141,17 +142,21 @@ function explore_stability(
             continue
         end
         # Extract equilibrium:
-        H_eq = sol.zero
+        H_eq = sol.zero[1:S2]
+        if include_predators
+            P_eq = sol.zero[S2+1:end]
+        end
         # Compute numerical Jacobian and its eigenvalues.
-        J = compute_jacobian(equilibrium_system!, H_eq, params)
+        J = compute_jacobian(equilibrium_system!, vcat(H_eq, P_eq), params)
         max_real = maximum(real.(eigvals(J)))
         stable_flag = max_real < 0.0
         # Now, run a full simulation of the herbivore-only ODE (using herbivore_run) with these parameters.
         sim_results, sol_full = herbivore_run(
             cell, mu_val, mu_predation, epsilon_val, symmetrical_competition, mean_m_alpha;
+            do_you_want_sol = true,
             include_predators=include_predators, time_end=500.0, plot=plot,
             NPP=NPP, artificial_pi=artificial_pi, alpha=alpha,
-            ignore_inf_error = true
+            ignore_inf_error = false
         )
         if mu_val == 0.0
             println(sol_full[1:end, end])
@@ -166,7 +171,7 @@ function explore_stability(
         stable_by_nico = is_stable_by_nico(sol_full)
         push!(results_table, (
             mu_val, sol.f_converged, sol.x_converged, stable_full, max_rel, stable_by_nico, sr,
-            mu_predation, epsilon_val 
+            mu_predation, epsilon_val, H_eq, P_eq 
             )
         )
     end
@@ -179,24 +184,27 @@ end
 # Example call:
 AAAA = explore_stability(1; 
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]),
-    mu_range=range(0.0, stop=1.0, length=50),
+    mu_range=0:0.5:1.0,
     symmetrical_competition=true,
-    mean_m_alpha=0.1, epsilon_val=0.0,
-    mu_predation=0.0, artificial_pi=false,
+    mean_m_alpha=1.0, epsilon_val=0.0,
+    mu_predation=0.0, artificial_pi=true,
     alpha=0.25,
-    plot = false, # Beware plotting will be very slow for more than a few iterations (i.e. more than a few mu values)
+    plot = true, # Beware plotting will be very slow for more than a few iterations (i.e. more than a few mu values)
     include_predators = true
 )
 
-h_run = herbivore_run(
+@time h_run = herbivore_run(
     1, 
-    0.05069, 0.01448, 0.0888886, true, 0.022613;
-    include_predators=true, time_end=500.0, plot=true,
+    0.0, 0.1, 0.1, true, 0.1;
+    include_predators=true, time_end=500.0, plot=false,
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]), artificial_pi=false,
     alpha=0.25,
-    ignore_inf_error = true,
-    hollingII = true, h = 0.1
-);
+    ignore_inf_error =false,
+    hollingII = false, h = 0.1,
+    H_init = fill(1.0, 33),
+    P_init = fill(0.1, 12)
+)
 
 println("Stability exploration results:")
 println(results_table)
+
