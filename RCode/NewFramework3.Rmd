@@ -1,0 +1,90 @@
+---
+title: "New Framework3"
+author: "Jeff & Nico"
+date: "March 2025"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "Bipartite Model"
+output: pdf_document
+---
+
+# **Bipartite Model Equations**
+
+$$
+\frac{d P_{\alpha}}{d \tau} = m_\alpha P_{\alpha} 
+\left( \frac{\sum A_{\alpha i} H_i - P_{\alpha} + \sum B_{\alpha \beta} P_{\beta}}{P_{\alpha}^{0}} - 1 \right)
+$$
+
+$$
+\frac{d H_i}{dt} = g_i H_i \left( 1 - \frac{H_i + \sum \mu_{ij} H_j + \sum A_{i\alpha}^{*} P_{\alpha}}{\mathcal{H}_i} \right)
+$$
+
+$$
+A_{\alpha i} = \varepsilon\left( \frac{a_{\alpha i}}{d_\alpha} \right)
+$$
+
+$$
+A_{\alpha i}^{*} = \frac{a_{\alpha i}}{d_i}
+$$
+
+$$
+\hat{P}_{\alpha} = \sum A_{\alpha i} H_i^* - P_{\alpha}^{(0)}
+$$
+where
+$$
+P_{\alpha}^{(0)} = \frac{m_{\alpha}}{d_{\alpha}}
+$$
+---
+
+# **Predator-Prey Interaction Case**
+
+$$
+P^* = (1 - B)^{-1} \hat{P}
+$$
+
+$$
+P^* = \hat{P} + B \hat{P} + B^2 \hat{P} + \dots
+$$
+
+$$
+\hat{P}_{\alpha} = A H_{prey,\alpha}^* - P_{\alpha i}^{(0)}
+$$
+With \(H_{prey,\alpha}^*\) being the equilibrium abundances of the herbivores predator \alpha preys on 
+
+$$
+A = \frac{P_{\alpha}^* + P_{\alpha}^{(0)}}{H_{prey, \alpha}^*}
+$$
+
+---
+
+# **Constraints and Optimization**
+$$
+P_\alpha^{(0)} = AH_{prey, \alpha}^* - P_\alpha^* \quad \text{(Condition based on \( A > 0 \))}
+$$
+
+$$
+A_C^* = \frac{P_{\alpha}^*}{H_{prey, \alpha}^*}
+$$
+
+$$
+A_C = \max A_C^\alpha
+$$
