@@ -116,7 +116,7 @@ function new_parametrise_the_community(
     a_matrix = zeros(S, R)
     A = Matrix{Float64}(I, R, R)
     for row_pred in 1:R
-        A[row_pred, row_pred] = -1.0
+        A[row_pred, row_pred] = 1.0
     end
     for herb_i in 1:S
         global_herb_idx = species_dict[herbivore_list[herb_i]]
