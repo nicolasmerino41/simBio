@@ -8,11 +8,11 @@ hf_spain = map(x -> x == 128.0 ? 0.0 : x, hf_spain)
 inverted_hf = 1 ./ deepcopy(hf_spain)
 inverted_hf = map(x -> x == Inf ? 0.0 : x, inverted_hf)
 
-map_plot(inverted_hf_DA; palette = custom_palette, flip = true)
+# map_plot(inverted_hf_DA; palette = custom_palette, flip = true)
 
 protected_areas_DA = DimArray(Matrix(inverted_hf), (Dim{:a}(1:125), Dim{:b}(1:76)))
 protected_areas_DA .= ifelse.((inverted_hf_DA .> 0.0) .& (inverted_hf_DA .< 0.5), 0.1, inverted_hf_DA) 
-map_plot(protected_areas_DA; palette = custom_palette, flip = true)
+# map_plot(protected_areas_DA; palette = custom_palette, flip = true)
 protected_idx = findall(x -> x > 0.5, inverted_hf)
 
 minimum(filter(x -> !iszero(x), inverted_hf))

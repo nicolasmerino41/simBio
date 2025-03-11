@@ -11,7 +11,8 @@ function herbivore_run(
     P_init = nothing,
     ignore_inf_error = false,
     hollingII = false,
-    h = 0.1
+    h = 0.1,
+    log = false
 )
     
     # Placeholder for results DataFrame
@@ -141,8 +142,15 @@ function herbivore_run(
     # --- Plotting the Dynamics using Makie ---
     if plot    
         fig = Figure(; size = (600, 500))
-        ax = Axis(fig[1, 1], xlabel="Time", ylabel="Biomass", title="Dynamics for cell $cell")
+        ax = Axis(
+            fig[1, 1],
+            xlabel="Time",
+            ylabel="Biomass",
+            title="Dynamics for cell $cell",
+            yscale = log ? log10 : identity
+            )
         times_combined = sol.t
+        
         # @info "1"
         # Plot herbivore dynamics (indices 1:S2) as blue solid lines.
         for i in 1:S2

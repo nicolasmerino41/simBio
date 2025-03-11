@@ -227,12 +227,13 @@ h_run, sol = herbivore_run(
     NPP=Float64(npp_DA_relative_to_1000[idx[1][1], idx[1][2]]), artificial_pi=false,
     alpha=0.25,
     ignore_inf_error = true,
-    hollingII = true, h = 0.1,
+    hollingII = false, h = 0.1,
     H_init = A_hol[47, :].H_eq[1],
-    P_init = A_hol[47, :].P_eq[1]
+    P_init = A_hol[47, :].P_eq[1],
+    log = true #TODO
 )
 
-sol[:, end]
+println(sol[:, end])
 
 h_run, sol = herbivore_run(
     1, 

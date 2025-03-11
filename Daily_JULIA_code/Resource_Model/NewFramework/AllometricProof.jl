@@ -70,7 +70,6 @@ function cell_error(cell::Int, alpha::Float64;
     return abs(avg_g_pred - obs_avg)
 end
 
-
 # Function to compute the average error across all cells for a given alpha.
 function global_error(n_cells::Int, alpha::Float64; only_protected_cells = false, cap_heaviest_species = 0)
     # Preallocate an array to hold the error for each cell.
@@ -87,7 +86,7 @@ end
 
 # Define a grid of alpha values to explore.
 alpha_range = 0.0:0.01:2.0
-errors = [global_error(145, alpha; only_protected_cells = true, cap_heaviest_species = 5) for alpha in alpha_range]
+errors = [global_error(5950, alpha; only_protected_cells = false, cap_heaviest_species = 5) for alpha in alpha_range]
 
 # Find the alpha that minimizes the average error.
 min_error, idx_min = findmin(errors)
