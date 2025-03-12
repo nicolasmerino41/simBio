@@ -1,0 +1,354 @@
+---
+title: "NewFramework3"
+author: "Jeff, Núria & Nico"
+date: "2025-03-12"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Bipartite Model Equations
+
+The following equations describe the dynamics of a food web with two trophic levels—predators and herbivores—in a bipartite framework. In our model, the interactions between predators and herbivores are explicitly represented, and additional terms capture how species interactions affect ecosystem function.
+
+## Herbivore Dynamics
+
+$$
+\frac{d H_i}{dt} = g_i H_i \left( 1 - \frac{H_i + \sum_j \mu_{ij} H_j + \sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}}{\mathcal{H}_i} \right)
+$$
+
+**Explanation:**
+
+- **\(H_i\)** is the density of herbivore species \(i\).
+  
+- **Intrinsic Growth \(g_i H_i\):**  
+  The intrinsic growth rate \(g_i\) is multiplied by the current density \(H_i\), indicating exponential growth in the absence of limitations.
+  
+- **Density-Dependent Limitation:**  
+  The expression inside the parentheses subtracts a normalized total effective density from 1. This effective density includes:
+  - **Self-regulation \(H_i\)**
+  - **Interspecific Competition \(\sum_j \mu_{ij} H_j\):**  
+    Here, \(\mu_{ij}\) are competition coefficients. In a mean-field approximation, this term is sometimes written as \(\mu H_{\text{TOT}} - \mu H_i\), where \(H_{\text{TOT}}\) is the total herbivore biomass.
+  - **Predatory Loss \(\sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}\):**  
+    This term scales the effect of predation on herbivore \(i\) by using the nondimensional attack rate \(A_{i\alpha}^{*}\), which is computed as
+    $$
+    A_{i\alpha}^{*} = \frac{a_{\alpha i}}{d_i},
+    $$
+    where \(d_i\) is a characteristic scaling factor for herbivore \(i\).
+  
+- **Reference Density \(\mathcal{H}_i\):**  
+  \(\mathcal{H}_i\) is a reference (or carrying) density that defines the balance point where growth is exactly offset by regulation and losses.
+
+- **Overall Role:**  
+  The herbivore equation governs how the density of each herbivore species grows, with limitations imposed both by competition and by predation. It ensures that as the effective density approaches \(\mathcal{H}_i\), growth slows down.
+
+## Predator Dynamics
+
+$$
+\frac{d P_{\alpha}}{dt} = m_\alpha P_{\alpha} 
+\left( \frac{\sum_i A_{\alpha i} H_i - P_{\alpha} + \sum_{\beta} B_{\alpha \beta} P_{\beta}}{P_{\alpha}^{0}} - 1 \right)
+$$
+
+**Explanation:**
+
+- **\(P_{\alpha}\)** denotes the density of predator species \(\alpha\)
+  
+- **Intrinsic Mortality \(m_\alpha\):**  
+  \(m_\alpha\) scales the rate of change of predator density and represents the intrinsic mortality rate.
+  
+- **Gains from Preying on Herbivores \(\sum_i A_{\alpha i} H_i\):**  
+  The sum \(\sum_i A_{\alpha i} H_i\) represents the total predatory intake derived from consuming herbivores. Here, \(A_{\alpha i}\) is a scaled attack rate, capturing both the raw attack rate and the scaling by trophic efficiency and self-regulation.
+  
+- **Self-regulation \(- P_{\alpha}\):**  
+  The negative term \(- P_{\alpha}\) imposes a density-dependent limitation on predator growth.
+  
+- **Predator-Predator Trophic Interactions \(\sum_{\beta} B_{\alpha \beta} P_{\beta}\):**  
+  The matrix \(B\) encodes trophic relationships among predators. In this context, stronger values in \(B\) imply that predators derive additional resources or are otherwise affected by feeding on, or interacting with, other predators.
+  
+- **Reference Density \(P_{\alpha}^{0}\):**  
+  \(P_{\alpha}^{0}\) is a benchmark density for predators, often defined as \(P_{\alpha}^{0} = \frac{m_\alpha}{d_\alpha}\) (with \(d_\alpha\) being a self-regulation parameter). The ratio inside the parentheses expresses a normalized net resource intake relative to this threshold.
+  
+- **Overall Role:**  
+  This equation captures the balance between resource intake from herbivores, losses due to self-regulation, and the modifications due to interactions with other predators. The net multiplier (inside the parentheses) determines whether the predator population grows or declines.
+
+## Scaling of Attack Rates
+
+Two key scaling relationships adjust raw attack rates:
+
+$$
+A_{\alpha i} = \varepsilon\left( \frac{a_{\alpha i}}{d_\alpha} \right) \quad \text{and} \quad A_{\alpha i}^{*} = \frac{a_{\alpha i}}{d_i}.
+$$
+
+**Explanation:**
+
+- **Raw Attack Rate \(a_{\alpha i}\):**  
+  These are the baseline interaction strengths between predator \(\alpha\) and herbivore \(i\).
+  
+- **Scaling for Predator Equation:**  
+  For predators, the raw attack rate is scaled by the trophic efficiency \(\varepsilon\) and normalized by the predator’s self-regulation factor \(d_\alpha\).
+  
+- **Scaling for Herbivore Equation:**  
+  For herbivores, the rate is normalized by \(d_i\), making \(A_{\alpha i}^{*}\) the effective impact on herbivores from predator \(\alpha\).
+
+## Reference Predator Density
+
+$$
+\hat{P}_{\alpha} = \sum_i A_{\alpha i} H_i^* - P_{\alpha}^{(0)} \quad ; \quad P_{\alpha}^{(0)} = \frac{m_{\alpha}}{d_{\alpha}}
+$$
+
+**Explanation:**
+
+- **\(\hat{P}_{\alpha}\):**  
+  Represents the net resource input available to predator \(\alpha\) when evaluated at the equilibrium herbivore densities \(H_i^*\). It is the difference between the resource gains from preying on herbivores and the baseline requirement \(P_{\alpha}^{(0)}\).
+  
+- **\(P_{\alpha}^{(0)}\):**  
+  This threshold, given by the ratio \(\frac{m_{\alpha}}{d_{\alpha}}\), is the minimum density required for predator \(\alpha\) to persist.
+
+# Predator-Predator Interaction Case
+
+In this case, predators interact trophically with one another. The equilibrium predator density is given by
+
+$$
+P^* = (1 - B)^{-1} \hat{P},
+$$
+
+which expands as
+
+$$
+P^* = \hat{P} + B\,\hat{P} + B^2\,\hat{P} + \dots.
+$$
+
+**Explanation:**
+
+- **Trophic Relationships via \(B\):**  
+  Here, \(B\) encodes the strength of trophic interactions among predators. Unlike pure interference, \(B\) reflects a structured energy transfer or predation among predators.
+  
+- **Amplification Factor:**  
+  The inverse \((1-B)^{-1}\) indicates that even small base inputs \(\hat{P}\) can be amplified through repeated trophic interactions. The series expansion makes this amplification explicit.
+  
+- **Alternate Formulation:**  
+  An alternate expression is given by
+  $$
+  \hat{P}_{\alpha} = A\, H_{prey,\alpha}^* - P_{\alpha i}^{(0)},
+  $$
+  where \(H_{prey,\alpha}^*\) is the equilibrium abundance of the prey that predator \(\alpha\) feeds on, and
+  $$
+  A = \frac{P_{\alpha}^* + P_{\alpha}^{(0)}}{H_{prey,\alpha}^*}.
+  $$
+  This relates the effective resource intake to the available prey biomass.
+
+## Constraints and Optimization
+
+To ensure that all predators can survive, the model imposes a critical condition on \(A\):
+
+$$
+P_\alpha^{(0)} = A\, H_{prey,\alpha}^* - P_\alpha^* \quad \text{(with } A > 0\text{)}.
+$$
+
+Additionally, we define a critical value \(A_C\) as
+
+$$
+A_C^\alpha = \frac{P_{\alpha}^*}{H_{prey,\alpha}^*} \quad \text{and} \quad A_C = \max_\alpha A_C^\alpha.
+$$
+
+**Explanation:**
+
+- **Critical \(A_C\):**  
+  \(A_C\) is the maximum among the minimum viable attack rates needed for each predator. It sets a threshold such that the uniform attack rate \(A\) must be larger than \(A_C\) to ensure that every predator obtains enough resources to survive.
+  
+## Herbivores: Mean-Field Competition
+
+Herbivore dynamics include a mean-field competition component:
+
+$$
+\sum_j \mu_{ij} H_j = \mu H_{\text{TOT}} - \mu H_i.
+$$
+
+**Explanation:**
+
+- **Mean-Field Approximation:**  
+  Each herbivore experiences competition from the entire community’s biomass, moderated by its own density. The parameter \(\mu\) balances the contribution of individual versus total biomass.
+
+To allow for omnivory, the herbivore equilibrium is described by:
+
+$$
+H_i = (1 - \mu) H_i + \mu H_{\text{TOT}} + \sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}^* - \sum A (H_{prey} + P_{prey}).
+$$
+
+**Detailed Explanation:**
+
+- **Self and Community Effects:**  
+  - \((1 - \mu) H_i\) reflects the intrinsic biomass after self-regulation.
+  - \(\mu H_{\text{TOT}}\) introduces a communal effect, where the total herbivore biomass influences the growth conditions for species \(i\).
+  
+- **Omnivorous Gain:**  
+  - \(\sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}^*\) captures the benefit that species \(i\) obtains by feeding on organisms from higher trophic levels. This term allows a traditionally herbivorous species to behave as an omnivore.
+  
+- **Predatory Cost:**  
+  - The term \(- \sum A (H_{prey} + P_{prey})\) represents the cost associated with predation, whether it is the energetic cost of handling prey or the depletion of available resources.
+  
+- **Scaling of Attack Rates in Omnivory:**  
+  The effective attack rate for an omnivorous interaction is given by
+  $$
+  A_{i\alpha}^{*} = \frac{1}{\varepsilon} A_{\alpha i} \left( \frac{d_{\alpha}}{d_i} \right),
+  $$
+  which may be further modulated by a factor \((1+x_i)\) to introduce species-specific variability.
+
+**Overall, this equation illustrates that the equilibrium biomass of a herbivore (or omnivore) is determined not only by its intrinsic growth and competition but also by the net effect of predatory interactions—both the benefits of additional resource intake and the costs incurred through predation.**
+
+## Omnivory
+$$
+H_i = (1-\mu)H_i + \mu\,H_{\text{TOT}} 
+- \sum_{j \neq i} O_{ij}^{*} N_j 
++ \sum_{j \neq i} O_{ji} N_j 
+- \sum_{\alpha} A_{\alpha i}^{*} P_{\alpha}\,.
+$$
+
+where
+
+$$
+O_{ij}^{*} = \frac{o_{ij}}{d_i}\quad \text{and} \quad O_{ji} = \varepsilon\left(\frac{o_{ji}}{d_j}\right)
+$$
+
+and
+
+$$
+A_{\alpha i}^{*} = \frac{a_{\alpha i}}{d_i}\,.
+$$
+
+**Explanation:**
+
+- **Competition/Resource Baseline:**  
+  The term 
+  $$
+  (1-\mu)H_i + \mu\,H_{\text{TOT}}
+  $$
+  captures the intrinsic (self‐regulated) biomass of species \(i\) along with a mean‐field contribution from the total herbivore biomass \(H_{\text{TOT}} = \sum_j H_j\). The parameter \(\mu\) balances these two effects.
+
+- **Herbivore–Herbivore Predation (O Interactions):**  
+  The interactions among herbivores are split into two parts:
+  - The **loss** incurred when species \(i\) is preyed upon by another herbivore \(j\) is given by
+    $$
+    \sum_{j \neq i} O_{ij}^{*} N_j,
+    $$
+    where \(O_{ij}^{*} = \frac{o_{ij}}{d_i}\) scales the raw interaction \(o_{ij}\) by the self‐regulation factor of species \(i\).
+  - The **gain** obtained when species \(i\) feeds on another herbivore \(j\) is given by
+    $$
+    \sum_{j \neq i} O_{ji} N_j,
+    $$
+    where \(O_{ji} = \varepsilon\left(\frac{o_{ji}}{d_j}\right)\) incorporates the conversion efficiency \(\varepsilon\) and scales the interaction by the attacker’s self‐regulation parameter \(d_j\).
+
+- **Herbivore–Predator Interactions (A Interactions):**  
+  Herbivores do not gain from feeding on predators; they are only subject to losses due to predation. This loss is expressed as
+  $$
+  \sum_{\alpha} A_{\alpha i}^{*} P_{\alpha},
+  $$
+  where \(A_{\alpha i}^{*} = \frac{a_{\alpha i}}{d_i}\) is the effective attack rate of predator \(\alpha\) on herbivore \(i\).
+
+This formulation explicitly separates the different predation mechanisms:
+
+- **Baseline Competition** governs intrinsic growth and mean‐field effects.
+
+- **Herbivore–Herbivore Interactions (O):**  
+  - The positive term (\(O_{ji}\)) represents gains when species \(i\) preys on other herbivores.
+  - The negative term (\(O_{ij}^{*}\)) represents losses when species \(i\) is attacked by other herbivores.
+
+- **Herbivore–Predator Interactions (A):**  
+  Only losses occur for herbivores (via \(A_{\alpha i}^{*}\)) when predators feed on them.
+
+This detailed partitioning clarifies how each type of predation contributes to the net biomass of species \(i\) in the ecosystem.
+
+# Ecosystem Functioning \(\Delta \phi_i\)
+
+To evaluate the contribution of species \(i\) to an ecosystem function \(\phi\), we define:
+
+1. **Direct and Indirect Contributions:**
+
+$$
+\Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i,
+$$
+
+where:
+
+- \(\phi_i\) is the direct contribution of species \(i\),
+
+- \(\phi_{/i}\) is the ecosystem function of the community without species \(i\),
+
+- \(\bar{a}_i N_i\) scales the effect of species \(i\)’s abundance \(N_i\) via an average per-capita effect trait \(\bar{a}_i\).
+
+2. **Alternate Expression:**
+
+$$
+\Delta \phi_i = \phi - \phi_{/i}.
+$$
+
+This states that the change in ecosystem function when species \(i\) is removed is simply the difference between the total function \(\phi\) and the function without species \(i\).
+
+3. **Rearrangement:**
+
+Starting with
+
+$$
+\Delta \phi_i = \phi_i + (\phi - \Delta \phi_i)\,\bar{a}_i N_i,
+$$
+
+we rearrange to obtain
+
+$$
+(1 + \bar{a}_i N_i) \Delta \phi_i = \phi_i + \phi\,\bar{a}_i N_i.
+$$
+
+4. **Fractional Change:**
+
+Dividing by \(\phi\) yields
+
+$$
+\frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}.
+$$
+
+**Explanation:**
+
+- The term \(\frac{\phi_i}{\phi}\) represents the normalized direct contribution.
+- \(\bar{a}_i N_i\) captures the indirect effect via abundance.
+- The denominator \(1+\bar{a}_i N_i\) normalizes the expression, ensuring the fractional change is bounded.
+
+**Effect Trait Transformation:**  
+If desired, abundance \(N_i\) can be transformed using an effect trait \(c_i\) (i.e. \(c_i N_i\)) to reflect functions other than simple abundance, such as biomass or nutrient uptake.
+
+# Final Comments
+
+This framework integrates multiple trophic interactions into a unified model:
+
+- **Predator and Herbivore Dynamics:**  
+  The model explicitly describes both predator and herbivore dynamics, with trophic interactions and scaling adjustments that capture the nuances of energy transfer.
+  
+- **Predator-Predator Trophic Relationships:**  
+  The matrix \(B\) is used not for interference but to represent trophic links among predators. The critical value \(A_C\) (defined as the maximum among the minimum viable \(A\) values across predators) ensures that the uniform attack rate \(A\) is high enough for all predators to survive.
+  
+- **Omnivory:**  
+  The herbivore equation allows species to gain additional resources by attacking higher trophic levels, thereby permitting omnivorous behavior.
+  
+- **Species Contribution to Ecosystem Function:**  
+  The equations for \(\Delta \phi_i\) decompose a species’ contribution into direct and indirect components, with the flexibility to transform abundance via effect traits.
+
+
