@@ -1,0 +1,99 @@
+---
+title: "Projection stuff"
+author: "Jeff & Nico"
+date: "2025-03-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+$$
+H_{\text{TOT}}^{obs} \rightarrow h_i \text{ (relative abundance)}
+$$
+
+$$
+NPP = \sum g_i H_i = H_{\text{TOT}}^{obs} \sum g_i h_i
+$$
+
+$$
+G^{obs} = \frac{NPP}{H_{\text{TOT}}^{obs}} = \sum g_i h_i
+$$
+
+$$
+g_i = G_0 \left(\frac{M_i}{M_0}\right)^{-\alpha}
+$$
+
+$$
+\text{unit of growth} \quad / t
+$$
+
+$$
+\frac{G^{obs}}{G_0} = R^{obs} \text{ (it's a number)}
+$$
+
+$$
+\sum m_i^{-\alpha} h_i = R^{obs}
+$$
+
+$$
+\langle \vec{m}^{-\alpha}, h \rangle = R
+$$
+
+$$
+\langle h, 1 \rangle = 1
+$$
+
+$$
+h = x \vec{m}^{-\alpha} + y \vec{1} + w
+$$
+
+where \( w \) is orthogonal to \( \vec{m} \) and \( \vec{1} \).
+
+$$
+\langle m^{-\alpha}, h \rangle = x \langle m^{-\alpha}, m^{-\alpha} \rangle + y \langle m^{-\alpha}, 1 \rangle = R
+$$
+
+$$
+\langle 1, h \rangle = x \langle m^{-\alpha}, 1 \rangle + y \langle 1, 1 \rangle = 1
+$$
+
+where \( \langle 1, 1 \rangle = S_H \).
+
+Defining matrix \( M \):
+
+$$
+\begin{pmatrix}
+\langle m^{-\alpha}, m^{-\alpha} \rangle & \langle m^{-\alpha}, 1 \rangle \\
+\langle m^{-\alpha}, 1 \rangle & S_H
+\end{pmatrix}
+\begin{pmatrix} x \\ y \end{pmatrix}
+=
+\begin{pmatrix} R \\ 1 \end{pmatrix}
+$$
+
+---
+
+### Projection operator:
+
+$$
+P v = x(v) 1 + y(v) m^{-\alpha}
+$$
+
+$$
+\langle 1, P v \rangle = \langle 1, v \rangle
+$$
+
+$$
+\langle m^{-\alpha}, P v \rangle = \langle m^{-\alpha}, v \rangle
+$$
+
+$$
+h =
+\begin{pmatrix}
+\langle 1, v \rangle \\
+\langle m^{-\alpha}, v \rangle
+\end{pmatrix}
+$$
+
