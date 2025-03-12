@@ -23,11 +23,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
----
-title: "Bipartite Model"
-output: pdf_document
----
-
 # **Bipartite Model Equations**
 
 $$
@@ -48,14 +43,8 @@ A_{\alpha i}^{*} = \frac{a_{\alpha i}}{d_i}
 $$
 
 $$
-\hat{P}_{\alpha} = \sum A_{\alpha i} H_i^* - P_{\alpha}^{(0)}
+\hat{P}_{\alpha} = \sum A_{\alpha i} H_i^* - P_{\alpha}^{(0)} \ ; \quad P_{\alpha}^{(0)} = \frac{m_{\alpha}}{d_{\alpha}}
 $$
-where
-$$
-P_{\alpha}^{(0)} = \frac{m_{\alpha}}{d_{\alpha}}
-$$
----
-
 # **Predator-Prey Interaction Case**
 
 $$
@@ -67,25 +56,101 @@ P^* = \hat{P} + B \hat{P} + B^2 \hat{P} + \dots
 $$
 
 $$
-\hat{P}_{\alpha} = A H_{prey,\alpha}^* - P_{\alpha i}^{(0)}
+P_{\alpha}^{(0)} = A H_{prey,\alpha}^* - P_{\alpha i}^{(0)}
 $$
-With \(H_{prey,\alpha}^*\) being the equilibrium abundances of the herbivores predator \alpha preys on 
+With \(H_{prey,\alpha}^*\) being the equilibrium abundances of the herbivores predator \(\alpha\) preys on 
 
 $$
 A = \frac{P_{\alpha}^* + P_{\alpha}^{(0)}}{H_{prey, \alpha}^*}
 $$
 
----
-
 # **Constraints and Optimization**
+
 $$
 P_\alpha^{(0)} = AH_{prey, \alpha}^* - P_\alpha^* \quad \text{(Condition based on \( A > 0 \))}
 $$
 
 $$
-A_C^* = \frac{P_{\alpha}^*}{H_{prey, \alpha}^*}
+A_C^\alpha = \frac{P_{\alpha}^*}{H_{prey, \alpha}^*}
 $$
 
 $$
-A_C = \max A_C^\alpha
+A_C = \max A_C^{\alpha}
 $$
+Input:
+
+- eq: SAD:
+  
+  - \(H_i^*\)
+  
+  - \(P_\alpha^*\)
+  
+Fixed growth and mortality:
+
+- \(m_\alpha = 1\)
+
+- \(g_i = 1\)
+
+# **Uniform Attack Rate**
+$$
+A > A_C(P^*, H^*)
+$$
+**(Sets the predator dynamics)**
+
+$$
+P_{\alpha}^{(0)}
+$$
+
+# **Herbivores: Need \( \mu_{ij} \)**  
+### **Mean-Field Competition**
+$$
+\sum_j \mu_{ij} H_j = \mu H_{\text{TOT}} - \mu H_i
+$$
+
+$$
+H_i = (1 - \mu) H_i + \mu H_{\text{TOT}} + \sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}^* -
+\sum A (H_{prey} + P_{prey})
+$$
+Where
+$$
+A_{i\alpha}^{*} = \frac{1}{\varepsilon} A_{\alpha i} \left( \frac{d_{\alpha}}{d_i} \right)
+$$
+
+$$
+(1+x_i) \frac{A}{\varepsilon}
+$$
+\(1+x_i\) can add randomness to the predation rates. 
+
+This framework allows for omnivory, since an omnivore can be a herbivore that preys on other herbivores or predators.
+
+# **Equations for \( \Delta \phi_i \)**
+
+$$
+\Delta \phi_i = \phi_i + \phi_{/i} \bar{a}_i N_i
+$$
+
+$$
+\Delta \phi_i = \phi - \phi_{/i}
+$$
+
+$$
+= \phi_i + (\phi - \Delta \phi_i) \bar{a}_i N_i
+$$
+
+$$
+(1 + \bar{a}_i N_i) \Delta \phi_i = \phi_i + \phi \bar{a}_i N_i
+$$
+
+# **Fractional Change in \( \phi \)**
+
+$$
+\frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}
+$$
+
+You can transform abundance into any other function through an effect trait
+$$
+c_i N_i
+$$
+
+
+
