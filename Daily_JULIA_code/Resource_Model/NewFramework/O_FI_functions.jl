@@ -192,13 +192,13 @@ function o_new_setup_community_from_cell(
     mu_predation::Float64 = 0.01,     # average strength for predator-herbivore interactions (for both A and A*)
     iberian_interact_NA::NamedMatrix{Float64} = iberian_interact_NA,
     species_dict::Dict{String,Int} = species_dict,
-    # cell_abundance::Vector{Float64} = Float64[],
-    species_names::Vector{String} = nothing,
+    species_names::Vector{String} = String[],  # default empty vector instead of nothing
+    artificial_pi::Bool = false,      # added argument for artificial_pi
     o_pred_avg::Float64 = 1.0         # average strength for herbivore-herbivore interactions
 )
     # 1) Retrieve the cell and extract species present.
     cell = DA_birmmals_with_pi_corrected[i, j]
-    if isnothing(species_names)
+    if isempty(species_names)
         species_names = extract_species_names_from_a_cell(cell)
     end
     S, R = identify_n_of_herbs_and_preds(species_names)
@@ -215,11 +215,10 @@ function o_new_setup_community_from_cell(
             push!(cell_abundance_herbs, val)
         end
     end
-    # 'artificial_pi' is assumed to be defined globally.
     if artificial_pi
         cell_abundance_herbs = ones(length(cell_abundance_herbs))
     end
-    println("We at least got here")
+    
     # 3) Call the new parametrisation function for the new framework.
     return o_new_parametrise_the_community(
          species_names;
@@ -232,11 +231,10 @@ function o_new_setup_community_from_cell(
          iberian_interact_NA = iberian_interact_NA,
          species_dict = species_dict,
          cell_abundance = cell_abundance_herbs,
-         o_pred_avg = o_pred_avg,
-         A_loss_avg = 1.0,     # Use 1.0 as default for predator-induced loss strength
+         o_pred_avg = o_pred_avg
     )
 end
 
 o_new_setup_community_from_cell(
-    
+    18, 1
 )
