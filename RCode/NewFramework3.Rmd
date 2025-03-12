@@ -35,17 +35,14 @@ $$
 $$
 
 $$
-A_{\alpha i} = \varepsilon\left( \frac{a_{\alpha i}}{d_\alpha} \right)
-$$
-
-$$
-A_{\alpha i}^{*} = \frac{a_{\alpha i}}{d_i}
+A_{\alpha i} = \varepsilon\left( \frac{a_{\alpha i}}{d_\alpha} \right) \quad A_{\alpha i}^{*} = \frac{a_{\alpha i}}{d_i}
 $$
 
 $$
 \hat{P}_{\alpha} = \sum A_{\alpha i} H_i^* - P_{\alpha}^{(0)} \ ; \quad P_{\alpha}^{(0)} = \frac{m_{\alpha}}{d_{\alpha}}
 $$
-# **Predator-Prey Interaction Case**
+
+# **Predator-Predator Interaction Case**
 
 $$
 P^* = (1 - B)^{-1} \hat{P}
@@ -56,9 +53,9 @@ P^* = \hat{P} + B \hat{P} + B^2 \hat{P} + \dots
 $$
 
 $$
-P_{\alpha}^{(0)} = A H_{prey,\alpha}^* - P_{\alpha i}^{(0)}
+\hat{P}_{\alpha} = A H_{prey,\alpha}^* - P_{\alpha i}^{(0)}
 $$
-With \(H_{prey,\alpha}^*\) being the equilibrium abundances of the herbivores predator \(\alpha\) preys on 
+With \(H_{prey,\alpha}^*\) being the equilibrium abundances of the herbivores that predator \(\alpha\) preys on 
 
 $$
 A = \frac{P_{\alpha}^* + P_{\alpha}^{(0)}}{H_{prey, \alpha}^*}
