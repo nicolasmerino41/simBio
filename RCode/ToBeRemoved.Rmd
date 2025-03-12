@@ -1,0 +1,108 @@
+---
+title: "ToBeRemoved"
+author: "Jeff & Nico"
+date: "2025-03-12"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Discussion: Notation and Mathematical Implications for Omnivorous Feeding
+
+In our unified herbivore equation, we write
+
+$$
+H_i = (1 - \mu) H_i + \mu H_{\text{TOT}} + \sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}^* - \sum A (H_{\text{prey}} + P_{\text{prey}),
+$$
+
+but as you noted, this expression is intended to capture many possible mechanisms. Conceptually, a herbivore species can occupy a continuum of roles:
+
+- It may **feed on no one** (i.e. act purely as a competitor for resources from primary production).
+- It may **feed on other herbivores** (cannibalism or intraguild predation among herbivores).
+- It may **feed on predators** (i.e. behave as an omnivore, extracting additional resources from higher trophic levels).
+- Or it may feed on both herbivores and predators simultaneously.
+
+Furthermore, herbivores can be subject to predation by both herbivores (via cannibalism or intraguild interactions) and by predators. Each of these interactions contributes either positively or negatively to the net energy balance or biomass accumulation of species \(i\).
+
+### Breaking Down the Unified Equation
+
+One way to conceptually understand the unified expression is to view it as an aggregate of several “mechanism‐terms.” For instance, we can write:
+
+$$
+H_i = f_{\text{self}}(H_i) + f_{\text{comm}}(H_{\text{TOT}}) + f_{\text{gain}}(P_{\alpha}^*) - f_{\text{loss}}(H_{\text{prey}}, P_{\text{prey}}),
+$$
+
+where:
+
+- **Self-Regulation:**  
+  $$
+  f_{\text{self}}(H_i) = (1 - \mu) H_i.
+  $$
+  This term represents the part of \(H_i\) that persists intrinsically (after accounting for self-limitation).
+
+- **Community Contribution:**  
+  $$
+  f_{\text{comm}}(H_{\text{TOT}}) = \mu H_{\text{TOT}},
+  $$
+  where \(H_{\text{TOT}} = \sum_j H_j\). This mean-field term suggests that the overall herbivore biomass (or environmental conditions shaped by the community) also contributes to the performance of species \(i\).
+
+- **Omnivorous Gain:**  
+  $$
+  f_{\text{gain}}(P_{\alpha}^*) = \sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}^*.
+  $$
+  This term is key when species \(i\) acts as an omnivore. If it is capable of preying on other trophic levels (whether herbivores acting as predators or true predators), this term adds a positive contribution. Note that \(A_{i\alpha}^{*}\) is scaled appropriately to reflect differences between how species process prey versus how they are consumed.
+
+- **Predatory (or Competition) Loss:**  
+  $$
+  f_{\text{loss}}(H_{\text{prey}}, P_{\text{prey}}) = \sum A \,(H_{\text{prey}} + P_{\text{prey}}).
+  $$
+  This negative term can be interpreted as the cost of engaging in predation, which might include energy costs, handling time, or the depletion of available prey biomass that would otherwise support growth.
+
+### Notational and Mathematical Implications
+
+- **Flexibility vs. Parsimony:**  
+  The unified equation is parsimonious; it gathers multiple mechanisms into one expression. However, its compactness may mask the diversity of ecological interactions. In practice, one might expand it into separate terms if data or theory suggest that the gains from feeding on predators differ fundamentally from gains via cannibalism or if the losses vary between being preyed upon by herbivores versus predators.
+
+- **Positive and Negative Contributions:**  
+  The structure implies that the equilibrium biomass of species \(i\) is determined by both positive contributions (self-persistence, community facilitation, omnivorous gains) and negative contributions (losses due to predation or competitive removal of resources). The balance among these forces determines whether the species thrives or declines.
+
+- **Continuum of Trophic Roles:**  
+  By allowing the gain term \( \sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}^* \) to be present or absent (or to vary in magnitude), the model does not force species into discrete trophic categories. A species might gain little from omnivory (if \(A_{i\alpha}^{*}\) is small or if predators are scarce) or gain a lot (if it can efficiently exploit higher trophic levels), thereby occupying a continuum from pure herbivory to omnivory.
+
+- **Transformation via Effect Traits:**  
+  The possibility of transforming abundance \(N_i\) by an effect trait \(c_i\) (i.e. using \(c_i N_i\) instead of \(N_i\)) further adds flexibility. It allows the same basic structure to be applied to different ecosystem functions (e.g., biomass production, nutrient uptake), depending on how the effect trait is chosen.
+
+### Final Thoughts
+
+The unified equation
+
+$$
+H_i = (1 - \mu) H_i + \mu H_{\text{TOT}} + \sum_{\alpha} A_{i\alpha}^{*} P_{\alpha}^* - \sum A (H_{prey} + P_{prey})
+$$
+
+is a shorthand way to represent a complex set of interactions where:
+
+- A herbivore may feed on no one (if the omnivorous gain term is zero),
+
+- May feed on other herbivores, on predators, or on both (modulating the omnivorous gain term),
+
+- And is subject to losses either through being consumed by herbivores or by predators.
+
+It is a unified formulation that can, in principle, be dissected into multiple components if needed. The beauty of the formulation lies in its ability to capture a wide range of trophic interactions with a single equation, while the drawback is that one must be careful to interpret the aggregate terms correctly and, where necessary, expand them to examine the underlying mechanisms.
+
+This discussion clarifies that the notation is not a one‐size‐fits-all “black box” but rather a compact representation that can be unpacked into individual mechanistic components as needed.
