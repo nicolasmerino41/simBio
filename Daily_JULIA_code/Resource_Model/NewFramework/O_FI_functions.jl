@@ -64,7 +64,6 @@ function o_new_parametrise_the_community(
     species_dict::Dict{String,Int} = species_dict,
     cell_abundance::Vector{Float64} = Float64[],
     o_pred_avg::Float64 = 1.0,
-    A_loss_avg::Float64 = 1.0
 )
     # Identify herbivores and predators.
     herbivore_list = [sp for sp in species_names if sp in herbivore_names]
@@ -145,7 +144,7 @@ function o_new_parametrise_the_community(
     A_star = zeros(S, R)
     for i in 1:S
         for alph in 1:R
-            A_star[i, alph] = A_loss_avg * (mu_predation / d_i[i])
+            A_star[i, alph] = (mu_predation / d_i[i])
         end
     end
     
@@ -167,16 +166,13 @@ function o_new_parametrise_the_community(
         H_i0_eff[i] = H_i0[i] + comp_sum + net_O
     end
     
-    beta = zeros(S)
-    
     return (
         S = S, R = R,
         H_i0_eff = H_i0_eff, m_i = m_i,
-        g_i = g_i, beta = beta,
+        g_i = g_i,
         O_loss = O_loss, O_gain = O_gain,
         A_star = A_star, a_matrix = a_matrix, A = A,
         epsilon = epsilon, m_alpha = m_alpha,
-        x = 0.0, raw_g = zeros(S), h = 0.0,
         herbivore_list = herbivore_list, predator_list = predator_list,
         species_names = species_names
     )
@@ -194,12 +190,15 @@ function o_new_setup_community_from_cell(
     species_dict::Dict{String,Int} = species_dict,
     species_names::Vector{String} = String[],  # default empty vector instead of nothing
     artificial_pi::Bool = false,      # added argument for artificial_pi
-    o_pred_avg::Float64 = 1.0         # average strength for herbivore-herbivore interactions
+    o_pred_avg::Float64 = 1.0,         # average strength for herbivore-herbivore interactions
 )
     # 1) Retrieve the cell and extract species present.
     cell = DA_birmmals_with_pi_corrected[i, j]
-    if isempty(species_names)
+    if isempty(species_names) 
         species_names = extract_species_names_from_a_cell(cell)
+        if !include_predators
+            species_names = [sp for sp in species_names if sp in herbivore_names]
+        end
     end
     S, R = identify_n_of_herbs_and_preds(species_names)
     
@@ -220,7 +219,8 @@ function o_new_setup_community_from_cell(
     end
     
     # 3) Call the new parametrisation function for the new framework.
-    return o_new_parametrise_the_community(
+    S, R, H_i0_eff, m_i, g_i, O_loss, O_gain, A_star, a_matrix, A, epsilon, m_alpha, herbivore_list, predator_list, species_names = 
+    o_new_parametrise_the_community(
          species_names;
          M_mean = M_mean,
          mu = mu,
@@ -233,8 +233,33 @@ function o_new_setup_community_from_cell(
          cell_abundance = cell_abundance_herbs,
          o_pred_avg = o_pred_avg
     )
+    return (
+        S = S, R = R,
+        H_i0_eff = H_i0_eff, m_i = m_i,
+        g_i = g_i,
+        O_loss = O_loss, O_gain = O_gain,
+        A_star = A_star, a_matrix = a_matrix, A = A,
+        epsilon = epsilon, m_alpha = m_alpha,
+        herbivore_list = herbivore_list, predator_list = predator_list,
+        species_names = species_names
+    )
 end
 
-o_new_setup_community_from_cell(
-    18, 1
+A = o_new_setup_community_from_cell(
+    18, 1;
+    M_mean = 0.1,
+    mu = 0.5,
+    symmetrical_competition = true,
+    mean_m_alpha = 0.1,
+    epsilon_val = 1.0,
+    mu_predation = 0.01,
+    iberian_interact_NA = iberian_interact_NA,
+    species_dict = species_dict,
+    species_names = species_names,
+    artificial_pi = artificial_pi,
+    o_pred_avg = o_pred_avg
 )
+
+S, R, H_i0_eff, m_i, g_i, O_loss, O_gain, A_star, a_matrix, A, epsilon, m_alpha, herbivore_list, predator_list, species_names = A
+
+println(A_star)
