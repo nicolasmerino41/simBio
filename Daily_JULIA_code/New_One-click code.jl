@@ -189,10 +189,10 @@ Bird = CSV.read(joinpath(meta_path, "Atlas_data/DB_Birds_IP.txt"), delim='\t', D
 Mamm = CSV.read(joinpath(meta_path, "Atlas_data/DB_Mammals_IP.txt"), delim='\t', DataFrame)
 Rept = CSV.read(joinpath(meta_path, "Atlas_data/DB_Reptiles_IP.txt"), delim='\t', DataFrame)
 # data = load("Abundance lists ATLAS\\eq_dens_5928cells.RData")
-amphibian_names = names(Amph)[2:end]
-reptile_names = names(Rept)[2:end]
-mammal_names = names(Mamm)[2:end]
-bird_names = names(Bird)[2:end]
+amphibian_names = DF.names(Amph)[2:end]
+reptile_names = DF.names(Rept)[2:end]
+mammal_names = DF.names(Mamm)[2:end]
+bird_names = DF.names(Bird)[2:end]
 herps_names = append!(deepcopy(amphibian_names), deepcopy( reptile_names))
 birmmals_names = append!(deepcopy(mammal_names), deepcopy(bird_names))
 spain_fauna = append!(deepcopy(herps_names), deepcopy(birmmals_names)) 
@@ -218,7 +218,7 @@ n = length(unique_species_in_web)
 iberian_interact_matrix = zeros(Int, n, n)
 iberian_interact_matrix = NamedArray(iberian_interact_matrix, (unique_species_in_web, unique_species_in_web))
 # Ordering the matrix by Apmhibians, Reptiles, Mammals, Birds
-spain_names = filter(name -> name in unique_species_in_web, names(hcat(Amph[:, Not(:UTMCODE)], Rept[:, Not(:UTMCODE)], Mamm[:, Not(:UTMCODE)], Bird[:, Not(:UTMCODE)])))
+spain_names = filter(name -> name in unique_species_in_web, DF.names(hcat(Amph[:, Not(:UTMCODE)], Rept[:, Not(:UTMCODE)], Mamm[:, Not(:UTMCODE)], Bird[:, Not(:UTMCODE)])))
 iberian_interact_matrix = iberian_interact_matrix[:, spain_names]
 iberian_interact_matrix = iberian_interact_matrix[spain_names, :]
 
@@ -255,8 +255,8 @@ function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation, beta)
     adjacency = deepcopy(adjacencyy)
     epsilon = float(epsilon)
     u = adjacency
-    for i in names(adjacency, 1)
-        for j in names(adjacency, 2)
+    for i in DF.names(adjacency, 1)
+        for j in DF.names(adjacency, 2)
             if adjacency[i, j] != 0.0 && i != j && adjacency[i, j] > 0.0 && adjacency[j, i] == 0.0
                 predator_mass = Float64(gbif_sizes[gbif_sizes.species .== i, :bodyMass][1])
                 prey_mass = Float64(gbif_sizes[gbif_sizes.species .== j, :bodyMass][1])
@@ -291,21 +291,21 @@ function turn_adj_into_inter(adjacencyy, sigma, epsilon, self_regulation, beta)
     adjacency = u
     return adjacency
 end
-iberian_interact_NA = NamedArray(Matrix(iberian_interact_df), (names(iberian_interact_df), names(iberian_interact_df)))
+iberian_interact_NA = NamedArray(Matrix(iberian_interact_df), (DF.names(iberian_interact_df), DF.names(iberian_interact_df)))
 fill_diagonal!(iberian_interact_NA, 0.0)
 # serialize("C:\\Users\\MM-1\\OneDrive\\PhD\\GitHub\\Networks\\DFs\\iberian_interact_NA.jls", iberian_interact_NA)
 
 herbivore_names = []
 for i in axes(iberian_interact_NA, 1)
     if all(x -> x == 0, iberian_interact_NA[i, :])
-        push!(herbivore_names, names(iberian_interact_NA, 1)[i])
+        push!(herbivore_names, DF.names(iberian_interact_NA, 1)[i])
     end
 end
 predator_names = setdiff(spain_names, herbivore_names)
 
 println("The number of 1s in the column Rupicabra pyrenaica is $(sum(iberian_interact_NA[:, "Rupicapra pyrenaica"] .== 1))")
 
-non_zero_cols = names(iberian_interact_NA, 2)[findall(x -> x != 0, iberian_interact_NA["Coracias garrulus", :])]
+non_zero_cols = DF.names(iberian_interact_NA, 2)[findall(x -> x != 0, iberian_interact_NA["Coracias garrulus", :])]
 println("The non-zero columns for Coracias garrulus are $non_zero_cols")
 
 ########### VISUAL OUTPUTS ################
