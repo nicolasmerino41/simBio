@@ -1,6 +1,8 @@
 function b_bipartite_run(
     cell, 
     mu_val, eps_val, mean_m_alpha;
+    delta_nu = 0.05,
+    d_alpha = 1.0, d_i = 1.0,
     time_end = 500.0,
     do_you_want_params = false,
     do_you_want_sol = false,
@@ -35,7 +37,10 @@ function b_bipartite_run(
         eps_val,
         mean_m_alpha;
         species_names = sp_nm,
-        artificial_pi = artificial_pi
+        artificial_pi = artificial_pi,
+        delta_nu = delta_nu,
+        d_alpha = d_alpha,
+        d_i = d_i
     )
     if isnothing(params_setup)
         @error "Error: params_setup is nothing"
@@ -59,6 +64,8 @@ function b_bipartite_run(
     # species_names = params_setup.species_names,
     H_star = params_setup.H_star
     P_star = params_setup.P_star
+    println("H_star: $H_star")
+    println("P_star: $P_star")
 
     # Initial conditions: if H_init is not provided, use the baseline abundances.
     if isnothing(H_init)
@@ -116,7 +123,7 @@ function b_bipartite_run(
     end
     
     # Post-processing: extract final densities.
-    H_end = sol[1:S, end]
+    H_end = sol[1:33, end]
     P_end = sol[S+1:S+R, end]
     H_end = map(x -> x < EXTINCTION_THRESHOLD ? 0.0 : x, H_end)
     P_end = map(x -> x < EXTINCTION_THRESHOLD ? 0.0 : x, P_end)
@@ -132,6 +139,9 @@ function b_bipartite_run(
     P_biomass = sum(P_end)
     biomass_at_the_end = H_biomass + P_biomass
     ratio = (H_biomass == 0.0 ? NaN : (P_biomass / H_biomass))
+    println("H_end: $H_end")
+    println("P_end: $P_end")
+    println("Estimated nu = $nu_val")
     
     single_run_results = DataFrame(
         cell_id                 = cell,
@@ -170,20 +180,25 @@ function b_bipartite_run(
 end
 
 # cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
-@time h_run, sol = b_bipartite_run(
+@time h_run = b_bipartite_run(
     1, # cell
     0.0, 1.0, 0.1; # mu, epsilon, m_alpha
+    delta_nu = 0.0,
+    d_alpha = 1.0   , d_i = 1.0,
     time_end = 500.0,
     do_you_want_params = false,
-    do_you_want_sol = true,
+    do_you_want_sol = false,
     include_predators = true,
     plot = true,
     sp_removed_name = nothing,
-    artificial_pi = false,
+    artificial_pi = true,
     H_init = nothing,
     P_init = nothing,
     ignore_inf_error = true,
     log = false
 )
 
-sol[:, end]
+println(h_run.survival_rate[1])
+
+println(sol[:, end])
+println(sol.u[:, end])

@@ -5,7 +5,10 @@ function b_new_parametrise_the_community(
     mean_m_alpha::Float64 = 0.1,
     iberian_interact_NA::NamedMatrix{Float64} = iberian_interact_NA,
     species_dict::Dict{String,Int} = species_dict,
-    cell_abundance::Vector{Float64} = Float64[]
+    cell_abundance::Vector{Float64} = Float64[],
+    delta_nu::Float64 = 0.05,
+    d_alpha::Float64 = 1.0,
+    d_i::Float64 = 1.0
 )
     # Identify herbivores and predators in the cell.
     herbivore_list = [sp for sp in species_names if sp in herbivore_names]
@@ -35,7 +38,7 @@ function b_new_parametrise_the_community(
     # For predators, assign mortality and conversion efficiency.
     if R > 0
         m_alpha = fill(mean_m_alpha, R)
-        epsilon = fill(epsilon_val, R)
+        epsilon = fill(epsilon_val, R) * (d_i / d_alpha)
         # We assume predator self-regulation factor d_α = 1 so that K_α = m_α.
         K_alpha = copy(m_alpha)
     else
@@ -81,6 +84,22 @@ function b_new_parametrise_the_community(
         H_alpha_tot = sum(P_matrix[:, alpha] .* H_i0)
         P_star[alpha] = epsilon[alpha] * nu_min * H_alpha_tot - m_alpha[alpha]
     end
+    if any(P_star .<= 0.0)
+        for alpha in 1:R
+            H_alpha_tot = sum(P_matrix[:, alpha] .* H_i0)
+            P_star[alpha] = epsilon[alpha] * nu_min*delta_nu * H_alpha_tot - m_alpha[alpha]
+        end
+        if any(P_star .<= 0.0)
+            @info "Some predator equilibrium abundances are still negative or zero"
+            for alpha in 1:R 
+                H_alpha_tot = sum(P_matrix[:, alpha] .* H_i0)
+                P_star[alpha] = epsilon[alpha] * nu_min * H_alpha_tot - m_alpha[alpha]
+            end
+        else
+            @info "We had to use a higher nu_min (1+delta, where delta = $delta_nu) to avoid negative predator abundances"
+        end
+        
+    end
     
     # Assume herbivore equilibrium equals the observed data.
     H_star = copy(H_i0)
@@ -106,7 +125,10 @@ function b_new_setup_community_from_cell(
     iberian_interact_NA::NamedMatrix{Float64} = iberian_interact_NA,
     species_dict::Dict{String,Int} = species_dict,
     species_names::Vector{String} = String[],
-    artificial_pi::Bool = false
+    artificial_pi::Bool = false,
+    delta_nu::Float64 = 0.05,
+    d_alpha::Float64 = 1.0,
+    d_i::Float64 = 1.0
 )
     # 1) Retrieve the cell and extract species present.
     cell = DA_birmmals_with_pi_corrected[i, j]
@@ -128,7 +150,7 @@ function b_new_setup_community_from_cell(
         end
     end
     if artificial_pi
-        cell_abundance_herbs = ones(length(cell_abundance_herbs))
+        cell_abundance_herbs = ones(length(cell_abundance_herbs))*100.0
     end
     
     # 3) Call the new parameterisation function for the new framework.
@@ -139,7 +161,10 @@ function b_new_setup_community_from_cell(
          mean_m_alpha = mean_m_alpha,
          iberian_interact_NA = iberian_interact_NA,
          species_dict = species_dict,
-         cell_abundance = cell_abundance_herbs
+         cell_abundance = cell_abundance_herbs,
+         delta_nu = delta_nu,
+         d_alpha = d_alpha,
+         d_i = d_i
     )
 
     S, R, H_i0, r_i, K_i, mu, nu,
