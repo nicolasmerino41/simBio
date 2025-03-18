@@ -1,12 +1,13 @@
 function b_attempt_setup_community(
     i, j, 
     mu_val, eps_val, mean_m_alpha;
-    species_names = nothing, artificial_pi = false,
+    species_names = nothing,
+    artificial_pi = false, pi_size = 1.0,
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0
 )
     try
-        params = b_new_setup_community_from_cell(
+        params = b_setup_community_from_cell(
             i, j;
             mu = mu_val,
             # nu = nu_val,
@@ -15,7 +16,7 @@ function b_attempt_setup_community(
             iberian_interact_NA = iberian_interact_NA,
             species_dict = species_dict,
             species_names = isnothing(species_names) ? String[] : species_names,
-            artificial_pi = artificial_pi,
+            artificial_pi = artificial_pi, pi_size = pi_size,
             delta_nu = delta_nu,
             d_alpha = d_alpha,
             d_i = d_i
@@ -32,7 +33,7 @@ function b_attempt_setup_community(
         ) 
     catch e
         println("hey error in b_attempt_setup_community")
-        println(e)
+        # println(e)
         return nothing
     end
 end

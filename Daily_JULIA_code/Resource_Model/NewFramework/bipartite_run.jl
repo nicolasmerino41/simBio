@@ -1,4 +1,4 @@
-function b_bipartite_run(
+function bipartite_run(
     cell, 
     mu_val, eps_val, mean_m_alpha;
     delta_nu = 0.05,
@@ -9,7 +9,7 @@ function b_bipartite_run(
     include_predators = false,
     plot = false,
     sp_removed_name = nothing,
-    artificial_pi = false,
+    artificial_pi = false, pi_size = 1.0,
     H_init = nothing,
     P_init = nothing,
     ignore_inf_error = false,
@@ -37,7 +37,7 @@ function b_bipartite_run(
         eps_val,
         mean_m_alpha;
         species_names = sp_nm,
-        artificial_pi = artificial_pi,
+        artificial_pi = artificial_pi, pi_size = pi_size,
         delta_nu = delta_nu,
         d_alpha = d_alpha,
         d_i = d_i
@@ -123,7 +123,7 @@ function b_bipartite_run(
     end
     
     # Post-processing: extract final densities.
-    H_end = sol[1:33, end]
+    H_end = sol[1:S, end]
     P_end = sol[S+1:S+R, end]
     H_end = map(x -> x < EXTINCTION_THRESHOLD ? 0.0 : x, H_end)
     P_end = map(x -> x < EXTINCTION_THRESHOLD ? 0.0 : x, P_end)
@@ -132,7 +132,7 @@ function b_bipartite_run(
     total_surv = survived_herb + survived_pred
     total_species = S + R
     survival_rate = total_surv / total_species
-    giHi = sum(r_i .* H_end)
+    # giHi = sum(r_i .* H_end)
     herbivore_survival_rate = survived_herb / S
     predator_survival_rate = (R > 0 ? survived_pred / R : 0.0)
     H_biomass = sum(H_end)
@@ -179,19 +179,20 @@ function b_bipartite_run(
     end
 end
 
-# cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
-@time h_run = b_bipartite_run(
-    1, # cell
-    0.0, 1.0, 0.1; # mu, epsilon, m_alpha
-    delta_nu = 0.0,
-    d_alpha = 1.0   , d_i = 1.0,
+cell = 2
+cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
+@time A_run = bipartite_run(
+    2, # cell
+    0.1, 1.0, 0.01; # mu, epsilon, m_alpha
+    delta_nu = 0.05,
+    d_alpha = 1.0, d_i = 1.0,
     time_end = 500.0,
     do_you_want_params = false,
     do_you_want_sol = false,
     include_predators = true,
     plot = true,
     sp_removed_name = nothing,
-    artificial_pi = true,
+    artificial_pi = true, pi_size = 10.0,
     H_init = nothing,
     P_init = nothing,
     ignore_inf_error = true,

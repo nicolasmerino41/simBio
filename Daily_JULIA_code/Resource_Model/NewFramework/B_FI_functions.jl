@@ -1,4 +1,4 @@
-function b_new_parametrise_the_community(
+function b_parametrise_the_community(
     species_names::Vector{String};
     mu::Float64 = 0.5,
     epsilon_val::Float64 = 1.0,
@@ -116,7 +116,7 @@ function b_new_parametrise_the_community(
     )
 end
 
-function b_new_setup_community_from_cell(
+function b_setup_community_from_cell(
     i::Int, j::Int;
     mu::Float64 = 0.5,
     # nu::Float64 = 0.01,
@@ -126,6 +126,7 @@ function b_new_setup_community_from_cell(
     species_dict::Dict{String,Int} = species_dict,
     species_names::Vector{String} = String[],
     artificial_pi::Bool = false,
+    pi_size::Float64 = 1.0,
     delta_nu::Float64 = 0.05,
     d_alpha::Float64 = 1.0,
     d_i::Float64 = 1.0
@@ -150,11 +151,11 @@ function b_new_setup_community_from_cell(
         end
     end
     if artificial_pi
-        cell_abundance_herbs = ones(length(cell_abundance_herbs))*100.0
+        cell_abundance_herbs = fill(pi_size, length(cell_abundance_herbs))
     end
     
     # 3) Call the new parameterisation function for the new framework.
-    params = b_new_parametrise_the_community(
+    params = b_parametrise_the_community(
          species_names;
          mu = mu,
          epsilon_val = epsilon_val,
@@ -185,7 +186,7 @@ function b_new_setup_community_from_cell(
 end
 
 # Example usage:
-A = b_new_setup_community_from_cell(
+A = b_setup_community_from_cell(
     18, 1;
     mu = 0.5,
     # nu = 0.01,
@@ -194,8 +195,17 @@ A = b_new_setup_community_from_cell(
     iberian_interact_NA = iberian_interact_NA,
     species_dict = species_dict,
     # species_names = species_names,
-    artificial_pi = false
+    artificial_pi = true,
+    delta_nu = 0.05
 )
 
 S, R, H_i0, r_i, K_i, mu, nu, P_matrix, epsilon, m_alpha, K_alpha, herbivore_list, predator_list, species_names, H_star, P_star = A
 
+b_attempt_setup_community(
+    18, 1, 
+    0.5, 1.0, 0.1;
+    species_names = nothing,
+    artificial_pi = true, pi_size = 1.0,
+    delta_nu = 0.05,
+    d_alpha = 1.0, d_i = 1.0
+)
