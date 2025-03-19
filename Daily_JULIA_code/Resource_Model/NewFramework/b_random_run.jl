@@ -1,16 +1,15 @@
-# -- Helper: Modified parameterisation function that accepts d_i and d_alpha --
 function random_parametrise_the_community(
     species_names::Vector{String};
     mu::Float64 = 0.5,
     epsilon_val::Float64 = 1.0,
     mean_m_alpha::Float64 = 0.1,
-    d_i::Union{Float64, Vector{Float64}} = 1.0,
-    d_alpha::Union{Float64, Vector{Float64}} = 1.0,
-    connectance::Float64 = 0.2,
-    iberian_interact::Matrix{Float64} = zeros(0,0),  # placeholder; will be generated if empty
-    species_dict::Dict{String,Int} = Dict{String,Int}(),
-    cell_abundance::Vector{Float64} = Float64[],
-    delta_nu::Float64 = 0.05
+    iberian_interact_NA::Matrix{Float64} = iberian_interact_NA,
+    species_dict::Dict{String,Int} = species_dict,
+    cell_abundance_h::Vector{Float64} = Float64[],  # Observed (assumed equilibrium) herbivore abundances
+    cell_abundance_p::Vector{Float64} = Float64[],  # Observed predator equilibrium abundances
+    delta_nu::Float64 = 0.05,
+    d_alpha::Float64 = 1.0,
+    d_i::Float64 = 1.0
 )
     # Identify herbivores and predators.
     herbivore_list = [sp for sp in species_names if startswith(sp, "H")]
@@ -18,95 +17,100 @@ function random_parametrise_the_community(
     S = length(herbivore_list)
     R = length(predator_list)
     
-    # For herbivores, set baseline abundances H_i0.
+    # Process herbivore equilibrium abundances.
     if S > 0
-        if length(cell_abundance) == S
-            H_i0 = copy(cell_abundance)
+        if length(cell_abundance_h) == S
+            H_eq = copy(cell_abundance_h)
         else
-            println("WARNING: cell_abundance length != S, defaulting to uniform abundances.")
-            H_i0 = ones(S)
+            error("Expected cell_abundance_h to have length S=$S")
         end
     else
-        H_i0 = Float64[]
+        H_eq = Float64[]
     end
     
-    # Herbivore intrinsic growth rates (assumed 1).
-    r_i = ones(S)
-    
-    # Define herbivore carrying capacities: K_i = H_i0 / d_i.
-    if isa(d_i, Number)
-        K_i = H_i0 ./ d_i
+    # Process predator equilibrium abundances.
+    if R > 0
+        if length(cell_abundance_p) == R
+            P_eq = copy(cell_abundance_p)
+        else
+            error("Expected cell_abundance_p to have length R=$R")
+        end
     else
-        K_i = H_i0 ./ d_i
+        P_eq = Float64[]
     end
+    
+    # For herbs, let the observed equilibrium be our H*.
+    H_star = copy(H_eq)
+    r_i = ones(S)
+    # Initially we set a preliminary K_i as the observed abundances.
+    K_i_initial = copy(H_eq)
     
     # For predators, assign mortality and conversion efficiency.
     if R > 0
         m_alpha = fill(mean_m_alpha, R)
-        epsilon = fill(epsilon_val, R)
-        if isa(d_alpha, Number)
-            K_alpha = m_alpha ./ d_alpha
-        else
-            K_alpha = m_alpha ./ d_alpha
-        end
+        # Scale epsilon by (d_i/d_alpha); here d_i and d_alpha are 1 by default.
+        epsilon = fill(epsilon_val, R) * (d_i / d_alpha)
+        # Initially, set a preliminary K_alpha equal to m_alpha.
+        K_alpha_initial = copy(m_alpha)
     else
         m_alpha = Float64[]
         epsilon = Float64[]
-        K_alpha = Float64[]
+        K_alpha_initial = Float64[]
     end
     
-    # If no iberian_interact matrix is provided, assume it has been generated.
-    # (Here we assume it is provided externally, e.g. by random_bipartite_run.)
-    # Build the predation incidence matrix (S x R).
+    # Build the predation incidence matrix (S x R) based on the provided iberian_interact_NA.
     P_matrix = zeros(S, R)
     for i in 1:S
         global_herb_idx = species_dict[herbivore_list[i]]
         for j in 1:R
             global_pred_idx = species_dict[predator_list[j]]
-            # We assume that iberian_interact[global_pred_idx, global_herb_idx] is either 0 or 1.
-            if iberian_interact[global_pred_idx, global_herb_idx] == 1
+            if iberian_interact_NA[global_pred_idx, global_herb_idx] == 1
                 P_matrix[i, j] = 1.0
             end
         end
     end
     
-    # --- Equilibrium Conditions for Predators ---
-    # For predator α: P* = ε * ν * (sum_i P_matrix[i,α]*H_i0) - m_alpha.
+    # --- Compute candidate ν values for each predator using the equilibrium condition ---
+    # For predator α: assume P_eq[α] = ε[α]*ν*(sum_i P_matrix[i,α]*H_eq[i]) - m_alpha[α].
+    # Rearranged:
+    #   ν_α = (P_eq[α] + m_alpha[α]) / (ε[α] * (sum_i P_matrix[i,α]*H_eq[i]))
     nu_candidates = Float64[]
     for alpha in 1:R
-        H_alpha_tot = sum(P_matrix[:, alpha] .* H_i0)
+        H_alpha_tot = sum(P_matrix[:, alpha] .* H_eq)
         if H_alpha_tot > 0
-            push!(nu_candidates, m_alpha[alpha] / (epsilon[alpha] * H_alpha_tot))
+            push!(nu_candidates, (P_eq[alpha] + m_alpha[alpha]) / (epsilon[alpha] * H_alpha_tot))
         end
     end
-    if !isempty(nu_candidates)
-        nu_min = maximum(nu_candidates)
-    else
-        nu_min = 0.0
+    nu = isempty(nu_candidates) ? 0.0 : maximum(nu_candidates)
+    nu *= (1.0 + delta_nu)  # Add safety margin.
+    
+    # --- Recalculate derived carrying capacities ---
+    # For herbivores: K_i = (1-μ)*H*_i + μ*(sum_j H*_j) + ν*(P_i^tot),
+    # where P_i^tot = sum over predators that affect herbivore i.
+    K_i = zeros(S)
+    total_H = sum(H_star)
+    for i in 1:S
+        P_i_tot = sum(P_matrix[i, :] .* P_eq)
+        K_i[i] = (1 - mu)*H_star[i] + mu * total_H + nu * P_i_tot
     end
     
-    # Optionally, add a safety margin (delta_nu).
-    nu_min *= (1.0 + delta_nu)
-    
-    # Compute equilibrium predator abundances.
-    P_star = zeros(R)
+    # For predators: K_α = ε*ν*(sum_i P_matrix[i,α]*H*_i) - P_eq[α].
+    K_alpha = zeros(R)
     for alpha in 1:R
-        H_alpha_tot = sum(P_matrix[:, alpha] .* H_i0)
-        P_star[alpha] = epsilon[alpha] * nu_min * H_alpha_tot - m_alpha[alpha]
+        H_alpha_tot = sum(P_matrix[:, alpha] .* H_star)
+        K_alpha[alpha] = epsilon[alpha] * nu * H_alpha_tot - P_eq[alpha]
     end
-    
-    # Assume herbivore equilibrium equals observed abundances.
-    H_star = copy(H_i0)
     
     return (
         S = S, R = R,
-        H_i0 = H_i0, r_i = r_i, K_i = K_i,
-        mu = mu, nu = nu_min,
+        H_eq = H_eq, P_eq = P_eq,
+        r_i = r_i, K_i = K_i,
+        mu = mu, nu = nu,
         P_matrix = P_matrix,
         epsilon = epsilon, m_alpha = m_alpha, K_alpha = K_alpha,
         herbivore_list = herbivore_list, predator_list = predator_list,
         species_names = species_names,
-        H_star = H_star, P_star = P_star
+        H_star = H_star, P_star = P_eq  # Final equilibrium values are taken from inputs.
     )
 end
 
@@ -127,7 +131,8 @@ function random_bipartite_run(
     plot::Bool = true,
     do_you_want_params::Bool = false,
     do_you_want_sol::Bool = false,
-    min_h_abundance::Float64 = 5.0, max_h_abundance::Float64 = 10.0
+    min_h_abundance::Float64 = 5.0, max_h_abundance::Float64 = 10.0,
+    min_p_abundance::Float64 = 0.5, max_p_abundance::Float64 = 1.0
 )
     # Generate random herbivore names and predator names.
     herbivore_names = ["H$(i)" for i in 1:S]
@@ -144,8 +149,10 @@ function random_bipartite_run(
     # Generate random herbivore abundances (observed data).
     # For instance, uniform between 0.1 and 10.
     H_i0 = [rand(Uniform(min_h_abundance, max_h_abundance)) for _ in 1:S]
+    P_i0 = [rand(Uniform(min_p_abundance, max_p_abundance)) for _ in 1:R]
     if artificial_pi
         H_i0 .= 1.0
+        P_i0 .= 0.1
     end
     
     # Generate a random iberian_interact matrix.
@@ -171,11 +178,13 @@ function random_bipartite_run(
         mean_m_alpha = mean_m_alpha,
         d_i = d_i,
         d_alpha = d_alpha,
-        iberian_interact = iberian_interact,
+        iberian_interact_NA = iberian_interact,
         species_dict = species_dict,
-        cell_abundance = H_i0,
+        cell_abundance_h = H_i0,
+        cell_abundance_p = P_i0,
         delta_nu = delta_nu
     )
+    println("Parameters: ", params)
     
     # Extract returned parameters.
     S_param = params.S
@@ -201,7 +210,7 @@ function random_bipartite_run(
     cb_no_trigger, cb_trigger = build_callbacks(S_param, R_param, EXTINCTION_THRESHOLD, time_end, 1)
     prob = ODEProblem(bipartite_dynamics!, u0, (0.0, time_end), ode_params)
     sol = solve(prob, Tsit5(); callback=cb_no_trigger, abstol=abstol, reltol=reltol)
-    
+    # println("sol = ", sol)
     # --- Plotting the Dynamics using Makie ---
     if plot    
         fig = Figure(; size = (600, 500))
@@ -270,10 +279,10 @@ end
 
 # Example usage:
 A = random_bipartite_run(
-    S, R;
-    mu = A_df.mu[5],
-    epsilon_val = A_df.epsilon_val[5],
-    mean_m_alpha = A_df.m_alpha[5],
+    10, 10;
+    mu = 0.9,
+    epsilon_val = 10.0,
+    mean_m_alpha = 0.1,
     connectance = 1.0,
     d_i = 1.0,
     d_alpha = 1.0,   # weaker self-regulation for predators (larger K_alpha)
@@ -285,4 +294,3 @@ A = random_bipartite_run(
     do_you_want_params = false,
     do_you_want_sol = false
 )
-
