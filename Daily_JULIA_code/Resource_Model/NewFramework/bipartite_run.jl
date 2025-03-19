@@ -27,8 +27,6 @@ function bipartite_run(
         sp_nm = [sp for sp in sp_nm if sp != sp_removed_name]
     end
     
-    localNPP = 0.0   # not used
-    
     # Get community parameters using the new setup function.
     params_setup = b_attempt_setup_community(
         local_i, local_j,
@@ -50,7 +48,8 @@ function bipartite_run(
     # Destructure the returned parameters.
     S          = params_setup.S
     R          = params_setup.R
-    H_i0       = params_setup.H_i0        # baseline herbivore abundances
+    H_eq       = params_setup.H_eq        # baseline herbivore abundances
+    P_eq       = params_setup.P_eq        # baseline predator abundances
     r_i        = params_setup.r_i          # herbivore intrinsic growth rates
     K_i        = params_setup.K_i          # herbivore carrying capacities
     # mu here is the input parameters (should equal mu_val and nu_val)
@@ -78,14 +77,19 @@ function bipartite_run(
             P_init = P_star
         end
         u0 = vcat(H_init, P_init)
+        println("typeof(H_init): ", typeof(H_init))
+        println("typeof(P_init): ", typeof(P_init))
     else
         u0 = H_init
     end
-    
+    # println("typeof(u0): ", typeof(u0))
     # Build the parameter tuple for the ODE.
     # Order: (S, R, K_i, r_i, mu, nu, P_matrix, epsilon, m_alpha, K_alpha)
     params = (S, R, K_i, r_i, mu_val, nu_val, P_matrix, epsilon, m_alpha, K_alpha)
-    
+    println("K_i: $K_i")
+    println("K_alpha: $K_alpha")
+    println("r_i: $r_i")
+    println("m_alpha: $m_alpha")
     # Define and solve the ODE.
     prob = ODEProblem(bipartite_dynamics!, u0, (0.0, time_end), params)
     logger = SimpleLogger(stderr, Logging.Error)
@@ -148,10 +152,12 @@ function bipartite_run(
         i                       = local_i,
         j                       = local_j,
         survival_rate           = survival_rate,
-        # NPP                     = localNPP,   # not used
-        # g_iH_i                  = giHi,
-        # g_iH_i_over_NPP         = round(giHi, digits = 4),
-        # g_iHobs                 = round(sum(r_i .* H_i0), digits = 4),
+        H_eq                    = [H_eq],
+        P_eq                    = [P_eq],
+        H_star                  = [H_star],
+        P_star                  = [P_star],
+        H_vector                = [H_end],
+        P_vector                = [P_end],
         survived_herbivores     = survived_herb,
         survived_predators      = survived_pred,
         H_biomass               = H_biomass,
@@ -179,10 +185,10 @@ function bipartite_run(
     end
 end
 
-cell = 2
-cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
+# cell = 1
+# cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
 @time A_run = bipartite_run(
-    2, # cell
+    1, # cell
     0.1, 1.0, 0.01; # mu, epsilon, m_alpha
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
@@ -192,7 +198,7 @@ cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext,
     include_predators = true,
     plot = true,
     sp_removed_name = nothing,
-    artificial_pi = true, pi_size = 10.0,
+    artificial_pi = false, pi_size = 10.0,
     H_init = nothing,
     P_init = nothing,
     ignore_inf_error = true,
