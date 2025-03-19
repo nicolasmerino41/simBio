@@ -23,15 +23,13 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Bipartite model equations with MF
+In this document we present a mean‐field (MF) formulation of a bipartite model describing the dynamics of herbivores and predators. The model incorporates intra‐guild competition among herbivores and predation interactions between herbivores and predators.
 
-In this document we present a mean‐field (MF) formulation of a bipartite model describing the dynamics of herbivores and predators. The model incorporates intra‐guild competition among herbivores and predation interactions between herbivores and predators. Below, we detail the equations, explain each term, and show how equilibrium conditions relate to the dynamic formulation.
-
-## Herbivore Dynamics
+# Herbivore dynamics
 
 The dynamics of herbivore species \(i\) are described by the equation
 $$
-\frac{\dot{H_i}}{H_i} = r_i \left( 1 - \frac{(1-\mu)H_i + \mu\,H^{tot} + \nu\,P_i^{tot}}{K_i} \right).
+\frac{\dot{H_i}}{H_i} = r_i \left( 1 - \frac{(1-\mu)H_i + \mu\,H^{tot} + \nu\,P_i^{tot}}{K_i} \right)
 $$
 
 **Explanation:**
@@ -40,13 +38,13 @@ $$
 
 - **\(r_i\):** Intrinsic growth rate of species \(i\).
 
-- **Competition Terms:**
+- **Competition terms:**
   
   - \((1-\mu)H_i\) represents self-regulation.
   
   - \(\mu\,H^{tot}\) represents the effect of total herbivore biomass, where \(H^{tot} = \sum_j H_j\).
 
-- **Predation Term:**
+- **Predation term:**
   
   - \(\nu\,P_i^{tot}\) captures the loss of herbivores due to predation.
   
@@ -54,21 +52,21 @@ $$
 
 - **\(K_i\):** The carrying capacity of species \(i\) given by
   $$
-  K_i = \frac{r_i}{d_i},
+  K_i = \frac{r_i}{d_i}
   $$
   with \(d_i\) as the self-regulation parameter.
 
-- **Attack Rate Notation:**
+- **Attack rate notation:**
   $$
-  A_{i \alpha}^* = \frac{a_{i \alpha}}{d_i} \equiv \nu,
+  A_{i \alpha}^* = \frac{a_{i \alpha}}{d_i} \equiv \nu
   $$
   meaning that under the mean‐field assumption the effective attack rate is approximated by a constant \(\nu\).
 
-## Predator Dynamics
+# Predator dynamics
 
 The dynamics for predator species \(\alpha\) are given by
 $$
-\frac{\dot{P_\alpha}}{P_\alpha} = m_\alpha \left(\frac{\epsilon \sum_{i} \left(\frac{a_{\alpha i}}{d_i}\right) \frac{d_i}{d_\alpha}H_i - P_\alpha}{K_\alpha} - 1\right).
+\frac{\dot{P_\alpha}}{P_\alpha} = m_\alpha \left(\frac{\epsilon \sum_{i} \left(\frac{a_{\alpha i}}{d_i}\right) \frac{d_i}{d_\alpha}H_i - P_\alpha}{K_\alpha} - 1\right)
 $$
 
 **Explanation:**
@@ -77,96 +75,131 @@ $$
 
 - **\(m_\alpha\):** Intrinsic mortality rate of predator \(\alpha\).
 
-- **Scaling in the Gain Term:**
+- **Scaling in the gain term:**
   
   - The factor \(\frac{a_{\alpha i}}{d_i}\) represents the raw predator–herbivore attack rate scaled by the herbivore’s self-regulation.
   
   - Multiplying by \(\frac{d_i}{d_\alpha}\) introduces a scaling factor \(\psi\):
     $$
-    \psi = \frac{d_i}{d_\alpha}.
+    \psi = \frac{d_i}{d_\alpha}
     $$
   
   - The raw conversion efficiency \(\epsilon\) is then scaled to yield the effective efficiency
     $$
-    \varepsilon = \epsilon\,\psi.
+    \varepsilon = \epsilon\,\psi
     $$
 
-- **Mean-field Approximation:**
+- **Mean-field approximation:**
   
   - Under a MF assumption, we approximate the summed gain term as
     $$
-    \sum_i \left(\frac{a_{\alpha i}}{d_i}\right)\frac{d_i}{d_\alpha} H_i \approx \nu\,H_\alpha^{tot},
+    \sum_i \left(\frac{a_{\alpha i}}{d_i}\right)\frac{d_i}{d_\alpha} H_i \approx \nu\,H_\alpha^{tot}
     $$
     where \(H_\alpha^{tot} = \sum_{i \in \{\text{prey of } \alpha\}} H_i\).
   
   - Thus, the predator equation simplifies to
     $$
-    \frac{\dot{P_\alpha}}{P_\alpha} = m_\alpha \left(\frac{\varepsilon\,\nu\,H_\alpha^{tot} - P_\alpha}{K_\alpha} - 1\right).
+    \frac{\dot{P_\alpha}}{P_\alpha} = m_\alpha \left(\frac{\varepsilon\,\nu\,H_\alpha^{tot} - P_\alpha}{K_\alpha} - 1\right)
     $$
 
 - **\(K_\alpha\):** 
 Defined dynamically as
   $$
-  K_\alpha = \frac{m_\alpha}{d_\alpha},
+  K_\alpha = \frac{m_\alpha}{d_\alpha}
   $$
   which represents the intrinsic balance between predator mortality and self-regulation.
 
-## Equilibrium and Parameterisation
+# Equilibrium and parameterisation
 
 At equilibrium (\(\dot{P_\alpha}=0\)), we have
 $$
-\varepsilon\,\nu\,\hat{H}_\alpha^{tot} - \hat{P}_\alpha = \frac{m_\alpha}{d_\alpha} = K_\alpha.
+\varepsilon\,\nu\,\hat{H}_\alpha^{tot} - \hat{P}_\alpha = \frac{m_\alpha}{d_\alpha} = K_\alpha
 $$
 This shows that the equilibrium predator biomass \(\hat{P}_\alpha\) and the equilibrium total prey biomass \(\hat{H}_\alpha^{tot}\) are related through the effective parameters \(\varepsilon\) and \(\nu\).
 
-**Predator Viability Condition:**
+**Predator viability condition:**
 $$
 \varepsilon\,\nu\,\hat{H}_\alpha^{tot} > \hat{P}_\alpha
 \quad \Longleftrightarrow \quad
-\varepsilon\,\nu > \frac{\hat{P}_\alpha}{\hat{H}_\alpha^{tot}}.
+\varepsilon\,\nu > \frac{\hat{P}_\alpha}{\hat{H}_\alpha^{tot}}
 $$
 
-**Apparent Competition among Herbivores:**
-
-When herbivores share predators, they indirectly affect each other’s dynamics (apparent competition). A simplified representation of this effect is given by:
-$$
-\varepsilon\,\nu^2\,N_{ij} + \mu,
-$$
-with the condition that
-$$
-\varepsilon\,\nu > \text{critical value of } N_{ij},
-$$
-where \(N_{ij}\) represents the number of shared predators between herbivore \(i\) and \(j\).
-
-### Derived Equilibrium Expressions
+## Derived equilibrium expressions
 
 For completeness, the following equilibrium expressions can be derived:
 
 - For predators:
   $$
-  K_\alpha = \varepsilon\,\nu\,\hat{H}_\alpha^{tot} - \hat{P}_\alpha.
+  K_\alpha = \varepsilon\,\nu\,\hat{H}_\alpha^{tot} - \hat{P}_\alpha
   $$
 
 - For herbivores:
   $$
-  K_i = (1-\mu)\,\hat{H}_i - \nu\,\hat{P}_i^{tot} + \mu\,\hat{H}^{tot},
+  K_i = (1-\mu)\,\hat{H}_i + \nu\,\hat{P}_i^{tot} + \mu\,\hat{H}^{tot}
   $$
   where \(\hat{H}^{tot}\) is the total equilibrium herbivore biomass and \(\hat{P}_i^{tot}\) is the total equilibrium predation pressure on species \(i\).
 
-## Other Insights on Perturbations
+# Other insights on perturbations
 
-Small perturbations in biomass provide insight into the system’s sensitivity. For example, a small change in predator biomass is given by:
-$$
-\delta P_\alpha = \varepsilon\,\nu\,\sum_{j \leftrightsquigarrow \alpha} \delta H_j,
-$$
-and the change in total predator biomass affecting herbivore \(i\) is:
-$$
-\delta P_i^{tot} = \sum_{\alpha \leftrightsquigarrow i} \delta P_\alpha = \varepsilon\,\nu\,\sum_{j \leftrightsquigarrow \alpha \leftrightsquigarrow i} \delta H_j.
-$$
-Here, the notation \(j \leftrightsquigarrow \alpha \leftrightsquigarrow i\) indicates herbivores \(i\) and \(j\) that share common predators.
+Understanding how small changes (perturbations) in species biomass propagate through the community helps us assess the system’s sensitivity and stability.
 
-**Note:**  
+## Perturbations in predator biomass
 
-- In this framework, \(\mu\) (competition strength) and \(\varepsilon\) (conversion efficiency) are treated as free parameters.  
+A small change in the biomass of herbivores that serve as prey for a predator \(\alpha\) leads to a change in that predator’s biomass. This is represented by:
+$$
+\delta P_\alpha = \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha} \delta H_j
+$$
+where:
 
-- The parameter \(\nu\) consistently represents the effective predation rate: it appears in the herbivore equation as the loss rate and in the predator equation (multiplied by \(\varepsilon\)) as the gain rate, ensuring consistency across the model.
+- \(\delta P_\alpha\) is the change in predator \(\alpha\)’s biomass.
+
+- \(\varepsilon\) is the effective conversion efficiency.
+
+- \(\nu\) is the effective predation rate.
+
+- \(\sum_{j \rightsquigarrow \alpha}\) indicates summing over all herbivores \(j\) that are preyed upon by predator \(\alpha\).
+
+## Total predator impact on a herbivore
+
+Herbivore \(i\) experiences a change in the overall predation pressure, which is the sum of the changes in biomass of all its predators:
+$$
+\delta P_i^{\text{tot}} = \sum_{\alpha \rightsquigarrow i} \delta P_\alpha 
+= \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha \rightsquigarrow i} \delta H_j
+$$
+where:
+
+- \(\delta P_i^{\text{tot}}\) is the aggregate change in predation affecting herbivore \(i\).
+
+- \(j \rightsquigarrow \alpha \rightsquigarrow i\) indicates that herbivores \(i\) and \(j\) share one or more common predators.
+
+## Change in herbivore carrying capacity
+
+The carrying capacity \(K_i\) for herbivore \(i\) is modulated by both its own biomass and the predation pressure it experiences. A small perturbation yields:
+$$
+\delta K_i = (1-\mu)\,\delta H_i + \mu\,\delta H^{\text{tot}} + \nu\,\delta P_i^{\text{tot}}
+$$
+where:
+
+- \((1-\mu)\,\delta H_i\) represents the direct self‐regulatory effect.
+
+- \(\mu\,\delta H^{\text{tot}}\) captures the influence of the overall herbivore biomass (\(H^{\text{tot}} = \sum_j H_j\)).
+
+- \(\nu\,\delta P_i^{\text{tot}}\) accounts for the effect of changes in predation pressure on species \(i\).
+
+## Combined effects via apparent competition
+
+Herbivores that share predators can indirectly affect each other’s dynamics—a process (apparent competition). A linearized expression for the combined effect of a perturbation in herbivore \(j\) on herbivore \(i\) is:
+$$
+\delta K_i = (1-\mu)\,\delta H_i + \left(\varepsilon\,\nu^2\,N_{ij} + \mu\right)\,\delta H_j
+$$
+where:
+
+- \(N_{ij}\) quantifies the number or strength of shared predators between herbivores \(i\) and \(j\).
+
+- \(\varepsilon\,\nu^2\,N_{ij}\,\delta H_j\) represents the indirect effect transmitted through the predator dynamics.
+
+- \(\mu\,\delta H_j\) reflects the direct competitive (mean‐field) impact of herbivore \(j\) on \(i\).
+
+
+
+
