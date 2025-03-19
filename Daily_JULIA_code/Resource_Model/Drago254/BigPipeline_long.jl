@@ -21,7 +21,7 @@ queue = "long"
 #    *** If you only requested 1 process per node in your Slurm job,
 #    change SlurmManager(16) to SlurmManager(1) etc. as needed. ***
 # -------------------------------------------------------------------
-addprocs(SlurmManager(num_nodes), exeflags=["--project", "--threads=$num_threads"])
+addprocs(SlurmManager())
 
 # --------------------------
 # 1) Bring all needed code/files to every worker
@@ -251,3 +251,7 @@ slightly_problematic_species_filename = "Results/slightly_problematic_species_($
 pmap(chunk -> process_cell_range(chunk, output_filename, problematic_species_filename, slightly_problematic_species_filename), chunks)
 
 @info "All cells completed. Rows appended to $output_filename."
+
+
+# Limpieza final
+rmprocs(workers())
