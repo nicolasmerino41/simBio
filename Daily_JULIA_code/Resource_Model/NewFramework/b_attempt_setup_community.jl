@@ -23,7 +23,8 @@ function b_attempt_setup_community(
         )
         return (
             S = params.S, R = params.R,
-            H_i0 = params.H_i0, r_i = params.r_i, K_i = params.K_i,
+            H_eq = params.H_eq, P_eq = params.P_eq,
+            r_i = params.r_i, K_i = params.K_i,
             mu = params.mu, nu = params.nu, 
             P_matrix = params.P_matrix, epsilon = params.epsilon, m_alpha = params.m_alpha,
             K_alpha = params.K_alpha,
@@ -33,7 +34,7 @@ function b_attempt_setup_community(
         ) 
     catch e
         println("hey error in b_attempt_setup_community")
-        # println(e)
+        println(e)
         return nothing
     end
 end

@@ -251,7 +251,7 @@ cb_no_trigger, cb_trigger = build_callbacks(S, R, EXTINCTION_THRESHOLD, T_ext, 1
     upper_bounds = [cuts_for_mu[portion+1], cuts_for_epsilon[portion+1], cuts_for_m_alpha[portion+1]]
     bounds = Evolutionary.BoxConstraints(lower_bounds, upper_bounds)
     
-    fitness_closure = params -> fitness_combined(params, S, R)
+    fitness_closure = params -> fitness(params, S, R)
 
     result = Evolutionary.optimize(fitness_closure, bounds, ga_algorithm, options)
 
@@ -264,7 +264,7 @@ cb_no_trigger, cb_trigger = build_callbacks(S, R, EXTINCTION_THRESHOLD, T_ext, 1
     @lock file_lock begin
         push!(A_df, (
             pred_herb_ratio = best_pred_herb_ratio,
-            mu              = mu_opt,
+            mu              = mau_opt,
             epsilon_val     = eps_opt,
             m_alpha         = m_alpha_opt
         ))
@@ -273,4 +273,4 @@ cb_no_trigger, cb_trigger = build_callbacks(S, R, EXTINCTION_THRESHOLD, T_ext, 1
     println("✅ Finished Cell: Best pred/herb ratio = $best_pred_herb_ratio")
 end
 
-serialize(A_df, "Results/3-3/random_GA_NF_hollingII.jls")
+# serialize(A_df, "Results/3-3/random_GA_NF_hollingII.jls")
