@@ -1,0 +1,132 @@
+---
+title: "NewFramework4.5"
+author: "Jeff, Núria & Nico"
+date: "2025-03-17"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Other Insights on Perturbations
+
+Small perturbations in species biomass provide a window into the system’s sensitivity and overall stability. In our model, perturbations reveal both direct self‐effects and indirect effects mediated by shared predators. Here, we break down these effects.
+
+### Apparent Competition and Perturbation Effects
+
+**Perturbation in Predator Biomass:**  
+A small change in the biomass of herbivores that serve as prey for predator \(\alpha\) leads to:
+$$
+\delta P_\alpha = \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha} \delta H_j,
+$$
+where the arrow \(\rightsquigarrow\) denotes that the summation is over all herbivores \(j\) that are preyed upon by \(\alpha\).
+
+**Total Predation Impact on Herbivores:**  
+The net change in predation pressure on herbivore \(i\) is:
+$$
+\delta P_i^{\text{tot}} = \sum_{\alpha \rightsquigarrow i} \delta P_\alpha 
+= \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha \rightsquigarrow i} \delta H_j,
+$$
+indicating that herbivores sharing predators indirectly affect each other.
+
+**Change in Herbivore Carrying Capacity:**  
+The carrying capacity \(K_i\) of herbivore \(i\) is influenced by its own biomass and the predation pressure it experiences:
+$$
+\delta K_i = (1-\mu)\,\delta H_i + \mu\,\delta H^{\text{tot}} + \nu\,\delta P_i^{\text{tot}},
+$$
+where:
+
+- \((1-\mu)\,\delta H_i\) is the direct self-regulatory effect.
+
+- \(\mu\,\delta H^{\text{tot}}\) reflects the competitive impact from the total herbivore biomass.
+
+- \(\nu\,\delta P_i^{\text{tot}}\) captures the influence of changes in predation.
+
+**Combined Effect via Apparent Competition:**  
+When herbivores share predators, they experience both direct competitive effects and indirect effects through the predators. A linearized representation of the combined impact on herbivore \(i\) due to a change in herbivore \(j\) is:
+$$
+(1-\mu)\,\delta H_i + \left(\varepsilon\,\nu^2\,N_{ij} + \mu\right)\,\delta H_j,
+$$
+where:
+
+- \(N_{ij}\) quantifies the strength (or number) of shared predators between \(i\) and \(j\).
+
+- \(\varepsilon\,\nu^2\,N_{ij}\,\delta H_j\) represents the indirect impact via shared predation.
+
+- \(\mu\,\delta H_j\) accounts for the direct mean-field competitive effect.
+
+### Ecosystem Functioning Contributions
+
+To evaluate a species' contribution to an ecosystem function \(\phi\), we consider both its direct effect and the indirect impact of its abundance:
+
+1. **Direct and Indirect Contributions:**
+   $$
+   \Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i,
+   $$
+   where:
+
+   - \(\phi_i\) is the direct contribution.
+
+   - \(\phi_{/i}\) is the function value without species \(i\).
+
+   - \(\bar{a}_i N_i\) scales the indirect effect via species abundance.
+2. **Alternate Expression:**
+   $$
+   \Delta \phi_i = \phi - \phi_{/i},
+   $$
+   which directly quantifies the loss in ecosystem function due to species \(i\)'s removal.
+3. **Normalized Change:**
+   Rearranging gives:
+   $$
+   \frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}.
+   $$
+   This normalized form facilitates comparisons across species with differing abundances and interaction strengths.
+
+### Implications
+
+- **Direct Effects:**  
+  Each species is subject to self-regulation, captured by \((1-\mu)\,\delta H_i\).
+
+- **Indirect Effects via Shared Predators:**  
+  Herbivores can influence one another through the predators they share. The strength of these effects is modulated by \(\varepsilon\,\nu^2\) and the shared interaction coefficient \(N_{ij}\).
+
+- **Composite Impact on Ecosystem Function:**  
+  Combining direct contributions and indirect interactions yields a comprehensive measure of a species’ role in ecosystem functioning. This framework helps in identifying keystone species and understanding community resilience.
+
+- **Stability and Sensitivity Analysis:**  
+  Analyzing these perturbation terms enables us to identify critical thresholds. If a small perturbation in a species’ biomass leads to large changes in \(K_i\) or the overall ecosystem function, the system may be near a tipping point.
+
+### Roadmap for Further Exploration
+
+1. **Perform Local Sensitivity Analysis:**  
+   Calculate the Jacobian at equilibrium to understand the response of each species to small perturbations. Identify key species whose perturbations lead to significant changes in overall dynamics.
+
+2. **Global Sensitivity and Bifurcation Analysis:**  
+   Vary key parameters (such as \(\mu\), \(\nu\), \(d_i\), \(d_\alpha\), and \(\varepsilon\)) over realistic ranges to see how equilibrium states and stability change. Identify parameter thresholds for bifurcations.
+
+3. **Ecosystem Function Contribution Experiments:**  
+   Simulate species removals and calculate \(\Delta \phi_i\) for different ecosystem functions (e.g., productivity, nutrient cycling). Compare the normalized contributions to identify keystone species.
+
+4. **Integrate Perturbation and Function Analyses:**  
+   Relate the sensitivity (from perturbation analysis) to the changes in ecosystem function upon species removal. This integrated approach can reveal how the stability of the network influences overall ecosystem performance.
+
+By following this roadmap, you can systematically explore the interplay between species interactions, stability, and ecosystem functioning in your bipartite model.
+
+---
+
+This section is intended to provide a comprehensive yet streamlined explanation of how small perturbations and species contributions interact in the model.

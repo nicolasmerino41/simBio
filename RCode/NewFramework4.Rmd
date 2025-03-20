@@ -34,7 +34,7 @@ $$
 
 **Explanation:**
 
-- **\(H_i\):** Biomass (or density) of herbivore species \(i\).
+- **\(H_i\):** Biomass of herbivore species \(i\).
 
 - **\(r_i\):** Intrinsic growth rate of species \(i\).
 
@@ -71,7 +71,7 @@ $$
 
 **Explanation:**
 
-- **\(P_\alpha\):** Biomass (or density) of predator species \(\alpha\).
+- **\(P_\alpha\):** Biomass of predator species \(\alpha\).
 
 - **\(m_\alpha\):** Intrinsic mortality rate of predator \(\alpha\).
 
