@@ -102,8 +102,8 @@ function b_parametrise_the_community(
     end
     new_di = r_i ./ K_i
     new_da = m_alpha ./ K_alpha
-    println("new_di = ", new_di)
-    println("new_da = ", new_da)
+    # println("new_di = ", new_di)
+    # println("new_da = ", new_da)
     return (
         S = S, R = R,
         H_eq = H_eq, P_eq = P_eq,

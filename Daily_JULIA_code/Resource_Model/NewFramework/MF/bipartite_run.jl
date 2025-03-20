@@ -78,9 +78,12 @@ function bipartite_run(
             # Default: use a fraction of the first herbivore's abundance.
             P_init = P_star
         end
-        if iszero(extinguishing_species)
+        if iszero(extinguishing_species) 
             u0 = abs.(vcat(H_init, P_init) .+ randn(S+R) .* initial_deviation)
         else
+            if extinguishing_species > S+R
+                @error "Error: extinguishing_species > S+R"                
+            end
             u0 = vcat(H_init, P_init) .* [i == extinguishing_species ? 0.0 : 1.0 for i in 1:(S+R)]
         end
         # println("typeof(H_init): ", typeof(H_init))
@@ -210,8 +213,9 @@ end
     ignore_inf_error = true,
     log = false,
     initial_deviation = 0.0,
-    extinguishing_species = 17
+    extinguishing_species = 17 
 )
+
 println("Survival rate: ", A_run.survival_rate[1])
 
 println(sol[:, end])
