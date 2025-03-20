@@ -16,8 +16,8 @@ function bipartite_dynamics!(du, u, p, t)
     H = @view u[1:S]
     P = @view u[S+1:S+R]
     
-    duH = zeros(S)
-    duP = zeros(R)
+    duH = zeros(eltype(u), S)
+    duP = zeros(eltype(u), R)
     
     # Total herbivore biomass.
     H_tot = sum(H)

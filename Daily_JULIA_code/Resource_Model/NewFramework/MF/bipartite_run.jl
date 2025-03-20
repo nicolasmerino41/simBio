@@ -6,18 +6,20 @@ function bipartite_run(
     time_end = 500.0,
     do_you_want_params = false,
     do_you_want_sol = false,
-    include_predators = false,
+    include_predators = true,
     plot = false,
     sp_removed_name = nothing,
     artificial_pi = false, pi_size = 1.0,
     H_init = nothing,
     P_init = nothing,
     ignore_inf_error = false,
-    log = false
+    log = false,
+    initial_deviation = 0.0,
+    extinguishing_species = 0
 )
     AAAA = DataFrame()
     local_i, local_j = idx[cell][1], idx[cell][2]
-    sp_nm = o_extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
+    sp_nm = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[local_i, local_j])
     
     # Filter species: if predators are not included or if a species is to be removed.
     if !include_predators
@@ -63,8 +65,8 @@ function bipartite_run(
     # species_names = params_setup.species_names,
     H_star = params_setup.H_star
     P_star = params_setup.P_star
-    println("H_star: $H_star")
-    println("P_star: $P_star")
+    # println("H_star: $H_star")
+    # println("P_star: $P_star")
 
     # Initial conditions: if H_init is not provided, use the baseline abundances.
     if isnothing(H_init)
@@ -76,9 +78,13 @@ function bipartite_run(
             # Default: use a fraction of the first herbivore's abundance.
             P_init = P_star
         end
-        u0 = vcat(H_init, P_init)
-        println("typeof(H_init): ", typeof(H_init))
-        println("typeof(P_init): ", typeof(P_init))
+        if iszero(extinguishing_species)
+            u0 = abs.(vcat(H_init, P_init) .+ randn(S+R) .* initial_deviation)
+        else
+            u0 = vcat(H_init, P_init) .* [i == extinguishing_species ? 0.0 : 1.0 for i in 1:(S+R)]
+        end
+        # println("typeof(H_init): ", typeof(H_init))
+        # println("typeof(P_init): ", typeof(P_init))
     else
         u0 = H_init
     end
@@ -86,10 +92,10 @@ function bipartite_run(
     # Build the parameter tuple for the ODE.
     # Order: (S, R, K_i, r_i, mu, nu, P_matrix, epsilon, m_alpha, K_alpha)
     params = (S, R, K_i, r_i, mu_val, nu_val, P_matrix, epsilon, m_alpha, K_alpha)
-    println("K_i: $K_i")
-    println("K_alpha: $K_alpha")
-    println("r_i: $r_i")
-    println("m_alpha: $m_alpha")
+    # println("K_i: $K_i")
+    # println("K_alpha: $K_alpha")
+    # println("r_i: $r_i")
+    # println("m_alpha: $m_alpha")
     # Define and solve the ODE.
     prob = ODEProblem(bipartite_dynamics!, u0, (0.0, time_end), params)
     logger = SimpleLogger(stderr, Logging.Error)
@@ -143,8 +149,8 @@ function bipartite_run(
     P_biomass = sum(P_end)
     biomass_at_the_end = H_biomass + P_biomass
     ratio = (H_biomass == 0.0 ? NaN : (P_biomass / H_biomass))
-    println("H_end: $H_end")
-    println("P_end: $P_end")
+    # println("H_end: $H_end")
+    # println("P_end: $P_end")
     println("Estimated nu = $nu_val")
     
     single_run_results = DataFrame(
@@ -189,10 +195,10 @@ end
 # cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
 @time A_run = bipartite_run(
     1, # cell
-    0.1, 1.0, 0.01; # mu, epsilon, m_alpha
+    1.0, 1.0, 0.01; # mu, epsilon, m_alpha
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
-    time_end = 500.0,
+    time_end = 1000.0,
     do_you_want_params = false,
     do_you_want_sol = false,
     include_predators = true,
@@ -202,10 +208,11 @@ end
     H_init = nothing,
     P_init = nothing,
     ignore_inf_error = true,
-    log = false
+    log = false,
+    initial_deviation = 0.0,
+    extinguishing_species = 17
 )
-
-println(h_run.survival_rate[1])
+println("Survival rate: ", A_run.survival_rate[1])
 
 println(sol[:, end])
 println(sol.u[:, end])
