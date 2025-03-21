@@ -103,7 +103,7 @@ function bipartite_run(
     prob = ODEProblem(bipartite_dynamics!, u0, (0.0, time_end), params)
     logger = SimpleLogger(stderr, Logging.Error)
     sol = with_logger(logger) do
-        solve(prob, Tsit5(); callback = cb_no_trigger, abstol = 1e-8, reltol = 1e-6)
+        solve(prob, Tsit5(); abstol = 1e-8, reltol = 1e-6)
     end
     
     if !ignore_inf_error
@@ -195,7 +195,7 @@ function bipartite_run(
 end
 
 # cell = 1
-# cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
+cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
 @time A_run = bipartite_run(
     1, # cell
     1.0, 1.0, 0.01; # mu, epsilon, m_alpha
@@ -213,7 +213,7 @@ end
     ignore_inf_error = true,
     log = false,
     initial_deviation = 0.0,
-    extinguishing_species = 17 
+    extinguishing_species = 0
 )
 
 println("Survival rate: ", A_run.survival_rate[1])

@@ -204,7 +204,7 @@ end
 
 # --- Run pipeline over multiple cells ---
 # Define a range of cell indices (adjust as needed for your dataset)
-cells_to_process = 1:1  # for example, cells 1 to 10
+cells_to_process = 1:3  # for example, cells 1 to 10
 
 df_results = process_cells(cells_to_process; mu_val=0.5, eps_val=1.0, mean_m_alpha=0.1,
                              delta_nu=0.05, d_alpha=1.0, d_i=1.0,

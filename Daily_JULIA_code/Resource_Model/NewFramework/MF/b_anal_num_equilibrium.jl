@@ -1,6 +1,5 @@
 using DifferentialEquations, ForwardDiff, LinearAlgebra, Plots
 
-# --- Define your analytical equilibrium function ---
 function analytical_equilibrium(
     cell, 
     mu_val, eps_val, mean_m_alpha;
@@ -116,7 +115,6 @@ result = analytical_equilibrium(
     P_init = nothing
 )
 
-# Unpack the results.
 A_eq = result.equilibrium       # Contains H_star, P_star, and u0 (equilibrium state)
 A_p  = result.parameters        # Contains the ODE parameters
 A_j  = result.Jacobian          # The Jacobian at equilibrium
@@ -132,6 +130,8 @@ stable = all(real.(eigvals) .< 0)
 println("Is the equilibrium locally stable? ", stable)
 
 function plot_perturbation_response(A_eq, A_p; perturbation=0.01, tspan=(0.0,50.0))
+    S = length(A_eq.H_star)
+    R = length(A_eq.P_star)
     # A_eq.u0 is the equilibrium state vector.
     u0 = A_eq.u0
     n = length(u0)
@@ -141,7 +141,7 @@ function plot_perturbation_response(A_eq, A_p; perturbation=0.01, tspan=(0.0,50.
               title = "Response to $(perturbation*100)% Perturbations")
     
     # Loop over each species index.
-    for i in 1:3
+    for i in 1:S
         # Create a copy of the equilibrium state and perturb the i-th component.
         u0_perturbed = copy(u0)
         u0_perturbed[i] += perturbation * u0[i]
@@ -157,7 +157,7 @@ function plot_perturbation_response(A_eq, A_p; perturbation=0.01, tspan=(0.0,50.
         # Plot the response for species i.
         lines!(ax, t, diff, label = "Herbivore $i", color = :blue)
     end
-    for i in 34:45
+    for i in S+1:S+R
         # Create a copy of the equilibrium state and perturb the i-th component.
         u0_perturbed = copy(u0)
         u0_perturbed[i] += perturbation * u0[i]
@@ -181,14 +181,14 @@ end
 
 # Example usage:
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function:
-fig = plot_perturbation_response(A_eq, A_p; perturbation=0.05)
+fig = plot_perturbation_response(A_eq, A_p; perturbation=0.01)
 
 function plot_total_biomass_response(A_eq, A_p; perturbation=0.01, tspan=(0.0, 50.0))
     # Extract the equilibrium state and compute the total biomass.
     u0 = A_eq.u0
     equilibrium_total = sum(u0)
     n = length(u0)
-    
+    println("Equilibrium total biomass: ", equilibrium_total)
     fig = Figure(resolution = (800, 600))
     ax = Axis(fig[1,1], xlabel = "Time", ylabel = "Difference in Total Biomass", 
               title = "Total Biomass Response to $(perturbation*100)% Perturbations")
@@ -198,15 +198,15 @@ function plot_total_biomass_response(A_eq, A_p; perturbation=0.01, tspan=(0.0, 5
         # Perturb the i-th species.
         u0_perturbed = copy(u0)
         u0_perturbed[i] += perturbation * u0[i]
-        
+        p_tuple = (A_p.S, A_p.R, A_p.K_i, A_p.r_i, A_p.mu, A_p.nu, A_p.P_matrix, A_p.epsilon, A_p.m_alpha, A_p.K_alpha)
         # Solve the ODE with the perturbed initial condition.
-        prob = ODEProblem(bipartite_dynamics!, u0_perturbed, tspan, A_p)
+        prob = ODEProblem(bipartite_dynamics!, u0_perturbed, tspan, p_tuple)
         sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
         
         # Compute the total biomass difference over time.
         t = sol.t
         diff = [sum(sol(u)) - equilibrium_total for u in t]
-        
+        println("Total biomass difference for species $i: ", diff[end])
         # Plot the response for species i.
         lines!(ax, t, diff, label = "Species $i")
     end
@@ -217,7 +217,7 @@ end
 
 # Example usage:
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function:
-fig = plot_total_biomass_response(A_eq, A_p; perturbation=0.1)
+fig = plot_total_biomass_response(A_eq, A_p; perturbation=0.01, tspan=(0.0, 1000.0))
 
 ######### PIPELINE ########
 # --- Function to compute sensitivity metrics and species traits ---
