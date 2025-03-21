@@ -141,7 +141,7 @@ For completeness, the following equilibrium expressions can be derived:
 
 # Other insights on perturbations
 
-Understanding how small changes (perturbations) in species biomass propagate through the community helps us assess the system’s sensitivity and stability.
+Understanding how small changes in species biomass propagate through the community helps us assess the system’s sensitivity and stability.
 
 ## Perturbations in predator biomass
 
@@ -159,7 +159,7 @@ where:
 
 - \(\sum_{j \rightsquigarrow \alpha}\) indicates summing over all herbivores \(j\) that are preyed upon by predator \(\alpha\).
 
-## Total predator impact on a herbivore
+### Total predator impact on a herbivore
 
 Herbivore \(i\) experiences a change in the overall predation pressure, which is the sum of the changes in biomass of all its predators:
 $$
@@ -172,7 +172,7 @@ where:
 
 - \(j \rightsquigarrow \alpha \rightsquigarrow i\) indicates that herbivores \(i\) and \(j\) share one or more common predators.
 
-## Change in herbivore carrying capacity
+### Change in herbivore carrying capacity
 
 The carrying capacity \(K_i\) for herbivore \(i\) is modulated by both its own biomass and the predation pressure it experiences. A small perturbation yields:
 $$
@@ -186,20 +186,45 @@ where:
 
 - \(\nu\,\delta P_i^{\text{tot}}\) accounts for the effect of changes in predation pressure on species \(i\).
 
-## Combined effects via apparent competition
+### Combined effects via apparent competition
 
-Herbivores that share predators can indirectly affect each other’s dynamics—a process (apparent competition). A linearized expression for the combined effect of a perturbation in herbivore \(j\) on herbivore \(i\) is:
+Herbivores that share predators can indirectly affect each other’s dynamics (apparent competition). A linearized expression for the combined effect of a perturbation in herbivore \(j\) on herbivore \(i\) is:
 $$
 \delta K_i = (1-\mu)\,\delta H_i + \left(\varepsilon\,\nu^2\,N_{ij} + \mu\right)\,\delta H_j
 $$
 where:
 
-- \(N_{ij}\) quantifies the number or strength of shared predators between herbivores \(i\) and \(j\).
+- \(N_{ij}\) quantifies the number of shared predators between herbivores \(i\) and \(j\).
 
 - \(\varepsilon\,\nu^2\,N_{ij}\,\delta H_j\) represents the indirect effect transmitted through the predator dynamics.
 
 - \(\mu\,\delta H_j\) reflects the direct competitive (mean‐field) impact of herbivore \(j\) on \(i\).
 
+## Ecosystem functioning contributions
 
+To evaluate a species' contribution to an ecosystem function \(\phi\), we consider both its direct effect and the indirect impact of its abundance:
+
+1. **Direct and indirect contributions:**
+   $$
+   \Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i,
+   $$
+   where:
+
+   - \(\phi_i\) is the direct contribution.
+
+   - \(\phi_{/i}\) is the function value without species \(i\).
+
+   - \(\bar{a}_i N_i\) scales the indirect effect via species abundance.
+2. **Alternate expression:**
+   $$
+   \Delta \phi_i = \phi - \phi_{/i},
+   $$
+   which directly quantifies the loss in ecosystem function due to species \(i\)'s removal.
+3. **Normalized change:**
+   Rearranging gives:
+   $$
+   \frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}.
+   $$
+   This normalized form facilitates comparisons across species with differing abundances and interaction strengths.
 
 
