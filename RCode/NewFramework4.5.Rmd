@@ -23,11 +23,11 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Other Insights on Perturbations
+## Other Insights
 
 Small perturbations in species biomass provide a window into the system’s sensitivity and overall stability. In our model, perturbations reveal both direct self‐effects and indirect effects mediated by shared predators. Here, we break down these effects.
 
-### Apparent Competition and Perturbation Effects
+## Apparent Competition and Perturbation Effects
 
 **Perturbation in Predator Biomass:**  
 A small change in the biomass of herbivores that serve as prey for predator \(\alpha\) leads to:
@@ -70,7 +70,7 @@ where:
 
 - \(\mu\,\delta H_j\) accounts for the direct mean-field competitive effect.
 
-### Ecosystem Functioning Contributions
+## Ecosystem Functioning Contributions
 
 To evaluate a species' contribution to an ecosystem function \(\phi\), we consider both its direct effect and the indirect impact of its abundance:
 
@@ -97,9 +97,9 @@ To evaluate a species' contribution to an ecosystem function \(\phi\), we consid
    $$
    This normalized form facilitates comparisons across species with differing abundances and interaction strengths.
 
-### Implications
+## Implications
 
-- **Direct Effects:**  
+- **Direct effects:**  
   Each species is subject to self-regulation, captured by \((1-\mu)\,\delta H_i\).
 
 - **Indirect Effects via Shared Predators:**  
@@ -111,22 +111,18 @@ To evaluate a species' contribution to an ecosystem function \(\phi\), we consid
 - **Stability and Sensitivity Analysis:**  
   Analyzing these perturbation terms enables us to identify critical thresholds. If a small perturbation in a species’ biomass leads to large changes in \(K_i\) or the overall ecosystem function, the system may be near a tipping point.
 
-### Roadmap for Further Exploration
+## Pipeline
 
-1. **Perform Local Sensitivity Analysis:**  
+1. **Perform local sensitivity analysis:**  
    Calculate the Jacobian at equilibrium to understand the response of each species to small perturbations. Identify key species whose perturbations lead to significant changes in overall dynamics.
 
-2. **Global Sensitivity and Bifurcation Analysis:**  
+2. **Global sensitivity and bifurcation analysis:**  
    Vary key parameters (such as \(\mu\), \(\nu\), \(d_i\), \(d_\alpha\), and \(\varepsilon\)) over realistic ranges to see how equilibrium states and stability change. Identify parameter thresholds for bifurcations.
 
-3. **Ecosystem Function Contribution Experiments:**  
+3. **Ecosystem function contribution experiments:**  
    Simulate species removals and calculate \(\Delta \phi_i\) for different ecosystem functions (e.g., productivity, nutrient cycling). Compare the normalized contributions to identify keystone species.
 
-4. **Integrate Perturbation and Function Analyses:**  
+4. **Integrate perturbation and function analyses:**  
    Relate the sensitivity (from perturbation analysis) to the changes in ecosystem function upon species removal. This integrated approach can reveal how the stability of the network influences overall ecosystem performance.
 
-By following this roadmap, you can systematically explore the interplay between species interactions, stability, and ecosystem functioning in your bipartite model.
 
----
-
-This section is intended to provide a comprehensive yet streamlined explanation of how small perturbations and species contributions interact in the model.
