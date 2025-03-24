@@ -12,9 +12,9 @@ include("Resource_Model/npp_DA_relative_to_1000.jl")
 include("Resource_Model/Functions/Computing_metrics.jl")
 include("HerbivoresVsPredators/Exploring HerbPred metaweb composition.jl")
 include("Resource_Model/Functions/attempt_feasibility.jl")
-include("Resource_Model/NewFramework/New_dynamics!1.jl")
-include("Resource_Model/NewFramework/New_FI_functions1.jl")
-include("Resource_Model/NewFramework/New_attempt_setup_community1.jl")
+include("Resource_Model/NewFramework/Initial_NF_code/New_dynamics!1.jl")
+include("Resource_Model/NewFramework/Initial_NF_code/New_FI_functions1.jl")
+include("Resource_Model/NewFramework/Initial_NF_code/New_attempt_setup_community1.jl")
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
 # include("Resource_Model/NewFramework/SingleModelRun.jl")
