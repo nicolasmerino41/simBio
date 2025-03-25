@@ -221,6 +221,7 @@ To evaluate a species' contribution to an ecosystem function \(\phi\), we consid
    $$
    which directly quantifies the loss in ecosystem function due to species \(i\)'s removal.
 3. **Normalized change:**
+
    Rearranging gives:
    $$
    \frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}.

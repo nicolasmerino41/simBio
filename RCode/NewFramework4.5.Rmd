@@ -1,7 +1,7 @@
 ---
 title: "NewFramework4.5"
 author: "Jeff, Núria & Nico"
-date: "2025-03-17"
+date: "2025-03-25"
 output:
   pdf_document:
     toc: true
@@ -23,58 +23,188 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Other Insights
+In this document we present a mean‐field (MF) formulation of a bipartite model describing the dynamics of herbivores and predators. The model incorporates intra‐guild competition among herbivores and predation interactions between herbivores and predators.
 
-Small perturbations in species biomass provide a window into the system’s sensitivity and overall stability. In our model, perturbations reveal both direct self‐effects and indirect effects mediated by shared predators. Here, we break down these effects.
+# Herbivore dynamics
 
-## Apparent Competition and Perturbation Effects
-
-**Perturbation in Predator Biomass:**  
-A small change in the biomass of herbivores that serve as prey for predator \(\alpha\) leads to:
+The dynamics of herbivore species \(i\) are described by the equation
 $$
-\delta P_\alpha = \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha} \delta H_j,
+\frac{\dot{H_i}}{H_i} = r_i \left( 1 - \frac{(1-\mu)H_i + \mu\,H^{tot} + \nu\,P_i^{tot}}{K_i} \right)
 $$
-where the arrow \(\rightsquigarrow\) denotes that the summation is over all herbivores \(j\) that are preyed upon by \(\alpha\).
 
-**Total Predation Impact on Herbivores:**  
-The net change in predation pressure on herbivore \(i\) is:
+**Explanation:**
+
+- **\(H_i\):** Biomass of herbivore species \(i\).
+
+- **\(r_i\):** Intrinsic growth rate of species \(i\).
+
+- **Competition terms:**
+  
+  - \((1-\mu)H_i\) represents self-regulation.
+  
+  - \(\mu\,H^{tot}\) represents the effect of total herbivore biomass, where \(H^{tot} = \sum_j H_j\).
+
+- **Predation term:**
+  
+  - \(\nu\,P_i^{tot}\) captures the loss of herbivores due to predation.
+  
+  - \(P_i^{tot} = \sum_{\alpha \in \{\text{predators of }i\}} P_\alpha\) is the total biomass of predators feeding on species \(i\).
+
+- **\(K_i\):** The carrying capacity of species \(i\) given by
+  $$
+  K_i = \frac{r_i}{d_i}
+  $$
+  with \(d_i\) as the self-regulation parameter.
+
+- **Attack rate notation:**
+  $$
+  A_{i \alpha}^* = \frac{a_{i \alpha}}{d_i} \equiv \nu
+  $$
+  meaning that under the mean‐field assumption the effective attack rate is approximated by a constant \(\nu\).
+
+# Predator dynamics
+
+The dynamics for predator species \(\alpha\) are given by
+$$
+\frac{\dot{P_\alpha}}{P_\alpha} = m_\alpha \left(\frac{\epsilon \sum_{i} \left(\frac{a_{\alpha i}}{d_i}\right) \frac{d_i}{d_\alpha}H_i - P_\alpha}{K_\alpha} - 1\right)
+$$
+
+**Explanation:**
+
+- **\(P_\alpha\):** Biomass of predator species \(\alpha\).
+
+- **\(m_\alpha\):** Intrinsic mortality rate of predator \(\alpha\).
+
+- **Scaling in the gain term:**
+  
+  - The factor \(\frac{a_{\alpha i}}{d_i}\) represents the raw predator–herbivore attack rate scaled by the herbivore’s self-regulation.
+  
+  - Multiplying by \(\frac{d_i}{d_\alpha}\) introduces a scaling factor \(\psi\):
+    $$
+    \psi = \frac{d_i}{d_\alpha}
+    $$
+  
+  - The raw conversion efficiency \(\epsilon\) is then scaled to yield the effective efficiency
+    $$
+    \varepsilon = \epsilon\,\psi
+    $$
+
+- **Mean-field approximation:**
+  
+  - Under a MF assumption, we approximate the summed gain term as
+    $$
+    \sum_i \left(\frac{a_{\alpha i}}{d_i}\right)\frac{d_i}{d_\alpha} H_i \approx \nu\,H_\alpha^{tot}
+    $$
+    where \(H_\alpha^{tot} = \sum_{i \in \{\text{prey of } \alpha\}} H_i\).
+  
+  - Thus, the predator equation simplifies to
+    $$
+    \frac{\dot{P_\alpha}}{P_\alpha} = m_\alpha \left(\frac{\varepsilon\,\nu\,H_\alpha^{tot} - P_\alpha}{K_\alpha} - 1\right)
+    $$
+
+- **\(K_\alpha\):** 
+Defined dynamically as
+  $$
+  K_\alpha = \frac{m_\alpha}{d_\alpha}
+  $$
+  which represents the intrinsic balance between predator mortality and self-regulation.
+
+# Equilibrium and parameterisation
+
+At equilibrium (\(\dot{P_\alpha}=0\)), we have
+$$
+\varepsilon\,\nu\,\hat{H}_\alpha^{tot} - \hat{P}_\alpha = \frac{m_\alpha}{d_\alpha} = K_\alpha
+$$
+This shows that the equilibrium predator biomass \(\hat{P}_\alpha\) and the equilibrium total prey biomass \(\hat{H}_\alpha^{tot}\) are related through the effective parameters \(\varepsilon\) and \(\nu\).
+
+**Predator viability condition:**
+$$
+\varepsilon\,\nu\,\hat{H}_\alpha^{tot} > \hat{P}_\alpha
+\quad \Longleftrightarrow \quad
+\varepsilon\,\nu > \frac{\hat{P}_\alpha}{\hat{H}_\alpha^{tot}}
+$$
+
+## Derived equilibrium expressions
+
+For completeness, the following equilibrium expressions can be derived:
+
+- For predators:
+  $$
+  K_\alpha = \varepsilon\,\nu\,\hat{H}_\alpha^{tot} - \hat{P}_\alpha
+  $$
+
+- For herbivores:
+  $$
+  K_i = (1-\mu)\,\hat{H}_i + \nu\,\hat{P}_i^{tot} + \mu\,\hat{H}^{tot}
+  $$
+  where \(\hat{H}^{tot}\) is the total equilibrium herbivore biomass and \(\hat{P}_i^{tot}\) is the total equilibrium predation pressure on species \(i\).
+
+# Other insights on perturbations
+
+Understanding how small changes in species biomass propagate through the community helps us assess the system’s sensitivity and stability.
+
+## Perturbations in predator biomass
+
+A small change in the biomass of herbivores that serve as prey for a predator \(\alpha\) leads to a change in that predator’s biomass. This is represented by:
+$$
+\delta P_\alpha = \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha} \delta H_j
+$$
+where:
+
+- \(\delta P_\alpha\) is the change in predator \(\alpha\)’s biomass.
+
+- \(\varepsilon\) is the effective conversion efficiency.
+
+- \(\nu\) is the effective predation rate.
+
+- \(\sum_{j \rightsquigarrow \alpha}\) indicates summing over all herbivores \(j\) that are preyed upon by predator \(\alpha\).
+
+### Total predator impact on a herbivore
+
+Herbivore \(i\) experiences a change in the overall predation pressure, which is the sum of the changes in biomass of all its predators:
 $$
 \delta P_i^{\text{tot}} = \sum_{\alpha \rightsquigarrow i} \delta P_\alpha 
-= \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha \rightsquigarrow i} \delta H_j,
-$$
-indicating that herbivores sharing predators indirectly affect each other.
-
-**Change in Herbivore Carrying Capacity:**  
-The carrying capacity \(K_i\) of herbivore \(i\) is influenced by its own biomass and the predation pressure it experiences:
-$$
-\delta K_i = (1-\mu)\,\delta H_i + \mu\,\delta H^{\text{tot}} + \nu\,\delta P_i^{\text{tot}},
+= \varepsilon\,\nu\,\sum_{j \rightsquigarrow \alpha \rightsquigarrow i} \delta H_j
 $$
 where:
 
-- \((1-\mu)\,\delta H_i\) is the direct self-regulatory effect.
+- \(\delta P_i^{\text{tot}}\) is the aggregate change in predation affecting herbivore \(i\).
 
-- \(\mu\,\delta H^{\text{tot}}\) reflects the competitive impact from the total herbivore biomass.
+- \(j \rightsquigarrow \alpha \rightsquigarrow i\) indicates that herbivores \(i\) and \(j\) share one or more common predators.
 
-- \(\nu\,\delta P_i^{\text{tot}}\) captures the influence of changes in predation.
+### Change in herbivore carrying capacity
 
-**Combined Effect via Apparent Competition:**  
-When herbivores share predators, they experience both direct competitive effects and indirect effects through the predators. A linearized representation of the combined impact on herbivore \(i\) due to a change in herbivore \(j\) is:
+The carrying capacity \(K_i\) for herbivore \(i\) is modulated by both its own biomass and the predation pressure it experiences. A small perturbation yields:
 $$
-(1-\mu)\,\delta H_i + \left(\varepsilon\,\nu^2\,N_{ij} + \mu\right)\,\delta H_j,
+\delta K_i = (1-\mu)\,\delta H_i + \mu\,\delta H^{\text{tot}} + \nu\,\delta P_i^{\text{tot}}
 $$
 where:
 
-- \(N_{ij}\) quantifies the strength (or number) of shared predators between \(i\) and \(j\).
+- \((1-\mu)\,\delta H_i\) represents the direct self‐regulatory effect.
 
-- \(\varepsilon\,\nu^2\,N_{ij}\,\delta H_j\) represents the indirect impact via shared predation.
+- \(\mu\,\delta H^{\text{tot}}\) captures the influence of the overall herbivore biomass (\(H^{\text{tot}} = \sum_j H_j\)).
 
-- \(\mu\,\delta H_j\) accounts for the direct mean-field competitive effect.
+- \(\nu\,\delta P_i^{\text{tot}}\) accounts for the effect of changes in predation pressure on species \(i\).
 
-## Ecosystem Functioning Contributions
+### Combined effects via apparent competition
+
+Herbivores that share predators can indirectly affect each other’s dynamics (apparent competition). A linearized expression for the combined effect of a perturbation in herbivore \(j\) on herbivore \(i\) is:
+$$
+\delta K_i = (1-\mu)\,\delta H_i + \left(\varepsilon\,\nu^2\,N_{ij} + \mu\right)\,\delta H_j
+$$
+where:
+
+- \(N_{ij}\) quantifies the number of shared predators between herbivores \(i\) and \(j\).
+
+- \(\varepsilon\,\nu^2\,N_{ij}\,\delta H_j\) represents the indirect effect transmitted through the predator dynamics.
+
+- \(\mu\,\delta H_j\) reflects the direct competitive (mean‐field) impact of herbivore \(j\) on \(i\).
+
+## Ecosystem functioning contributions
 
 To evaluate a species' contribution to an ecosystem function \(\phi\), we consider both its direct effect and the indirect impact of its abundance:
 
-1. **Direct and Indirect Contributions:**
+1. **Direct and indirect contributions:**
    $$
    \Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i,
    $$
@@ -85,44 +215,17 @@ To evaluate a species' contribution to an ecosystem function \(\phi\), we consid
    - \(\phi_{/i}\) is the function value without species \(i\).
 
    - \(\bar{a}_i N_i\) scales the indirect effect via species abundance.
-2. **Alternate Expression:**
+2. **Alternate expression:**
    $$
    \Delta \phi_i = \phi - \phi_{/i},
    $$
    which directly quantifies the loss in ecosystem function due to species \(i\)'s removal.
-3. **Normalized Change:**
+3. **Normalized change:**
+
    Rearranging gives:
    $$
    \frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}.
    $$
    This normalized form facilitates comparisons across species with differing abundances and interaction strengths.
-
-## Implications
-
-- **Direct effects:**  
-  Each species is subject to self-regulation, captured by \((1-\mu)\,\delta H_i\).
-
-- **Indirect Effects via Shared Predators:**  
-  Herbivores can influence one another through the predators they share. The strength of these effects is modulated by \(\varepsilon\,\nu^2\) and the shared interaction coefficient \(N_{ij}\).
-
-- **Composite Impact on Ecosystem Function:**  
-  Combining direct contributions and indirect interactions yields a comprehensive measure of a species’ role in ecosystem functioning. This framework helps in identifying keystone species and understanding community resilience.
-
-- **Stability and Sensitivity Analysis:**  
-  Analyzing these perturbation terms enables us to identify critical thresholds. If a small perturbation in a species’ biomass leads to large changes in \(K_i\) or the overall ecosystem function, the system may be near a tipping point.
-
-## Pipeline
-
-1. **Perform local sensitivity analysis:**  
-   Calculate the Jacobian at equilibrium to understand the response of each species to small perturbations. Identify key species whose perturbations lead to significant changes in overall dynamics.
-
-2. **Global sensitivity and bifurcation analysis:**  
-   Vary key parameters (such as \(\mu\), \(\nu\), \(d_i\), \(d_\alpha\), and \(\varepsilon\)) over realistic ranges to see how equilibrium states and stability change. Identify parameter thresholds for bifurcations.
-
-3. **Ecosystem function contribution experiments:**  
-   Simulate species removals and calculate \(\Delta \phi_i\) for different ecosystem functions (e.g., productivity, nutrient cycling). Compare the normalized contributions to identify keystone species.
-
-4. **Integrate perturbation and function analyses:**  
-   Relate the sensitivity (from perturbation analysis) to the changes in ecosystem function upon species removal. This integrated approach can reveal how the stability of the network influences overall ecosystem performance.
 
 
