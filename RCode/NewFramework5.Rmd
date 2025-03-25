@@ -1,0 +1,251 @@
+---
+title: "NewFramework5 (Omnivory)"
+author: "Jeff, Núria & Nico"
+date: "2025-03-25"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# A Mean‐Field framework
+
+In this document we present a mean‐field (MF) formulation of a model describing the dynamics of herbivores and predators. The model incorporates intra‐guild competition among herbivores, predation interactions between herbivores and predators, omnivory, and trophic interactions among predators.
+
+In our framework:
+
+- The effective predation rate is constant and denoted by \(\nu\). Loss terms are multiplied by \(\nu\) while gain (beneficial) terms are multiplied by \(\varepsilon\nu\).
+
+- The effective conversion efficiency is defined as
+  \[
+  \varepsilon = \epsilon\,\psi \quad \text{with} \quad \psi = \frac{d_i}{d_\alpha}\,,
+  \]
+  where \(d_i\) and \(d_\alpha\) are the self‐regulation parameters for herbivores and predators, respectively.
+
+We separate trophic interactions into positive (beneficial) and negative (loss) components as follows:
+
+1. **Omnivory:**  
+   Some species (omnivores) feed on both plant and animal matter. Their interactions within the herbivore compartment are divided into:
+   - **Biomass of prey available for omnivory:**
+     \[
+     O_i^{tot} = \sum_{j \in \{\text{prey of omnivore } i\}} H_j,
+     \]
+     where \(H_j\) is the biomass of prey \(j\).
+   - **Biomass of herbivores that consume species \(i\):**
+     \[
+     T_i^{tot} = \sum_{j \in \{\text{herbivores that consume } i\}} H_j.
+     \]
+     
+2. **Predator–Predator interactions:**  
+   Predators interact trophically with each other. These interactions are represented by:
+   - **Biomass of predators preyed upon by \(\alpha\):**
+     \[
+     B_\alpha^{tot} = \sum_{\beta \in \{\text{predators preyed upon by } \alpha\}} P_\beta,
+     \]
+     where \(P_\beta\) is the biomass of predator \(\beta\).
+   - **Biomass of predators that consume \(\alpha\):**
+     \[
+     D_\alpha^{tot} = \sum_{\beta \in \{\text{predators that consume } \alpha\}} P_\beta.
+     \]
+
+For predation between herbivores and predators, the total predation pressure on a given herbivore is defined as:
+\[
+P_i^{tot} = \sum_{\alpha \in \{\text{predators of } i\}} P_\alpha.
+\]
+The MF factors \(\varepsilon\nu\) and \(\nu\) are applied outside these summations.
+
+## 1. Herbivore dynamics (including omnivory)
+
+The dynamics of herbivore (and omnivore) species \(i\) are given by
+\[
+\frac{\dot{H}_i}{H_i} = r_i \left( 1 - \frac{(1-\mu)H_i + \mu\,H^{tot} + \nu\,P_i^{tot} - \varepsilon\nu\,O_i^{tot} + \nu\,T_i^{tot}}{K_i} \right),
+\]
+where:
+
+- **\(H_i\):** Biomass of herbivore (or omnivore) species \(i\).
+
+- **\(r_i\):** Intrinsic growth rate of species \(i\).
+
+- **\(H^{tot} = \sum_{j \in \{\text{herbivores (including omnivores)}\}} H_j\):** Total biomass in the herbivore compartment.
+
+- **\(\mu\):** Competition parameter balancing self‐regulation and communal effects.
+
+- **\(P_i^{tot} = \sum_{\alpha \in \{\text{predators of } i\}} P_\alpha\):** Total predation pressure on species \(i\).
+
+- **\(K_i\):** Carrying capacity of species \(i\) (typically \(K_i = \frac{r_i}{d_i}\)).
+
+- **\(O_i^{tot} = \sum_{j \in \{\text{prey of omnivore } i\}} H_j\):** Total biomass of prey available for omnivory.
+
+- **\(T_i^{tot} = \sum_{j \in \{\text{herbivores that consume } i\}} H_j\):** Total biomass of herbivores that consume species \(i\).
+
+**Interpretation:**  
+The term \((1-\mu)H_i + \mu\,H^{tot}\) represents intrinsic growth and mean‐field competition. Losses due to predation are captured by \(\nu\,P_i^{tot}\). In addition, the omnivory interaction contributes a beneficial effect \(\varepsilon\nu\,O_i^{tot}\) (reducing effective resource limitation) while incurring an additional loss \(\nu\,T_i^{tot}\) due to consumption by other herbivores.
+
+## 2. Predator dynamics with predator–predator interactions
+
+The dynamics for predator species \(\alpha\) are modeled by
+\[
+\frac{\dot{P}_\alpha}{P_\alpha} = m_\alpha \left( \frac{\varepsilon\nu\,H_\alpha^{tot} - P_\alpha + \varepsilon\nu\,B_\alpha^{tot} - \nu\,D_\alpha^{tot}}{K_\alpha} - 1 \right),
+\]
+where:
+
+- **\(P_\alpha\):** Biomass of predator species \(\alpha\).
+
+- **\(m_\alpha\):** Intrinsic mortality rate of predator \(\alpha\).
+
+- **\(H_\alpha^{tot} = \sum_{i \in \{\text{prey (herbivores and omnivores) of } \alpha\}} H_i\):** Total available prey biomass for predator \(\alpha\).
+
+- **\(K_\alpha\):** Carrying capacity of predator \(\alpha\) (typically \(K_\alpha = \frac{m_\alpha}{d_\alpha}\)).
+
+- **\(B_\alpha^{tot} = \sum_{\beta \in \{\text{predators preyed upon by } \alpha\}} P_\beta\):** Total biomass of predators preyed upon by \(\alpha\).
+
+- **\(D_\alpha^{tot} = \sum_{\beta \in \{\text{predators that consume } \alpha\}} P_\beta\):** Total biomass of predators that consume \(\alpha\).
+
+**Interpretation:**  
+Predators acquire resources from herbivores (and omnivores) through \(\varepsilon\nu\,H_\alpha^{tot}\). Self‐regulation is represented by \(-P_\alpha\). Predator–predator interactions provide an additional benefit \(\varepsilon\nu\,B_\alpha^{tot}\) and incur a loss \(\nu\,D_\alpha^{tot}\), which together determine the net trophic impact on predator \(\alpha\).
+
+## 3. Equilibrium conditions and viability
+
+At equilibrium (i.e., when \(\dot{H}_i=0\) and \(\dot{P}_\alpha=0\)), the biomass levels satisfy:
+
+- **For herbivores (including omnivores):**
+  \[
+  K_i = (1-\mu)\,H_i + \mu\,H^{tot} + \nu\,P_i^{tot} - \varepsilon\nu\,O_i^{tot} + \nu\,T_i^{tot},
+  \]
+  where:
+  
+  - \(H^{tot} = \sum_{j \in \{\text{herbivores (including omnivores)}\}} H_j\),
+  
+  - \(P_i^{tot} = \sum_{\alpha \in \{\text{predators of } i\}} P_\alpha\),
+  
+  - \(O_i^{tot} = \sum_{j \in \{\text{prey of omnivore } i\}} H_j\),
+  
+  - \(T_i^{tot} = \sum_{j \in \{\text{herbivores that consume } i\}} H_j\).
+
+- **For predators:**
+  \[
+  K_\alpha = \varepsilon\nu\,H_\alpha^{tot} - P_\alpha + \varepsilon\nu\,B_\alpha^{tot} - \nu\,D_\alpha^{tot},
+  \]
+  where:
+  
+  - \(H_\alpha^{tot} = \sum_{i \in \{\text{prey of } \alpha\}} H_i\),
+  
+  - \(B_\alpha^{tot} = \sum_{\beta \in \{\text{predators preyed upon by } \alpha\}} P_\beta\),
+  
+  - \(D_\alpha^{tot} = \sum_{\beta \in \{\text{predators that consume } \alpha\}} P_\beta\).
+
+**Viability conditions:**
+
+- **For predators:**  
+  Predator \(\alpha\) persists if the net resource intake (augmented by benefits from predator–predator interactions) exceeds losses:
+  \[
+  \varepsilon\nu\,H_\alpha^{tot} + \varepsilon\nu\,B_\alpha^{tot} > P_\alpha + \nu\,D_\alpha^{tot}\,.
+  \]
+
+- **For herbivores (including omnivores):**  
+  A herbivore persists if its intrinsic growth and competitive effects, combined with the net trophic impact from omnivory, counterbalance the losses due to predation and consumption by other herbivores. That is, the beneficial effect \(\varepsilon\nu\,O_i^{tot}\) must offset the losses \(\nu\,P_i^{tot} + \nu\,T_i^{tot}\).
+
+# Insights on perturbations
+
+Understanding how small changes in species biomass propagate through the community helps us assess the system’s sensitivity and stability.
+
+## Perturbations in predator biomass
+
+A small change in the biomass of herbivores (or omnivores) that serve as prey for a predator \(\alpha\) leads to a change in that predator’s biomass. Incorporating predator–predator interactions, the linearized perturbation can be expressed as
+\[
+\delta P_\alpha = \varepsilon\nu\,\sum_{j \rightsquigarrow \alpha} \delta H_j + \varepsilon\nu\,\sum_{\beta \rightsquigarrow \alpha} \delta P_\beta - \nu\,\sum_{\gamma \rightsquigarrow \alpha} \delta P_\gamma,
+\]
+where:
+
+- \(\delta P_\alpha\) is the change in predator \(\alpha\)’s biomass.
+
+- \(\sum_{j \rightsquigarrow \alpha}\) denotes the sum over herbivores (and omnivores) that are preyed upon by \(\alpha\).
+
+- \(\sum_{\beta \rightsquigarrow \alpha}\) represents the sum over predators that are preyed upon by \(\alpha\) (beneficial interactions).
+
+- \(\sum_{\gamma \rightsquigarrow \alpha}\) represents the sum over predators that consume \(\alpha\) (loss interactions).
+
+## Total trophic impact on a herbivore
+
+Herbivore \(i\) experiences a change in the overall trophic pressure, which now includes both direct predation and omnivory effects. The effective change in trophic pressure is given by
+\[
+\delta T_i^{\text{eff}} = \nu\,\delta P_i^{tot} - \varepsilon\nu\,\delta O_i^{tot} + \nu\,\delta T_i^{tot},
+\]
+with:
+
+- \(\delta P_i^{tot} = \sum_{\alpha \rightsquigarrow i} \delta P_\alpha\) being the aggregate change in predator biomass affecting \(i\),
+
+- \(\delta O_i^{tot} = \sum_{j \in \{\text{prey of omnivore } i\}} \delta H_j\) the change in biomass available for omnivory,
+
+- \(\delta T_i^{tot} = \sum_{j \in \{\text{herbivores that consume } i\}} \delta H_j\) the change in biomass of herbivores that consume species \(i\).
+
+## Change in herbivore carrying capacity
+
+The carrying capacity \(K_i\) for herbivore \(i\) is modulated by its own biomass, the total herbivore biomass, and the effective trophic pressures. A small perturbation yields
+\[
+\delta K_i = (1-\mu)\,\delta H_i + \mu\,\delta H^{tot} + \nu\,\delta P_i^{tot} - \varepsilon\nu\,\delta O_i^{tot} + \nu\,\delta T_i^{tot},
+\]
+where \(H^{tot} = \sum_{j \neq i} H_j\).
+
+## Combined effects via apparent competition
+
+Herbivores sharing common predators (and involved in omnivory interactions) can indirectly affect each other’s dynamics through apparent competition. A linearized expression for the combined effect of a perturbation in herbivore \(j\) on herbivore \(i\) is
+\[
+\delta K_i = (1-\mu)\,\delta H_i + \left(\varepsilon\,\nu^2\,N_{ij} - \varepsilon\nu\,M_{ij} + \nu\,L_{ij} + \mu\right)\,\delta H_j,
+\]
+where:
+
+- \(N_{ij}\) quantifies the number of shared predators between herbivores \(i\) and \(j\),
+
+- \(\varepsilon\,\nu^2\,N_{ij}\,\delta H_j\) represents the indirect effect transmitted via predator dynamics,
+
+- \(M_{ij}\) captures the effective omnivory benefit transferred from \(j\) to \(i\),
+
+- \(L_{ij}\) represents the additional loss due to direct herbivore–herbivore interactions,
+
+- \(\mu\,\delta H_j\) reflects the direct competitive impact.
+
+## Ecosystem functioning contributions
+
+To evaluate a species' contribution to an ecosystem function \(\phi\), we consider both its direct effect and the indirect impact of its abundance:
+
+1. **Direct and indirect contributions:**
+   \[
+   \Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i,
+   \]
+   where:
+   
+   - \(\phi_i\) is the direct contribution,
+   
+   - \(\phi_{/i}\) is the function value without species \(i\),
+   
+   - \(\bar{a}_i N_i\) scales the indirect effect via species abundance.
+
+2. **Alternate expression:**
+   \[
+   \Delta \phi_i = \phi - \phi_{/i},
+   \]
+   which directly quantifies the loss in ecosystem function due to the removal of species \(i\).
+
+3. **Normalized change:**
+   Rearranging gives
+   \[
+   \frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i},
+   \]
+   facilitating comparisons across species with differing abundances and interaction strengths.
