@@ -15,6 +15,14 @@ include("Resource_Model/Functions/attempt_feasibility.jl")
 include("Resource_Model/NewFramework/Initial_NF_code/New_dynamics!1.jl")
 include("Resource_Model/NewFramework/Initial_NF_code/New_FI_functions1.jl")
 include("Resource_Model/NewFramework/Initial_NF_code/New_attempt_setup_community1.jl")
+include("Resource_Model/NewFramework/MF/B_FI_functions.jl")
+include("Resource_Model/NewFramework/MF/bipartite_dynamics!.jl")
+include("Resource_Model/NewFramework/MF/b_attempt_setup_community.jl")
+include("Resource_Model/NewFramework/Omnivory/omnivore_names.jl")
+include("Resource_Model/NewFramework/Omnivory/O_FI_functions.jl")
+include("Resource_Model/NewFramework/Omnivory/Omnivore_dynamics.jl")
+include("Resource_Model/NewFramework/Omnivory/O_attempt_setup_community.jl")
+
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
 # include("Resource_Model/NewFramework/SingleModelRun.jl")
