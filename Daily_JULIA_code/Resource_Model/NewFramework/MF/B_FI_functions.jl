@@ -204,27 +204,27 @@ function b_setup_community_from_cell(
     )
 end
 
-# Example usage:
-A = b_setup_community_from_cell(
-    18, 1;
-    mu = 0.5,
-    # nu = 0.01,
-    mean_m_alpha = 0.1,
-    epsilon_val = 1.0,
-    iberian_interact_NA = iberian_interact_NA,
-    species_dict = species_dict,
-    # species_names = species_names,
-    artificial_pi = true,
-    delta_nu = 0.05
-)
+# # Example usage:
+# A = b_setup_community_from_cell(
+#     18, 1;
+#     mu = 0.5,
+#     # nu = 0.01,
+#     mean_m_alpha = 0.1,
+#     epsilon_val = 1.0,
+#     iberian_interact_NA = iberian_interact_NA,
+#     species_dict = species_dict,
+#     # species_names = species_names,
+#     artificial_pi = true,
+#     delta_nu = 0.05
+# )
 
-S, R, H_i0, r_i, K_i, mu, nu, P_matrix, epsilon, m_alpha, K_alpha, herbivore_list, predator_list, species_names, H_star, P_star = A
+# S, R, H_i0, r_i, K_i, mu, nu, P_matrix, epsilon, m_alpha, K_alpha, herbivore_list, predator_list, species_names, H_star, P_star = A
 
-b_attempt_setup_community(
-    18, 1, 
-    0.5, 1.0, 0.1;
-    species_names = nothing,
-    artificial_pi = true, pi_size = 1.0,
-    delta_nu = 0.05,
-    d_alpha = 1.0, d_i = 1.0
-)
+# b_attempt_setup_community(
+#     18, 1, 
+#     0.5, 1.0, 0.1;
+#     species_names = nothing,
+#     artificial_pi = true, pi_size = 1.0,
+#     delta_nu = 0.05,
+#     d_alpha = 1.0, d_i = 1.0
+# )

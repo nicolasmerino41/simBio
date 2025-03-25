@@ -213,7 +213,7 @@ cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext,
     ignore_inf_error = true,
     log = false,
     initial_deviation = 0.0,
-    extinguishing_species = 0
+    extinguishing_species = 1
 )
 
 println("Survival rate: ", A_run.survival_rate[1])
