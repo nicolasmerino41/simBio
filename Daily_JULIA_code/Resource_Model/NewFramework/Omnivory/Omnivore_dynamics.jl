@@ -1,94 +1,84 @@
 function omnivore_dynamics!(du, u, p, t)
-    # p is a tuple with:
-    # S         : number of herbivores
-    # R         : number of predators
-    # H_i0_eff  : effective (baseline) herbivore abundances
-    # g_i       : herbivore intrinsic growth rates
-    # mu        : competition parameter for herbivores
-    # O_loss    : herbivore-herbivore loss matrix (O_{ij}^*)
-    # O_gain    : herbivore-herbivore gain matrix (O_{ji})
-    # A_star    : effective predation loss matrix (A_{αi}^*)
-    # a_matrix  : raw predator-herbivore interaction matrix (a_{αi})
-    # epsilon   : conversion efficiencies for predators
-    # B         : predator-predator interaction matrix
-    # m_alpha   : predator mortality (and sets P_{α}^{(0)} = m_alpha)
-    S, R, H_i0_eff, g_i, mu, O_loss, O_gain, A_star, a_matrix, epsilon, B, m_alpha = p
+    # p is a tuple containing:
+    # S, R, K_i, r_i, mu, nu, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix
+    S, R, K_i, r_i, mu, nu, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix, nu_omni = p
 
-    # Partition state vector into herbivore (H) and predator (P) densities.
+    # Partition state vector: first S entries are herbivore (and omnivore) densities, next R are predator densities.
     H = @view u[1:S]
     P = @view u[S+1:S+R]
 
-    duH = zeros(S)
-    duP = zeros(R)
+    duH = zeros(eltype(u), S)
+    duP = zeros(eltype(u), R)
 
-    # Herbivore dynamics
+    # Total herbivore biomass.
+    H_tot = sum(H)
+
+    # Herbivore/Omnivore dynamics:
+    # dH_i/dt = H_i * r_i * { 1 - [ (1-μ)H_i + μ H_tot + ν P_i^tot - εν O_i^tot + ν T_i^tot ] / K_i }
+    # where:
+    #   P_i^tot = ∑₍α₎ P_matrix[i,α]*P[α]
+    #   O_i^tot = ∑₍j₎ O_matrix[i,j]*H[j]   (biomass of prey available to omnivore i; zero if species i is not omnivore)
+    #   T_i^tot = ∑₍j₎ T_matrix[i,j]*H[j]   (biomass of herbivores consuming species i)
+    # Note: The conversion efficiency for omnivory (ε) is assumed uniform; here we use ε = epsilon[1] if available.
+    eps_herb = length(epsilon) > 0 ? epsilon[1] : 1.0
+
     for i in 1:S
         if H[i] > EXTINCTION_THRESHOLD
-            H_tot = sum(H)
-            # Baseline: mean-field mixture of self and total herbivore density.
-            baseline = (1 - mu) * H[i] + mu * H_tot
+            # Compute total predation pressure on herbivore i.
+            P_i_tot = 0.0
+            for alpha in 1:R
+                P_i_tot += P_matrix[i, alpha] * P[alpha]
+            end
 
-            # Sum over herbivore–herbivore interactions.
-            loss_herb = 0.0
-            gain_herb = 0.0
+            # Compute total biomass of prey for omnivory (only nonzero for omnivores).
+            O_i_tot = 0.0
             for j in 1:S
-                if i != j
-                    loss_herb += O_loss[i, j] * H[j]
-                    gain_herb += O_gain[i, j] * H[j]
-                end
+                O_i_tot += O_matrix[i, j] * H[j]
             end
 
-            # Sum predation losses from all predators.
-            loss_pred = 0.0
-            for α in 1:R
-                loss_pred += A_star[i, α] * P[α]
+            # Compute total biomass of herbivores that consume species i.
+            T_i_tot = 0.0
+            for j in 1:S
+                T_i_tot += T_matrix[i, j] * H[j]
             end
 
-            # Combine the effects into an effective density.
-            effective_density = baseline - loss_herb + gain_herb - loss_pred
-
-            # Herbivore dynamics follow a logistic-like form.
-            duH[i] = H[i] * g_i[i] * (1 - effective_density / H_i0_eff[i])
-        elseif H[i] < EXTINCTION_THRESHOLD
-            duH[i] = H[i] < 0.0 ? abs(H[i]) : -H[i]
-        elseif iszero(H[i])
-            duH[i] = 0.0
+            effective_density = (1 - mu) * H[i] + mu * H_tot + nu * P_i_tot - eps_herb * nu_omni * O_i_tot + nu_omni * T_i_tot
+            duH[i] = H[i] * r_i[i] * (1 - effective_density / K_i[i])
         end
     end
 
-    # Predator dynamics
-    for α in 1:R
-        if P[α] > EXTINCTION_THRESHOLD
-            # Compute total effective attack from herbivores.
-            attack_sum = 0.0
+    # Predator dynamics:
+    # dP_α/dt = P_α * m_α * { (εν H_α^tot - P_α + εν B_α^tot - ν D_α^tot) / K_α - 1 }
+    # where:
+    #   H_α^tot = ∑₍i₎ P_matrix[i,α]*H[i]
+    #   B_α^tot = ∑₍β₎ B_matrix[α,β]*P[β]
+    #   D_α^tot = ∑₍β₎ D_matrix[α,β]*P[β]
+    for alpha in 1:R
+        if P[alpha] > EXTINCTION_THRESHOLD
+            H_alpha_tot = 0.0
             for i in 1:S
-                # Using the conversion efficiency to scale the raw attack rate.
-                attack_sum += epsilon[α] * a_matrix[i, α] * H[i]
+                H_alpha_tot += P_matrix[i, alpha] * H[i]
             end
 
-            # Sum of predator–predator interactions.
-            interact_sum = 0.0
-            for β in 1:R
-                interact_sum += B[α, β] * P[β]
+            B_alpha_tot = 0.0
+            for beta in 1:R
+                B_alpha_tot += B_matrix[alpha, beta] * P[beta]
             end
 
-            # Assume reference density P₀ = m_alpha[α] (i.e. d_α = 1).
-            P0 = m_alpha[α]
-            duP[α] = P[α] * m_alpha[α] * ( (attack_sum - P[α] + interact_sum) / P0 - 1 )
-            # Equivalently, this is:
-            # duP[α] = P[α] * (attack_sum - P[α] + interact_sum - m_alpha[α])
-        elseif P[α] < EXTINCTION_THRESHOLD
-            duP[α] = P[α] < 0.0 ? abs(P[α]) : -P[α]
-        elseif iszero(P[α])
-            duP[α] = 0.0
+            D_alpha_tot = 0.0
+            for beta in 1:R
+                D_alpha_tot += D_matrix[alpha, beta] * P[beta]
+            end
+
+            duP[alpha] = P[alpha] * m_alpha[alpha] * ((epsilon[alpha] * nu * H_alpha_tot - P[alpha] + epsilon[alpha] * nu * B_alpha_tot - nu * D_alpha_tot) / K_alpha[alpha] - 1)
         end
     end
 
-    # Write back the derivatives.
+    # Write the computed derivatives back into du.
     for i in 1:S
         du[i] = duH[i]
     end
-    for α in 1:R
-        du[S+α] = duP[α]
+    for alpha in 1:R
+        du[S+alpha] = duP[alpha]
     end
 end
