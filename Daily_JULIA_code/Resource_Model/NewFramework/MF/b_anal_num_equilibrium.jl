@@ -217,7 +217,7 @@ end
 
 # Example usage:
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function:
-fig = plot_total_biomass_response(A_eq, A_p; perturbation=0.01, tspan=(0.0, 1000.0))
+fig = plot_total_biomass_response(A_eq, A_p; perturbation=0.01, tspan=(0.0, 50.0))
 
 ######### PIPELINE ########
 # --- Function to compute sensitivity metrics and species traits ---
@@ -258,7 +258,7 @@ function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 5
     for alpha in 1:R
         degree[S+alpha] = sum(P_matrix[:, alpha])
     end
-    
+     
     return (sensitivity = sensitivity, biomass = biomass, degree = degree)
 end
 
