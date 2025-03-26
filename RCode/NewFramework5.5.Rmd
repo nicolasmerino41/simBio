@@ -1,0 +1,212 @@
+---
+title: "NF5.5 (Perturbations on Omnivory)"
+author: "Jeff, Núria & Nico"
+date: "2025-03-26"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Formal Framework for Sensitivity Analysis and Perturbation Propagation
+
+In this section, we outline a theoretical framework to formalize and explore how small perturbations propagate through our community model. Our goal is to characterize the sensitivity of the system and link these species‐level responses to ecosystem functioning. The following steps describe the conceptual pipeline.
+
+### 1. Linearization and the Jacobian
+
+Consider a nonlinear dynamical system given by
+
+$$
+\dot{x} = f(x),
+$$
+
+with equilibrium state \( x_0 \) (i.e. \( f(x_0) = 0 \)). A small perturbation \(\delta x(0)\) evolves according to the linearized system
+
+$$
+\delta \dot{x} = J\,\delta x,
+$$
+
+where the Jacobian matrix \( J \) is defined as
+
+$$
+J = \left.\frac{\partial f}{\partial x}\right|_{x=x_0}.
+$$
+
+The solution to this linearized system is
+
+$$
+\delta x(t) = e^{Jt}\,\delta x(0).
+$$
+
+This formulation allows us to:
+
+- **Measure Resilience:**  
+  The dominant eigenvalue (i.e., the eigenvalue with the largest real part) determines the rate at which perturbations decay. A more negative dominant eigenvalue implies a faster return to equilibrium.
+
+- **Compute Reactivity:**  
+  Reactivity quantifies the maximum instantaneous growth of a perturbation—even when the equilibrium is asymptotically stable. This can be determined by analyzing the symmetric part of \( J \).
+
+- **Obtain Sensitivity Indices:**  
+  By computing the partial derivatives
+
+  $$
+  \frac{\partial \delta x(t)}{\partial \delta x(0)},
+  $$
+
+  we obtain sensitivity coefficients that measure how a perturbation in one species affects others over time.
+
+### 2. Formalizing Predator and Herbivore Perturbation Equations
+
+Our model partitions trophic interactions into different components, each contributing to how perturbations propagate.
+
+#### For Predators
+
+For predator \(\alpha\), a linearized expression is:
+
+$$
+\delta P_\alpha = \varepsilon\nu\,\sum_{j \rightsquigarrow \alpha} \delta H_j 
++ \varepsilon\nu\,\sum_{\beta \rightsquigarrow \alpha} \delta P_\beta 
+- \nu\,\sum_{\gamma \rightsquigarrow \alpha} \delta P_\gamma.
+$$
+
+Here:
+
+- \( \sum_{j \rightsquigarrow \alpha} \) sums over the herbivores (and omnivores) that are preyed upon by \(\alpha\).
+
+- \( \sum_{\beta \rightsquigarrow \alpha} \) sums over predators that \(\alpha\) consumes (beneficial interactions).
+
+- \( \sum_{\gamma \rightsquigarrow \alpha} \) sums over predators that prey on \(\alpha\) (loss interactions).
+
+#### For Herbivores
+
+For herbivore \(i\), the effective change in trophic pressure is given by
+
+$$
+\delta T_i^{\text{eff}} = \nu\,\delta P_i^{\text{tot}}
+- \varepsilon\nu\,\delta O_i^{\text{tot}}
++ \nu\,\delta T_i^{\text{tot}},
+$$
+
+with:
+
+- \( \delta P_i^{\text{tot}} = \sum_{\alpha \rightsquigarrow i} \delta P_\alpha \) representing the aggregate change in predator biomass acting on \(i\),
+
+- \( \delta O_i^{\text{tot}} = \sum_{j \in \{\text{prey of omnivore } i\}} \delta H_j \) capturing the change in biomass available for omnivory,
+
+- \( \delta T_i^{\text{tot}} = \sum_{j \in \{\text{herbivores that consume } i\}} \delta H_j \) representing the change in biomass of herbivores consuming \(i\).
+
+#### Change in Carrying Capacity
+
+A small perturbation in herbivore biomass also affects its carrying capacity \(K_i\):
+
+$$
+\delta K_i = (1-\mu)\,\delta H_i + \mu\,\delta H^{\text{tot}} + \nu\,\delta P_i^{\text{tot}} - \varepsilon\nu\,\delta O_i^{\text{tot}} + \nu\,\delta T_i^{\text{tot}},
+$$
+
+where \( H^{\text{tot}} = \sum_{j \neq i} H_j \).
+
+#### Combined Effects via Apparent Competition
+
+Herbivores sharing common predators (and involved in omnivory) can indirectly affect one another. The linearized effect of a perturbation in herbivore \(j\) on herbivore \(i\) is given by:
+
+$$
+\delta K_i = (1-\mu)\,\delta H_i + \left(\varepsilon\,\nu^2\,N_{ij} - \varepsilon\nu\,M_{ij} + \nu\,L_{ij} + \mu\right)\,\delta H_j,
+$$
+
+where:
+
+- \(N_{ij}\) quantifies the number of shared predators between \(i\) and \(j\),
+
+- \( \varepsilon\,\nu^2\,N_{ij}\,\delta H_j \) represents the indirect effect via predator dynamics,
+
+- \( M_{ij} \) captures the effective omnivory benefit transferred from \(j\) to \(i\),
+
+- \( L_{ij} \) represents additional losses from direct herbivore-herbivore interactions,
+
+- \( \mu\,\delta H_j \) reflects the direct competitive impact.
+
+### 3. Ecosystem Functioning Contributions
+
+We evaluate a species' contribution to an ecosystem function \(\phi\) by considering both its direct effect and the indirect effects mediated through network interactions. Two complementary approaches are:
+
+1. **Direct and Indirect Contributions:**
+
+   $$
+   \Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i,
+   $$
+
+   where:
+   
+   - \( \phi_i \) is the direct contribution of species \(i\),
+   
+   - \( \phi_{/i} \) is the function value in the absence of species \(i\),
+   
+   - \( \bar{a}_i N_i \) scales the indirect effect through the network.
+
+2. **Removal Impact:**
+
+   $$
+   \Delta \phi_i = \phi - \phi_{/i},
+   $$
+
+   which can be normalized as:
+
+   $$
+   \frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}.
+   $$
+
+This formulation allows comparisons across species with differing abundances and interaction strengths.
+
+### 4. Next Steps: Formal Sensitivity Characterization
+
+To rigorously characterize sensitivity to perturbations, the next steps in our analysis include:
+
+1. **Computing Local Stability Metrics:**
+   - **Spectral Abscissa:** Calculate the dominant eigenvalue of \( J \) to determine the recovery rate from perturbations.
+   - **Reactivity:** Evaluate the maximum instantaneous growth rate of perturbations, even when the equilibrium is asymptotically stable, using the symmetric part of \( J \).
+
+2. **Elasticity Analysis:**
+   - Derive sensitivity coefficients or elasticities, such as
+     $$
+     E_{x,p} = \frac{\partial \ln x^*}{\partial \ln p},
+     $$
+     to quantify how small changes in parameters (e.g., \( \nu \), \( \varepsilon \), \( \mu \)) affect equilibrium biomasses.
+
+3. **Bifurcation Analysis:**
+   - Systematically vary key parameters and map out regions of stability and instability (e.g., transitions to oscillatory dynamics). This helps identify critical thresholds and parameter combinations that influence system behavior.
+
+4. **Global Sensitivity Analysis:**
+   - Employ methods such as Sobol indices or Monte Carlo simulations to assess how uncertainty in model parameters propagates through the system and affects both species-level dynamics and ecosystem function.
+
+5. **Linking Sensitivity to Ecosystem Function:**
+   - Relate species-level sensitivity metrics (e.g., elasticity, reactivity) to changes in ecosystem functioning (using the expressions for \(\Delta \phi_i\) above). This step will reveal which species or interactions are most critical to the overall resilience and performance of the ecosystem.
+
+### Summary
+
+This multi-step framework formalizes the analysis of sensitivity to perturbations by:
+
+- **Linearizing the System:**  
+  Using the Jacobian \( J \) to understand local dynamics and the fate of small perturbations.
+  
+- **Quantifying Interactions:**  
+  Formulating explicit expressions for how perturbations in herbivore and predator biomasses propagate through trophic interactions (including omnivory and apparent competition).
+  
+- **Linking to Ecosystem Function:**  
+  Determining how species-level sensitivity translates to changes in overall ecosystem functioning.
+
+By following this approach, we can rigorously characterize the resilience, sensitivity, and robustness of our ecological community, providing a theoretical foundation for further analysis and empirical validation.
