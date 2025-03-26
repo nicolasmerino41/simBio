@@ -63,7 +63,8 @@ function o_parametrise_the_community(
     cell_abundance_p::Vector{Float64} = Float64[],  # Observed carnivore equilibrium abundances
     delta_nu::Float64 = 0.05,
     d_alpha::Float64 = 1.0,
-    d_i::Float64 = 1.0
+    d_i::Float64 = 1.0,
+    r_omni_proportion::Float64 = 0.01
 )
     # Identify herbivores and omnivores (treated with the herbivore equations) 
     # and carnivores (treated with the predator equations).
@@ -96,7 +97,7 @@ function o_parametrise_the_community(
     
     # For herbivores/omnivores, the observed equilibrium is our H*.
     H_star = copy(H_eq)
-    r_i = ones(S)
+    r_i = [herbivore_list[i] in omnivore_names ? r_omni_proportion : 1.0 for i in 1:S]
     K_i_initial = copy(H_eq)
     
     # For carnivores, assign mortality and conversion efficiency.
@@ -232,7 +233,8 @@ function o_parametrise_the_community(
     
     new_di = r_i ./ K_i
     new_da = m_alpha ./ K_alpha
-    
+    # println("new_di = ", new_di)
+    # println("new_da = ", new_da)
     return (
         S = S, R = R,
         H_eq = H_eq, P_eq = P_eq,
@@ -263,7 +265,8 @@ function o_setup_community_from_cell(
     pi_size::Float64 = 1.0,
     delta_nu::Float64 = 0.05,
     d_alpha::Float64 = 1.0,
-    d_i::Float64 = 1.0
+    d_i::Float64 = 1.0,
+    r_omni_proportion::Float64 = 0.01
 )
     # 1) Retrieve the cell and extract species present.
     cell = DA_birmmals_with_pi_corrected[i, j]
@@ -316,7 +319,8 @@ function o_setup_community_from_cell(
          cell_abundance_p = cell_abundance_preds,
          delta_nu = delta_nu,
          d_alpha = d_alpha,
-         d_i = d_i
+         d_i = d_i,
+         r_omni_proportion = r_omni_proportion
     )
 
     S, R, H_eq, P_eq,
