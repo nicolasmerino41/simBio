@@ -1,18 +1,19 @@
-using DifferentialEquations, ForwardDiff, LinearAlgebra, Plots
-
+using DifferentialEquations, ForwardDiff, LinearAlgebra
 function analytical_equilibrium(
     cell, 
     mu_val, eps_val, mean_m_alpha;
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
     include_predators = true,
+    include_omnivores = true,
     sp_removed_name = nothing,
     artificial_pi = false, pi_size = 1.0,
     H_init = nothing,
     P_init = nothing,
     nu_omni_proportion = 1.0,
     nu_b_proportion = 1.0,
-    r_omni_proportion = 1.0 
+    r_omni_proportion = 1.0,
+    callbacks = true 
 )
     local_i, local_j = idx[cell][1], idx[cell][2]
     # Extract species names from the cell.
@@ -21,6 +22,11 @@ function analytical_equilibrium(
     # Filter species: if predators are not included, restrict to herbivores & omnivores.
     if !include_predators
         sp_nm = [sp for sp in sp_nm if sp in herbivore_names || sp in omnivore_names]
+    end
+    # Process omnivores:
+    if !include_omnivores
+        # Exclude all omnivores.
+        sp_nm = [sp for sp in sp_nm if !(sp in omnivore_names)]
     end
     if !isnothing(sp_removed_name)
         sp_nm = [sp for sp in sp_nm if sp != sp_removed_name]
@@ -61,6 +67,7 @@ function analytical_equilibrium(
     H_star     = params_setup.H_star
     P_star     = params_setup.P_star
     herbivore_list = params_setup.herbivore_list
+    predator_list  = params_setup.predator_list
     
     # Set initial conditions.
     if isnothing(H_init)
@@ -78,7 +85,14 @@ function analytical_equilibrium(
     
     # Build the parameter tuple for omnivore_dynamics!
     # Order: (S, R, K_i, r_i, mu, nu, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix, nu_omni)
-    p = (S, R, K_i, r_i, mu_val, nu_val, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix, nu_val*nu_omni_proportion, nu_val*nu_b_proportion)
+    p = (
+        S, R, K_i, r_i,
+        mu_val, nu_val,
+        P_matrix, O_matrix, T_matrix,
+        epsilon, m_alpha,
+        K_alpha, B_matrix, D_matrix,
+        nu_val*nu_omni_proportion, nu_val*nu_b_proportion
+    )
     
     # Define an inner wrapper so we can compute the Jacobian at u0.
     function f_wrapper(u)
@@ -92,10 +106,14 @@ function analytical_equilibrium(
     # println(J)
     
     # Define and solve the ODE using omnivore_dynamics!
-    prob = ODEProblem(omnivore_dynamics!, u0, (0.0, 100000.0), p)
+    prob = ODEProblem(omnivore_dynamics!, u0, (0.0, 1000.0), p)
     logger = SimpleLogger(stderr, Logging.Error)
     sol = with_logger(logger) do
-        solve(prob, Tsit5(); abstol = 1e-8, reltol = 1e-6)
+        if callbacks
+            solve(prob, Tsit5(); callback = cb_no_trigger, abstol = 1e-8, reltol = 1e-6)
+        else
+            solve(prob, Tsit5(); abstol = 1e-8, reltol = 1e-6)
+        end
     end
 
     # --- Plotting the Dynamics using Makie ---
@@ -127,7 +145,12 @@ function analytical_equilibrium(
 
     # Package results into a NamedTuple.
     return (
-        equilibrium = (H_star = H_star, P_star = P_star, u0 = u0),
+        equilibrium = (
+            H_star = H_star, P_star = P_star,
+            u0 = u0,
+            herbivore_list = herbivore_list,
+            predator_list = predator_list
+            ),
         parameters  = (
             S = S,
             R = R,
@@ -143,26 +166,30 @@ function analytical_equilibrium(
             K_alpha = K_alpha,
             B_matrix = B_matrix,
             D_matrix = D_matrix,
-            nu_omni = nu_val*nu_omni_proportion
+            nu_omni = nu_val*nu_omni_proportion,
+            nu_b = nu_val*nu_b_proportion
         ),
         Jacobian = J
     )
 end
 
 # --- Compute equilibrium and assess local stability ---
-result = analytical_equilibrium(
-    1, 
-    0.5, i, 0.1;
+# for i in 0.0:0.01:1.0
+result = analytical_equilibrium( # 0.29 for cell 1 and 0.32 for cell 2
+    2, 
+    0.5, 0.32, 0.1;
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
     include_predators = true,
+    include_omnivores = true,
     sp_removed_name = nothing,
     artificial_pi = false, pi_size = 1.0,
     H_init = nothing,
     P_init = nothing,
     nu_omni_proportion = 1.0,
     nu_b_proportion = 1.0,
-    r_omni_proportion = 1.0
+    r_omni_proportion = 1.0,
+    callbacks = false
 );
 
 A_eq = result.equilibrium       # Contains H_star, P_star, and u0 (equilibrium state)
@@ -178,17 +205,22 @@ eigvals = eigen(A_j).values
 # println(eigvals)
 stable = all(real.(eigvals) .< 0)
 if stable
-    println("The equilibrium is locally stable? for ", i)
+    println("The equilibrium is locally stable for ")
 else
-    println("The equilibrium is locally unstable for ", i)
+    println("The equilibrium is locally unstable for")
 end
+# end
 
 ##################################################################################
 ##################################################################################
 ################### INDIVIDUAL PERTURBATION RESPONSE #############################
 ##################################################################################
 ##################################################################################
-function plot_perturbation_response(A_eq, A_p; perturbation=0.01, tspan=(0.0,50.0))
+function plot_perturbation_response(
+    A_eq, A_p;
+    perturbation=0.01, tspan=(0.0,50.0),
+    callbacks=true
+    )
     S = length(A_eq.H_star)
     R = length(A_eq.P_star)
     # A_eq.u0 is the equilibrium state vector.
@@ -199,38 +231,34 @@ function plot_perturbation_response(A_eq, A_p; perturbation=0.01, tspan=(0.0,50.
     ax = Axis(fig[1,1], xlabel = "Time", ylabel = "Difference from equilibrium", 
               title = "Response to $(perturbation*100)% Perturbations")
     
+    sp_nm = vcat(A_eq.herbivore_list, A_eq.predator_list)
+
     # Loop over each species index.
-    for i in 1:S
+    for i in 1:S+R
         # Create a copy of the equilibrium state and perturb the i-th component.
         u0_perturbed = copy(u0)
         u0_perturbed[i] += perturbation * u0[i]
         
         # Define and solve the ODE with the perturbed initial condition.
-        prob = ODEProblem(bipartite_dynamics!, u0_perturbed, tspan, A_p)
-        sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
-        
+        prob = ODEProblem(omnivore_dynamics!, u0_perturbed, tspan, A_p)
+        if !callbacks
+            sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+        else
+            sol = solve(prob, Tsit5(); callback = cb_no_trigger, abstol=1e-8, reltol=1e-6)
+        end
+
         t = sol.t
         # Compute the difference over time for the i-th species.
         diff = [sol(u)[i] - u0[i] for u in t]
         
         # Plot the response for species i.
-        lines!(ax, t, diff, label = "Herbivore $i", color = :blue)
-    end
-    for i in S+1:S+R
-        # Create a copy of the equilibrium state and perturb the i-th component.
-        u0_perturbed = copy(u0)
-        u0_perturbed[i] += perturbation * u0[i]
-        
-        # Define and solve the ODE with the perturbed initial condition.
-        prob = ODEProblem(bipartite_dynamics!, u0_perturbed, tspan, A_p)
-        sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
-        
-        t = sol.t
-        # Compute the difference over time for the i-th species.
-        diff = [sol(u)[i] - u0[i] for u in t]
-        
-        # Plot the response for species i.
-        lines!(ax, t, diff, label = "Predator $(i)", color = :red)
+        if sp_nm[i] in herbivore_names
+            lines!(ax, t, diff, label = "Herbivore $i", color = :blue)
+        elseif sp_nm[i] in omnivore_names
+            lines!(ax, t, diff, label = "Omnivore $i", color = :green)
+        elseif sp_nm[i] in predator_names
+            lines!(ax, t, diff, label = "Predator $i", color = :red)
+        end
     end
 
     display(fig)
@@ -240,39 +268,81 @@ end
 
 # Example usage:
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function:
-fig = plot_perturbation_response(A_eq, A_p; perturbation=0.1)
+fig = plot_perturbation_response(A_eq, A_p; perturbation=0.1, callbacks=false)
 
 #######################################################################################
 #######################################################################################
-############ 
+############################ TOTAL BIOMASS RESPONSE ###################################
 #######################################################################################
 #######################################################################################
-function plot_total_biomass_response(A_eq, A_p; perturbation=0.01, tspan=(0.0, 50.0))
+function plot_total_biomass_response(
+    A_eq, A_p; 
+    perturbation=0.01, tspan=(0.0, 50.0), separate_guilds=false,
+    callbacks=true
+)
     # Extract the equilibrium state and compute the total biomass.
     u0 = A_eq.u0
     equilibrium_total = sum(u0)
     n = length(u0)
     println("Equilibrium total biomass: ", equilibrium_total)
     fig = Figure(resolution = (800, 600))
-    ax = Axis(fig[1,1], xlabel = "Time", ylabel = "Difference in Total Biomass", 
+    if !separate_guilds 
+        ax = Axis(fig[1,1], xlabel = "Time", ylabel = "Difference in Total Biomass", 
               title = "Total Biomass Response to $(perturbation*100)% Perturbations")
-    
+    else
+        ax = Axis(fig[1,1], xlabel = "Time", ylabel = "Difference in Total Biomass",
+                   title = "Total Biomass Response to $(perturbation*100)% Perturbations")
+        ax1 = Axis(fig[1,2], xlabel = "Time", ylabel = "Difference in Total Biomass",
+                   title = "Herbivore Biomass Response to $(perturbation*100)% Perturbations")
+        ax2 = Axis(fig[2,1], xlabel = "Time", ylabel = "Difference in Total Biomass",
+                   title = "Omnivore Biomass Response to $(perturbation*100)% Perturbations")
+        ax3 = Axis(fig[2,2], xlabel = "Time", ylabel = "Difference in Total Biomass",
+                   title = "Predator Biomass Response to $(perturbation*100)% Perturbations")
+    end
+
+    sp_nm = vcat(A_eq.herbivore_list, A_eq.predator_list)
     # Loop over each species index.
     for i in 1:n
         # Perturb the i-th species.
         u0_perturbed = copy(u0)
         u0_perturbed[i] += perturbation * u0[i]
-        p_tuple = (A_p.S, A_p.R, A_p.K_i, A_p.r_i, A_p.mu, A_p.nu, A_p.P_matrix, A_p.epsilon, A_p.m_alpha, A_p.K_alpha)
+        p_tuple = (A_p.S, A_p.R, A_p.K_i, A_p.r_i, A_p.mu, A_p.nu, A_p.P_matrix, A_p.O_matrix, A_p.T_matrix, A_p.epsilon, A_p.m_alpha, A_p.K_alpha, A_p.B_matrix, A_p.D_matrix, A_p.nu_omni, A_p.nu_b)
         # Solve the ODE with the perturbed initial condition.
-        prob = ODEProblem(bipartite_dynamics!, u0_perturbed, tspan, p_tuple)
-        sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+        prob = ODEProblem(omnivore_dynamics!, u0_perturbed, tspan, p_tuple)
+        if !callbacks
+            sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+        else
+            sol = solve(prob, Tsit5(); callback = cb_no_trigger, abstol=1e-8, reltol=1e-6)
+        end
         
         # Compute the total biomass difference over time.
         t = sol.t
         diff = [sum(sol(u)) - equilibrium_total for u in t]
         println("Total biomass difference for species $i: ", diff[end])
-        # Plot the response for species i.
-        lines!(ax, t, diff, label = "Species $i")
+        if !separate_guilds
+            if sp_nm[i] in herbivore_names
+                lines!(ax, t, diff, label = "Herbivore $i", color = :blue)
+            elseif sp_nm[i] in omnivore_names
+                lines!(ax, t, diff, label = "Omnivore $i", color = :green)
+            elseif sp_nm[i] in predator_names
+                lines!(ax, t, diff, label = "Predator $i", color = :red)
+            end
+        else
+            if sp_nm[i] in herbivore_names
+                lines!(ax, t, diff, label = "Herbivore $i", color = :blue)
+            elseif sp_nm[i] in omnivore_names
+                lines!(ax, t, diff, label = "Omnivore $i", color = :green)
+            elseif sp_nm[i] in predator_names
+                lines!(ax, t, diff, label = "Predator $i", color = :red)
+            end
+            if sp_nm[i] in herbivore_names
+                lines!(ax1, t, diff, label = "Herbivore $i", color = :blue)
+            elseif sp_nm[i] in omnivore_names
+                lines!(ax2, t, diff, label = "Omnivore $i", color = :green)
+            elseif sp_nm[i] in predator_names
+                lines!(ax3, t, diff, label = "Predator $i", color = :red)
+            end
+        end
     end
     display(fig)
     # axislegend(ax)
@@ -281,4 +351,225 @@ end
 
 # Example usage:
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function:
-fig = plot_total_biomass_response(A_eq, A_p; perturbation=0.01, tspan=(0.0, 50.0))
+fig = plot_total_biomass_response(
+    A_eq, A_p;
+    perturbation=0.1, tspan=(0.0, 1000.0), separate_guilds=false,
+    callbacks=false
+)
+
+#######################################################################################
+#######################################################################################
+############################ SENSITIVITY VS METRICS ###################################
+#######################################################################################
+#######################################################################################
+# --- Function to compute sensitivity metrics and species traits ---
+function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 50.0))
+    # Extract the equilibrium state vector and total equilibrium biomass.
+    u0 = A_eq.u0
+    total_eq = sum(u0)
+    n = length(u0)
+    sensitivity = zeros(n)
+    
+    # For each species, perturb its equilibrium value by a small fraction,
+    # simulate the system using omnivore_dynamics! (the full model),
+    # and compute the maximum absolute deviation in total biomass relative to equilibrium.
+    for i in 1:n
+         u0_perturbed = copy(u0)
+         u0_perturbed[i] += perturbation * u0[i]
+         prob = ODEProblem(omnivore_dynamics!, u0_perturbed, tspan, A_p)
+         sol = solve(prob, Tsit5(); callback = cb_no_trigger, abstol=1e-8, reltol=1e-6)
+         deviations = [abs(sum(sol(u)) - total_eq) for u in sol.t]
+         sensitivity[i] = maximum(deviations)
+    end
+    
+    # Compute species traits.
+    # Trait 1: Equilibrium biomass for each species.
+    biomass = copy(u0)
+    
+    # Trait 2: "Degree" (number of interactions).
+    # Here we combine several matrices:
+    # - For herbivores (indices 1:S): we add:
+    #     • P_matrix[i, :] : number of predators feeding on species i,
+    #     • O_matrix[i, :] : number of omnivory interactions where species i acts as consumer,
+    #     • T_matrix[i, :] : number of herbivore-herbivore interactions (losses) acting on species i.
+    # - For predators (indices S+1:n): we add:
+    #     • P_matrix[:, α] : number of herbivores preyed upon by predator α,
+    #     • B_matrix[α, :] : number of beneficial predator–predator interactions (α consuming others),
+    #     • D_matrix[α, :] : number of predator–predator interactions where α is prey.
+    S = A_p.S
+    R = A_p.R
+    P_matrix = A_p.P_matrix
+    O_matrix = A_p.O_matrix
+    T_matrix = A_p.T_matrix
+    B_matrix = A_p.B_matrix
+    D_matrix = A_p.D_matrix
+    sp_nm = vcat(A_eq.herbivore_list, A_eq.predator_list)
+    guilds = [sp_nm[i] in herbivore_names ? "Herbivore" :
+              sp_nm[i] in omnivore_names ? "Omnivore" :
+              sp_nm[i] in predator_names ? "Predator" : "Unknown" for i in 1:n]
+
+    degree = zeros(n)
+    for i in 1:S
+        # If the matrices are binary, this gives the number of interactions.
+        degree[i] = sum(P_matrix[i, :]) + sum(O_matrix[i, :]) + sum(T_matrix[i, :])
+    end
+    for alpha in 1:R
+        degree[S+alpha] = sum(P_matrix[:, alpha]) + sum(B_matrix[alpha, :]) + sum(D_matrix[alpha, :])
+    end
+
+    connectance = zeros(n)
+    
+    # For herbivores (and omnivores; indices 1:S)
+    for i in 1:S
+        # Realized interactions for species i:
+        #   - Predation losses from predators: P_matrix[i, :]
+        #   - Omnivory interactions where i is consumer: O_matrix[i, :]
+        #   - Herbivore-herbivore interactions (e.g., being consumed): T_matrix[i, :]
+        d = sum(P_matrix[i, :]) + sum(O_matrix[i, :]) + sum(T_matrix[i, :])
+        # Maximum possible interactions for a herbivore:
+        #   - It could, in principle, be attacked by all R predators.
+        #   - It could interact with all other (S - 1) herbivores in both directions (consume and be consumed).
+        max_possible = R + 2 * (S - 1)
+        connectance[i] = d / max_possible
+    end
+    
+    # For predators (indices S+1:S+R)
+    for alpha in 1:R
+        # Realized interactions for predator alpha:
+        #   - It can feed on all S herbivores (from P_matrix[:, alpha]).
+        #   - It has predator–predator interactions: both beneficial (B_matrix[alpha, :]) 
+        #     and losses (D_matrix[alpha, :]).
+        d = sum(P_matrix[:, alpha]) + sum(B_matrix[alpha, :]) + sum(D_matrix[alpha, :])
+        # Maximum possible for a predator:
+        #   - It could prey on all S herbivores.
+        #   - It could interact with all other (R - 1) predators in two ways.
+        max_possible = S + 2 * (R - 1)
+        connectance[S+alpha] = d / max_possible
+    end
+     
+    return (sensitivity = sensitivity, biomass = biomass, degree = degree, connectance = connectance, guild = guilds)
+end
+
+# --- Function to plot sensitivity vs species traits using Makie ---
+function plot_sensitivity_traits(metrics)
+    fig = Figure(resolution = (1100, 700))
+    ax1 = Axis(fig[1,1], xlabel = "Equilibrium Biomass", ylabel = "Sensitivity (max deviation)",
+               title = "Sensitivity vs Equilibrium Biomass")
+    colors = [metrics.guild[i] == "Herbivore" ? :blue : metrics.guild[i] == "Predator" ? :red : :green for i in 1:length(metrics.guild)]
+    MK.scatter!(ax1, metrics.biomass, metrics.sensitivity, markersize = 10, color = colors)
+    
+    ax2 = Axis(fig[1,2], xlabel = "Degree (Number of Interactions)", ylabel = "Sensitivity (max deviation)",
+               title = "Sensitivity vs Degree")
+    MK.scatter!(ax2, metrics.degree, metrics.sensitivity, markersize = 10, color = colors)
+    
+    ax3 = Axis(fig[2,1], xlabel = "Connectance", ylabel = "Sensitivity (max deviation)",
+               title = "Sensitivity vs Connectance")
+    MK.scatter!(ax3, metrics.connectance, metrics.sensitivity, markersize = 10, color = colors)
+    display(fig)
+    return fig
+end
+
+# --- Example Usage ---
+# Assuming A_eq and A_p were obtained from your analytical_equilibrium function
+metrics = compute_sensitivity_metrics(A_eq, A_p; perturbation = 0.01, tspan = (0.0, 50.0))
+fig_traits = plot_sensitivity_traits(metrics)
+display(fig_traits)
+
+#########################################################################################
+#########################################################################################
+##########################  CONNECTANCE  ################################################
+#########################################################################################
+# --- Function to compute sensitivity metrics and species traits using connectance ---
+function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 50.0))
+    # Extract the equilibrium state vector and total equilibrium biomass.
+    u0 = A_eq.u0
+    total_eq = sum(u0)
+    n = length(u0)
+    sensitivity = zeros(n)
+    
+    # For each species, perturb its equilibrium value by a small fraction,
+    # simulate the system using omnivore_dynamics! (the full model),
+    # and compute the maximum absolute deviation in total biomass relative to equilibrium.
+    for i in 1:n
+         u0_perturbed = copy(u0)
+         u0_perturbed[i] += perturbation * u0[i]
+         prob = ODEProblem(omnivore_dynamics!, u0_perturbed, tspan, A_p)
+         sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+         deviations = [abs(sum(sol(u)) - total_eq) for u in sol.t]
+         sensitivity[i] = maximum(deviations)
+    end
+    
+    # Compute species traits.
+    biomass = copy(u0)
+    
+    # Instead of "degree", we now compute "connectance" for each species.
+    # We first compute the total number of interactions (degree) using all the matrices.
+    S = A_p.S  # Number of herbivores (including omnivores)
+    R = A_p.R  # Number of predators
+    P_matrix = A_p.P_matrix
+    O_matrix = A_p.O_matrix
+    T_matrix = A_p.T_matrix
+    B_matrix = A_p.B_matrix
+    D_matrix = A_p.D_matrix
+    
+    # Create a species list and assign guilds.
+    sp_nm = vcat(A_eq.herbivore_list, A_eq.predator_list)
+    guilds = [sp_nm[i] in herbivore_names ? "Herbivore" :
+              sp_nm[i] in omnivore_names   ? "Omnivore" :
+              sp_nm[i] in predator_names   ? "Predator" : "Unknown" for i in 1:n]
+    
+    connectance = zeros(n)
+    
+    # For herbivores (and omnivores; indices 1:S)
+    for i in 1:S
+        # Realized interactions for species i:
+        #   - Predation losses from predators: P_matrix[i, :]
+        #   - Omnivory interactions where i is consumer: O_matrix[i, :]
+        #   - Herbivore-herbivore interactions (e.g., being consumed): T_matrix[i, :]
+        d = sum(P_matrix[i, :]) + sum(O_matrix[i, :]) + sum(T_matrix[i, :])
+        # Maximum possible interactions for a herbivore:
+        #   - It could, in principle, be attacked by all R predators.
+        #   - It could interact with all other (S - 1) herbivores in both directions (consume and be consumed).
+        max_possible = R + 2 * (S - 1)
+        connectance[i] = d / max_possible
+    end
+    
+    # For predators (indices S+1:S+R)
+    for alpha in 1:R
+        # Realized interactions for predator alpha:
+        #   - It can feed on all S herbivores (from P_matrix[:, alpha]).
+        #   - It has predator–predator interactions: both beneficial (B_matrix[alpha, :]) 
+        #     and losses (D_matrix[alpha, :]).
+        d = sum(P_matrix[:, alpha]) + sum(B_matrix[alpha, :]) + sum(D_matrix[alpha, :])
+        # Maximum possible for a predator:
+        #   - It could prey on all S herbivores.
+        #   - It could interact with all other (R - 1) predators in two ways.
+        max_possible = S + 2 * (R - 1)
+        connectance[S+alpha] = d / max_possible
+    end
+     
+    return (sensitivity = sensitivity, biomass = biomass, connectance = connectance, guild = guilds)
+end
+
+# --- Function to plot sensitivity vs species traits using Makie ---
+function plot_sensitivity_traits(metrics)
+    fig = Figure(resolution = (900, 400))
+    ax1 = Axis(fig[1,1], xlabel = "Equilibrium Biomass", ylabel = "Sensitivity (max deviation)",
+               title = "Sensitivity vs Equilibrium Biomass")
+    colors = [metrics.guild[i] == "Herbivore" ? :blue :
+              metrics.guild[i] == "Predator"   ? :red  : :green for i in 1:length(metrics.guild)]
+    MK.scatter!(ax1, metrics.biomass, metrics.sensitivity, markersize = 10, color = colors)
+    
+    ax2 = Axis(fig[1,2], xlabel = "Connectance", ylabel = "Sensitivity (max deviation)",
+               title = "Sensitivity vs Connectance")
+    MK.scatter!(ax2, metrics.connectance, metrics.sensitivity, markersize = 10, color = colors)
+    
+    display(fig)
+    return fig
+end
+
+# --- Example Usage ---
+# Assuming A_eq and A_p were obtained from your analytical_equilibrium function (using the new community setup)
+metrics = compute_sensitivity_metrics(A_eq, A_p; perturbation = 0.01, tspan = (0.0, 50.0))
+fig_traits = plot_sensitivity_traits(metrics)
+ display(fig_traits)
