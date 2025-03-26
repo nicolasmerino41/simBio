@@ -1,7 +1,7 @@
 function omnivore_dynamics!(du, u, p, t)
     # p is a tuple containing:
     # S, R, K_i, r_i, mu, nu, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix
-    S, R, K_i, r_i, mu, nu, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix, nu_omni = p
+    S, R, K_i, r_i, mu, nu, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix, nu_omni, nu_b = p
 
     # Partition state vector: first S entries are herbivore (and omnivore) densities, next R are predator densities.
     H = @view u[1:S]
@@ -70,7 +70,7 @@ function omnivore_dynamics!(du, u, p, t)
                 D_alpha_tot += D_matrix[alpha, beta] * P[beta]
             end
 
-            duP[alpha] = P[alpha] * m_alpha[alpha] * ((epsilon[alpha] * nu * H_alpha_tot - P[alpha] + epsilon[alpha] * nu * B_alpha_tot - nu * D_alpha_tot) / K_alpha[alpha] - 1)
+            duP[alpha] = P[alpha] * m_alpha[alpha] * ((epsilon[alpha] * nu * H_alpha_tot - P[alpha] + epsilon[alpha] * nu_b * B_alpha_tot - nu_b * D_alpha_tot) / K_alpha[alpha] - 1)
         end
     end
 
