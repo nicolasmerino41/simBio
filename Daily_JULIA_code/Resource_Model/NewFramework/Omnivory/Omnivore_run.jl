@@ -18,7 +18,11 @@ function omnivore_run(
     initial_deviation = 0.0,
     extinguishing_species = 0,
     include_n_omnivores = 0,
-    nu_omni_proportion = 1.0
+    nu_omni_proportion = 1.0,
+    nu_b_proportion = 1.0,
+    r_omni_proportion = 0.01,
+    force_nu_to = nothing,
+    use_cb = false
 )
     AAAA = DataFrame()
     local_i, local_j = idx[cell][1], idx[cell][2]
@@ -67,7 +71,8 @@ function omnivore_run(
         artificial_pi = artificial_pi, pi_size = pi_size,
         delta_nu = delta_nu,
         d_alpha = d_alpha,
-        d_i = d_i
+        d_i = d_i,
+        r_omni_proportion = r_omni_proportion
     )
     if isnothing(params_setup)
         @error "Error: params_setup is nothing"
@@ -93,7 +98,7 @@ function omnivore_run(
     H_star     = params_setup.H_star
     P_star     = params_setup.P_star
     herbivore_list = params_setup.herbivore_list
-    # println("Herbivore list: ", herbivore_list)
+    println("Herbivore list: ", length(herbivore_list))
 
     # Initial conditions: use provided or baseline abundances.
     if isnothing(H_init)
@@ -117,13 +122,20 @@ function omnivore_run(
 
     # Build the parameter tuple for the ODE.
     # Order: (S, R, K_i, r_i, mu, nu, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix)
-    params = (S, R, K_i, r_i, mu_val, nu_val, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix, nu_val*nu_omni_proportion)
+    if !isnothing(force_nu_to)
+        nu_val = force_nu_to
+    end
+    params = (S, R, K_i, r_i, mu_val, nu_val, P_matrix, O_matrix, T_matrix, epsilon, m_alpha, K_alpha, B_matrix, D_matrix, nu_val*nu_omni_proportion, nu_val*nu_b_proportion)
 
     # Define and solve the ODE using omnivore_dynamics!
     prob = ODEProblem(omnivore_dynamics!, u0, (0.0, time_end), params)
     logger = SimpleLogger(stderr, Logging.Error)
     sol = with_logger(logger) do
-        solve(prob, Tsit5(); abstol = 1e-8, reltol = 1e-6)
+        if use_cb
+            solve(prob, Tsit5(); callback = cb_no_trigger, abstol = 1e-8, reltol = 1e-6)
+        else
+            solve(prob, Tsit5(); abstol = 1e-8, reltol = 1e-6)
+        end
     end
 
     if !ignore_inf_error
@@ -184,6 +196,8 @@ function omnivore_run(
         i                       = local_i,
         j                       = local_j,
         survival_rate           = survival_rate,
+        h_survival              = "$(survived_herb)/$S",
+        p_survival              = "$(survived_pred)/$R",
         H_eq                    = [H_eq],
         P_eq                    = [P_eq],
         H_star                  = [H_star],
@@ -217,17 +231,17 @@ function omnivore_run(
     end
 end
 
-# cb_no_trigger, cb_trigger = build_callbacks(33, 12, EXTINCTION_THRESHOLD, T_ext, 1)
+cb_no_trigger, cb_trigger = build_callbacks(37, 8, EXTINCTION_THRESHOLD, T_ext, 1)
 @time A_run = omnivore_run(
     1, # cell
-    0.5, 1.0, 0.01; # mu, epsilon, m_alpha
+    0.5, 0.31, 0.1; # mu, epsilon, m_alpha
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
     time_end = 1000.0,
     do_you_want_params = false,
     do_you_want_sol = false,
     include_predators = true,
-    include_omnivores = false,
+    include_omnivores = true,
     plot = true,
     sp_removed_name = nothing,
     artificial_pi = false, pi_size = 10.0,
@@ -235,10 +249,14 @@ end
     P_init = nothing,
     ignore_inf_error = true,
     log = false,
-    initial_deviation = 0.0,
-    extinguishing_species = 0,
-    include_n_omnivores = 0,
-    nu_omni_proportion = 1.0
+    initial_deviation = 0.0, # leave at 0.0 for no effect
+    extinguishing_species = 0, # leave at 0 for no effect
+    include_n_omnivores = 0, # leave at 0 for no effect
+    nu_omni_proportion = 1.0, # leave at 1.0 for no effect
+    nu_b_proportion = 1.0, # leave at 1.0 for no effect
+    r_omni_proportion = 1.0,
+    force_nu_to = nothing, # leave at nothing for no effect
+    use_cb = true
 )
 
 println("Survival rate: ", A_run.survival_rate[1])
