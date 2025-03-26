@@ -4,7 +4,8 @@ function o_attempt_setup_community(
     species_names = nothing,
     artificial_pi = false, pi_size = 1.0,
     delta_nu = 0.05,
-    d_alpha = 1.0, d_i = 1.0
+    d_alpha = 1.0, d_i = 1.0,
+    r_omni_proportion = 0.01
 )
     try
         params = o_setup_community_from_cell(
@@ -18,7 +19,8 @@ function o_attempt_setup_community(
             artificial_pi = artificial_pi, pi_size = pi_size,
             delta_nu = delta_nu,
             d_alpha = d_alpha,
-            d_i = d_i
+            d_i = d_i,
+            r_omni_proportion = r_omni_proportion
         )
         return (
             S = params.S, R = params.R,
