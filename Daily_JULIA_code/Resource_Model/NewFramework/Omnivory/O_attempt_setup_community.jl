@@ -5,8 +5,18 @@ function o_attempt_setup_community(
     artificial_pi = false, pi_size = 1.0,
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
-    r_omni_proportion = 0.01
+    r_omni_proportion = 1.0
 )
+    # Convert parameters:
+    mu_val       = to_float(mu_val)
+    eps_val      = to_float(eps_val)
+    mean_m_alpha = to_float(mean_m_alpha)
+    pi_size      = to_float(pi_size)
+    delta_nu   = to_float(delta_nu)
+    d_alpha    = to_float(d_alpha)
+    d_i        = to_float(d_i)
+    r_omni_proportion = to_float(r_omni_proportion)
+    
     try
         params = o_setup_community_from_cell(
             i, j;
