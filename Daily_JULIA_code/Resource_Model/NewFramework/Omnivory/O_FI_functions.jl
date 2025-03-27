@@ -54,18 +54,28 @@ end
 
 function o_parametrise_the_community(
     species_names::Vector{String};
-    mu::Float64 = 0.5,
-    epsilon_val::Float64 = 1.0,
-    mean_m_alpha::Float64 = 0.1,
+    mu = 0.5,
+    epsilon_val = 1.0,
+    mean_m_alpha = 0.1,
     iberian_interact_NA::NamedMatrix{Float64} = iberian_interact_NA,
     species_dict::Dict{String,Int} = species_dict,
     cell_abundance_h::Vector{Float64} = Float64[],  # Observed (assumed equilibrium) herbivore/omnivore abundances
     cell_abundance_p::Vector{Float64} = Float64[],  # Observed carnivore equilibrium abundances
-    delta_nu::Float64 = 0.05,
-    d_alpha::Float64 = 1.0,
-    d_i::Float64 = 1.0,
-    r_omni_proportion::Float64 = 0.01
+    delta_nu = 0.05,
+    d_alpha = 1.0,
+    d_i = 1.0,
+    r_omni_proportion = 0.01
 )
+    
+    # Convert parameters to plain Float64:
+    mu             = to_float(mu)
+    epsilon_val    = to_float(epsilon_val)
+    mean_m_alpha   = to_float(mean_m_alpha)
+    delta_nu       = to_float(delta_nu)
+    d_alpha        = to_float(d_alpha)
+    d_i            = to_float(d_i)
+    r_omni_proportion = to_float(r_omni_proportion)
+    
     # Identify herbivores and omnivores (treated with the herbivore equations) 
     # and carnivores (treated with the predator equations).
     herbivore_list = [sp for sp in species_names if sp in herbivore_names || sp in omnivore_names]
@@ -254,19 +264,19 @@ end
 
 function o_setup_community_from_cell(
     i::Int, j::Int;
-    mu::Float64 = 0.5,
-    # nu::Float64 = 0.01,
-    mean_m_alpha::Float64 = 0.1,
-    epsilon_val::Float64 = 1.0,
+    mu = 0.5,
+    # nu = 0.01,
+    mean_m_alpha = 0.1,
+    epsilon_val = 1.0,
     iberian_interact_NA::NamedMatrix{Float64} = iberian_interact_NA,
     species_dict::Dict{String,Int} = species_dict,
     species_names::Vector{String} = String[],
     artificial_pi::Bool = false,
-    pi_size::Float64 = 1.0,
-    delta_nu::Float64 = 0.05,
-    d_alpha::Float64 = 1.0,
-    d_i::Float64 = 1.0,
-    r_omni_proportion::Float64 = 0.01
+    pi_size = 1.0,
+    delta_nu = 0.05,
+    d_alpha = 1.0,
+    d_i = 1.0,
+    r_omni_proportion = 0.01
 )
     # 1) Retrieve the cell and extract species present.
     cell = DA_birmmals_with_pi_corrected[i, j]
@@ -343,18 +353,18 @@ function o_setup_community_from_cell(
     )
 end
 
-A_s = o_setup_community_from_cell(
-    18, 1;
-    mu = 0.5,
-    # nu = 0.01,
-    mean_m_alpha = 0.1,
-    epsilon_val = 1.0,
-    iberian_interact_NA = iberian_interact_NA,
-    species_dict = species_dict,
-    # species_names = species_names,
-    artificial_pi = true,
-    delta_nu = 0.05
-)
+# A_s = o_setup_community_from_cell(
+#     18, 1;
+#     mu = 0.5,
+#     # nu = 0.01,
+#     mean_m_alpha = 0.1,
+#     epsilon_val = 1.0,
+#     iberian_interact_NA = iberian_interact_NA,
+#     species_dict = species_dict,
+#     # species_names = species_names,
+#     artificial_pi = true,
+#     delta_nu = 0.05
+# )
 
 # A = b_setup_community_from_cell(
 #     18, 1;
