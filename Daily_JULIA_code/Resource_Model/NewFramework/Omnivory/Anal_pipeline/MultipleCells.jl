@@ -21,6 +21,7 @@ for cell in cells
     stable_found = false
     chosen_eps = nothing
     result = nothing
+    po = []
     for eps_val in 0.0:0.01:1.0
         if stable_found; break; end
         for mu in 0.0:0.1:1.0
@@ -48,6 +49,7 @@ for cell in cells
                     chosen_mu = mu
                     chosen_eps = eps_val
                     chosen_mean_m_alpha = mean_m_alpha
+                    push!(po, (mu, eps_val, mean_m_alpha))
                     result = res
                     stable_found = true
                     break
@@ -58,11 +60,11 @@ for cell in cells
     if stable_found
         # Compute the elasticity matrix via com_log_eq.
         # We call com_log_eq with the same parameter values: [0.5, chosen_eps, 0.1].
-        J_elast = ForwardDiff.jacobian(p -> com_log_eq(p, cell), [chosen_mu, chosen_eps, chosen_mean_m_alpha])
+        J_elast = ForwardDiff.jacobian(p -> com_log_eq(p, cell), [po[1][1], po[1][2], po[1][3]])
         # Extract species names from the cell using your extraction function.
         sp_names = extract_species_names_from_a_cell(DA_birmmals_with_pi_corrected[idx[cell][1], idx[cell][2]])
         push!(stable_results, (cell = cell, eps = chosen_eps, elasticity = J_elast, species = sp_names))
-        println("Cell $cell: stable configuration found at mu = $chosen_mu, eps = $chosen_eps, m_alpha = $chosen_mean_m_alpha with $(length(sp_names)) species.")
+        println("Cell $cell: stable configuration found")# at mu = , eps = $chosen_eps, m_alpha = $chosen_mean_m_alpha with $(length(sp_names)) species.")
     else
         println("No stable configuration found for cell $cell")
     end
@@ -149,7 +151,7 @@ for param in 1:3
 
     # Plot error bars and points.
     errorbars!(ax, 1:length(sorted_species), sorted_means, sorted_stds, color = sorted_colors)
-    scatter!(ax, 1:length(sorted_species), sorted_means, color = sorted_colors, markersize = 10)
+    MK.scatter!(ax, 1:length(sorted_species), sorted_means, color = sorted_colors, markersize = 10)
 
     # Plot a horizontal reference line at zero.
     lines!(ax, 1:length(sorted_species), fill(0.0, length(sorted_species)), color = :red)
