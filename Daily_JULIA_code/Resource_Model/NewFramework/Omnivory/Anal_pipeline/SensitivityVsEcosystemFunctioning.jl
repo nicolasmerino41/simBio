@@ -1,6 +1,4 @@
-# Function to compute the change in ecosystem function (Δϕᵢ)
-# when each species is “removed” (i.e. its biomass is set to 0)
-# Here, we use total biomass as the ecosystem function.
+# Function to compute the full removal impact Δϕᵢ
 function compute_ecosystem_function_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true)
     # Get the equilibrium state vector and its total biomass (ϕ)
     u0 = A_eq.u0
@@ -23,49 +21,67 @@ function compute_ecosystem_function_impact(A_eq, A_p; removal_fraction=1.0, tspa
         final_state = sol(sol.t[end])
         phi_removed = sum(final_state)
         
-        # Change in ecosystem function due to removal of species i
+        # Full impact: how much the ecosystem function (total biomass) dropped
         delta_phi[i] = baseline_phi - phi_removed
     end
     return delta_phi
 end
 
-# Function to plot the relationship between species sensitivity and ecosystem function impact
-function plot_sensitivity_vs_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true)
-    # Use your existing compute_sensitivity_metrics to get sensitivity data
+# Function to partition the impact into direct and indirect contributions.
+# Here we assume that the ecosystem function is total biomass so that the direct contribution is just the equilibrium biomass.
+function compute_direct_indirect_impacts(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true)
+    u0 = A_eq.u0
+    # The direct contribution of each species (its equilibrium biomass)
+    direct = copy(u0)
+    # Full impact from removal (computed as before)
+    full_impact = compute_ecosystem_function_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
+    # The indirect contribution is the additional change beyond the direct loss.
+    indirect = full_impact .- direct
+    return (full=full_impact, direct=direct, indirect=indirect)
+end
+
+# Function to plot the relationship between sensitivity and the partitioned impacts.
+function plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true)
+    # Get sensitivity metrics using your existing function (max deviation in total biomass)
     metrics = compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=tspan, callbacks=callbacks)
-    # Compute the ecosystem function impact Δϕᵢ (here, change in total biomass)
-    delta_phi = compute_ecosystem_function_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
+    
+    # Compute the full, direct, and indirect impacts
+    impacts = compute_direct_indirect_impacts(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
     
     # Get species names (assumed to be the concatenation of herbivore and predator names)
     sp_names = vcat(A_eq.herbivore_list, A_eq.predator_list)
     
-    # Create a scatter plot: x-axis = sensitivity (max deviation), y-axis = Δϕᵢ
-    fig = Figure(resolution = (800,600))
-    ax = Axis(fig[1,1],
-              xlabel = "Sensitivity (Max Deviation in Total Biomass)",
-              ylabel = "Ecosystem Function Impact (Δϕ)",
-              title = "Linking Sensitivity to Ecosystem Function")
+    fig = Figure(resolution = (1000, 700))
+    ax1 = Axis(fig[1,1],
+               xlabel = "Sensitivity (Max Deviation in Total Biomass)",
+               ylabel = "Direct Contribution",
+               title = "Sensitivity vs. Direct Contribution")
+    ax2 = Axis(fig[1,2],
+               xlabel = "Sensitivity (Max Deviation in Total Biomass)",
+               ylabel = "Indirect Contribution",
+               title = "Sensitivity vs. Indirect Contribution")
+    ax3 = Axis(fig[2,1],
+               xlabel = "Sensitivity (Max Deviation in Total Biomass)",
+               ylabel = "Full Impact (Δϕ)",
+               title = "Sensitivity vs. Full Impact")
     
-    # Color points by guild (using your guild labels from compute_sensitivity_metrics)
+    # Color points by guild
     colors = [metrics.guild[i] == "Herbivore" ? :blue :
               metrics.guild[i] == "Omnivore"   ? :green :
               metrics.guild[i] == "Predator"   ? :red : :gray
               for i in 1:length(metrics.guild)]
     
-    scatter!(ax, metrics.sensitivity, delta_phi, markersize = 10, color = colors)
+    MK.scatter!(ax1, metrics.sensitivity, impacts.direct, markersize = 10, color = colors)
+    MK.scatter!(ax2, metrics.sensitivity, impacts.indirect, markersize = 10, color = colors)
+    MK.scatter!(ax3, metrics.sensitivity, impacts.full, markersize = 10, color = colors)
     
-    # Optionally, label points with species names
-    # for i in 1:length(sp_names)
-    #      text!(ax, metrics.sensitivity[i], delta_phi[i], text = sp_names[i],
-    #            align = (:left, :bottom), color = colors[i])
-    # end
     display(fig)
     return fig
 end
 
-# Example usage (assuming you already have A_eq and A_p from analytical_equilibrium):
-# You can adjust removal_fraction if you want a partial removal
-fig_link = plot_sensitivity_vs_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=false)
+# --- Example Usage ---
+# Assuming A_eq and A_p were obtained from your analytical_equilibrium function
+fig = plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=0.5, tspan=(0.0, 50.0), callbacks=false)
 
 # --- Merged Function ---
 function run_stability_and_sensitivity_analysis(cell;
@@ -118,15 +134,15 @@ function run_stability_and_sensitivity_analysis(cell;
     A_p  = stable_result.parameters     # Contains S, R, r_i, K_i, mu, nu, interaction matrices, etc.
     
     # Call the plotting function that combines sensitivity and ecosystem function impact.
-    fig = plot_sensitivity_vs_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
+    fig = plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
     
     return (stable_result = stable_result, fig = fig)
 end
 
-for cell in 1:20
+for cell in 1:5
     run_stability_and_sensitivity_analysis(
         cell;
-        removal_fraction=0.01, tspan=(0.0,50.0), callbacks=false,
+        removal_fraction=1.0, tspan=(0.0,50.0), callbacks=false,
         mu_range=0.0:0.1:1.0, eps_range=0.0:0.01:1.0, m_alpha_range=0.0:0.1:1.0
     )
 end
