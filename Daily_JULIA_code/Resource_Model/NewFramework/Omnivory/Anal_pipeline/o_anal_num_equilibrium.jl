@@ -291,7 +291,7 @@ end
 # Example usage:
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function:
 if execute_code
-    fig = plot_perturbation_response(A_eq, A_p; perturbation=0.1, callbacks=false)
+    fig = plot_perturbation_response(A_eq, A_p; perturbation=0.01, callbacks=false)
 end
 #######################################################################################
 #######################################################################################
@@ -340,7 +340,7 @@ function plot_total_biomass_response(
         
         # Compute the total biomass difference over time.
         t = sol.t
-        diff = [sum(sol(u)) - equilibrium_total for u in t]
+        diff = [equilibrium_total + (sum(sol(u)) - equilibrium_total) for u in t]
         println("Total biomass difference for species $i: ", diff[end])
         if !separate_guilds
             if sp_nm[i] in herbivore_names
@@ -377,7 +377,7 @@ end
 if execute_code
     fig = plot_total_biomass_response(
     A_eq, A_p;
-    perturbation=0.1, tspan=(0.0, 1000.0), separate_guilds=false,
+    perturbation=1.0, tspan=(0.0, 1000.0), separate_guilds=false,
     callbacks=false
     )
 end
