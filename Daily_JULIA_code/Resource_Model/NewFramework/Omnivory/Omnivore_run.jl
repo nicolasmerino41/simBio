@@ -22,7 +22,11 @@ function omnivore_run(
     nu_b_proportion = 1.0,
     r_omni_proportion = 0.01,
     force_nu_to = nothing,
-    use_cb = false
+    use_cb = false,
+    perturbation_halfway = false,
+    species_to_perturb = 0,
+    removal_fraction = 0.0
+
 )
     AAAA = DataFrame()
     local_i, local_j = idx[cell][1], idx[cell][2]
@@ -118,6 +122,13 @@ function omnivore_run(
         end
     else
         u0 = H_init
+    end
+    if perturbation_halfway && species_to_perturb > 0 && species_to_perturb <= S+R
+        u0[species_to_perturb] -= u0[species_to_perturb] * removal_fraction
+    elseif perturbation_halfway && species_to_perturb > S+R
+        error("Error: species_to_perturb > S+R")
+    elseif perturbation_halfway && iszero(species_to_perturb)
+        error("Error: You activated perturbation_halfway but didn't specify species_to_perturb")
     end
 
     # Build the parameter tuple for the ODE.
@@ -222,6 +233,10 @@ function omnivore_run(
     
     append!(AAAA, single_run_results)
     
+    initial_biomass = sum(u0)
+    final_biomass = sum(sol[:, end])
+    println("Initial biomass was $initial_biomass and final biomass is $final_biomass")
+
     if do_you_want_params && do_you_want_sol
         return AAAA, params, sol
     elseif do_you_want_params || do_you_want_sol
@@ -229,15 +244,16 @@ function omnivore_run(
     else
         return AAAA
     end
+
 end
 
 cb_no_trigger, cb_trigger = build_callbacks(37, 8, EXTINCTION_THRESHOLD, T_ext, 1)
 @time A_run = omnivore_run(
     1, # cell
-    0.5, 0.31, 0.1; # mu, epsilon, m_alpha
+    1.0, 0.31, 0.1; # mu, epsilon, m_alpha
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
-    time_end = 1000.0,
+    time_end = 10000.0,
     do_you_want_params = false,
     do_you_want_sol = false,
     include_predators = true,
@@ -256,7 +272,10 @@ cb_no_trigger, cb_trigger = build_callbacks(37, 8, EXTINCTION_THRESHOLD, T_ext, 
     nu_b_proportion = 1.0, # leave at 1.0 for no effect
     r_omni_proportion = 1.0,
     force_nu_to = nothing, # leave at nothing for no effect
-    use_cb = true
+    use_cb = false,
+    perturbation_halfway = true,
+    species_to_perturb = 3,
+    removal_fraction = 1.0
 )
 
 println("Survival rate: ", A_run.survival_rate[1])
