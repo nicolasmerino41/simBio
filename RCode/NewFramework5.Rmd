@@ -23,10 +23,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
 # A Mean‐Field framework
 
-In this document we present a mean‐field (MF) formulation of a model describing the dynamics of herbivores and predators. The model incorporates intra‐guild competition among herbivores, predation interactions between herbivores and predators, omnivory, and trophic interactions among predators.
+We present a mean‐field (MF) formulation of a model describing the dynamics of herbivores and predators. The model incorporates intra‐guild competition among herbivores, predation interactions between herbivores and predators, omnivory, and trophic interactions among predators.
 
 In our framework:
 
@@ -122,7 +121,7 @@ Predators acquire resources from herbivores (and omnivores) through \(\varepsilo
 
 ## 3. Equilibrium conditions and viability
 
-At equilibrium (i.e., when \(\dot{H}_i=0\) and \(\dot{P}_\alpha=0\)), the biomass levels satisfy:
+At equilibrium (i.e., \(\dot{H}_i=0\) and \(\dot{P}_\alpha=0\)), the biomass levels satisfy:
 
 - **For herbivores (including omnivores):**
   \[
@@ -158,9 +157,6 @@ At equilibrium (i.e., when \(\dot{H}_i=0\) and \(\dot{P}_\alpha=0\)), the biomas
   \varepsilon\nu\,H_\alpha^{tot} + \varepsilon\nu\,B_\alpha^{tot} > P_\alpha + \nu\,D_\alpha^{tot}\,.
   \]
 
-- **For herbivores (including omnivores):**  
-  A herbivore persists if its intrinsic growth and competitive effects, combined with the net trophic impact from omnivory, counterbalance the losses due to predation and consumption by other herbivores. That is, the beneficial effect \(\varepsilon\nu\,O_i^{tot}\) must offset the losses \(\nu\,P_i^{tot} + \nu\,T_i^{tot}\).
-
 # Insights on perturbations
 
 Understanding how small changes in species biomass propagate through the community helps us assess the system’s sensitivity and stability.
@@ -183,7 +179,7 @@ where:
 
 ## Total trophic impact on a herbivore
 
-Herbivore \(i\) experiences a change in the overall trophic pressure, which now includes both direct predation and omnivory effects. The effective change in trophic pressure is given by
+Herbivore \(i\) experiences a change in the overall trophic pressure, which includes both direct predation and omnivory effects. The effective change in trophic pressure is given by
 \[
 \delta T_i^{\text{eff}} = \nu\,\delta P_i^{tot} - \varepsilon\nu\,\delta O_i^{tot} + \nu\,\delta T_i^{tot},
 \]

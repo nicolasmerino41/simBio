@@ -1,11 +1,11 @@
 begin
-    PC = "MM-1"
+    PC = "nicol"
     end_true = false
     ode_true = true
     num_species = 256
     @time include("HerpsVsBirmmals.jl")
     @time include("kernels.jl")
-    @time include("New_One-click code.jl")
+    @time include("New_One-click code.jl")  
     @time include("HOfIS_intro.jl")
     # @time include("human_footprint.jl")
     # @time include("Implicit competition for herbivores.jl")

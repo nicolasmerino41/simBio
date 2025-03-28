@@ -1,5 +1,5 @@
 ---
-title: "NF5.5 (Perturbations on Omnivory)"
+title: "NF5.5 (Perturbations on omnivory)"
 author: "Jeff, Núria & Nico"
 date: "2025-03-26"
 output:
@@ -23,7 +23,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Formal Framework for Sensitivity Analysis and Perturbation Propagation
+## Formal framework for sensitivity analysis and perturbation propagation
 
 In this section, we outline a theoretical framework to formalize and explore how small perturbations propagate through our community model. Our goal is to characterize the sensitivity of the system and link these species‐level responses to ecosystem functioning. The following steps describe the conceptual pipeline.
 
@@ -55,13 +55,13 @@ $$
 
 This formulation allows us to:
 
-- **Measure Resilience:**  
+- **Measure resilience:**  
   The dominant eigenvalue (i.e., the eigenvalue with the largest real part) determines the rate at which perturbations decay. A more negative dominant eigenvalue implies a faster return to equilibrium.
 
-- **Compute Reactivity:**  
+- **Compute reactivity:**  
   Reactivity quantifies the maximum instantaneous growth of a perturbation—even when the equilibrium is asymptotically stable. This can be determined by analyzing the symmetric part of \( J \).
 
-- **Obtain Sensitivity Indices:**  
+- **Obtain sensitivity indices:**  
   By computing the partial derivatives
 
   $$
@@ -70,11 +70,11 @@ This formulation allows us to:
 
   we obtain sensitivity coefficients that measure how a perturbation in one species affects others over time.
 
-### 2. Formalizing Predator and Herbivore Perturbation Equations
+### 2. Formalizing predator and herbivore perturbation equations
 
 Our model partitions trophic interactions into different components, each contributing to how perturbations propagate.
 
-#### For Predators
+#### For predators
 
 For predator \(\alpha\), a linearized expression is:
 
@@ -92,8 +92,7 @@ Here:
 
 - \( \sum_{\gamma \rightsquigarrow \alpha} \) sums over predators that prey on \(\alpha\) (loss interactions).
 
-#### For Herbivores
-
+#### For herbivores
 For herbivore \(i\), the effective change in trophic pressure is given by
 
 $$
@@ -110,7 +109,7 @@ with:
 
 - \( \delta T_i^{\text{tot}} = \sum_{j \in \{\text{herbivores that consume } i\}} \delta H_j \) representing the change in biomass of herbivores consuming \(i\).
 
-#### Change in Carrying Capacity
+#### Change in carrying capacity
 
 A small perturbation in herbivore biomass also affects its carrying capacity \(K_i\):
 
@@ -120,7 +119,7 @@ $$
 
 where \( H^{\text{tot}} = \sum_{j \neq i} H_j \).
 
-#### Combined Effects via Apparent Competition
+#### Combined effects via apparent competition
 
 Herbivores sharing common predators (and involved in omnivory) can indirectly affect one another. The linearized effect of a perturbation in herbivore \(j\) on herbivore \(i\) is given by:
 
@@ -140,11 +139,11 @@ where:
 
 - \( \mu\,\delta H_j \) reflects the direct competitive impact.
 
-### 3. Ecosystem Functioning Contributions
+### 3. Ecosystem functioning contributions
 
 We evaluate a species' contribution to an ecosystem function \(\phi\) by considering both its direct effect and the indirect effects mediated through network interactions. Two complementary approaches are:
 
-1. **Direct and Indirect Contributions:**
+1. **Direct and indirect contributions:**
 
    $$
    \Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i,
@@ -158,7 +157,7 @@ We evaluate a species' contribution to an ecosystem function \(\phi\) by conside
    
    - \( \bar{a}_i N_i \) scales the indirect effect through the network.
 
-2. **Removal Impact:**
+2. **Removal impact:**
 
    $$
    \Delta \phi_i = \phi - \phi_{/i},
@@ -172,41 +171,41 @@ We evaluate a species' contribution to an ecosystem function \(\phi\) by conside
 
 This formulation allows comparisons across species with differing abundances and interaction strengths.
 
-### 4. Next Steps: Formal Sensitivity Characterization
+### 4. Next steps: formal sensitivity characterization
 
 To rigorously characterize sensitivity to perturbations, the next steps in our analysis include:
 
-1. **Computing Local Stability Metrics:**
-   - **Spectral Abscissa:** Calculate the dominant eigenvalue of \( J \) to determine the recovery rate from perturbations.
+1. **Computing local stability metrics:**
+   - **Spectral abscissa:** Calculate the dominant eigenvalue of \( J \) to determine the recovery rate from perturbations.
    - **Reactivity:** Evaluate the maximum instantaneous growth rate of perturbations, even when the equilibrium is asymptotically stable, using the symmetric part of \( J \).
 
-2. **Elasticity Analysis:**
+2. **Elasticity analysis:**
    - Derive sensitivity coefficients or elasticities, such as
      $$
      E_{x,p} = \frac{\partial \ln x^*}{\partial \ln p},
      $$
      to quantify how small changes in parameters (e.g., \( \nu \), \( \varepsilon \), \( \mu \)) affect equilibrium biomasses.
 
-3. **Bifurcation Analysis:**
+3. **Bifurcation analysis:**
    - Systematically vary key parameters and map out regions of stability and instability (e.g., transitions to oscillatory dynamics). This helps identify critical thresholds and parameter combinations that influence system behavior.
 
-4. **Global Sensitivity Analysis:**
+4. **Global sensitivity analysis:**
    - Employ methods such as Sobol indices or Monte Carlo simulations to assess how uncertainty in model parameters propagates through the system and affects both species-level dynamics and ecosystem function.
 
-5. **Linking Sensitivity to Ecosystem Function:**
+5. **Linking sensitivity to ecosystem function:**
    - Relate species-level sensitivity metrics (e.g., elasticity, reactivity) to changes in ecosystem functioning (using the expressions for \(\Delta \phi_i\) above). This step will reveal which species or interactions are most critical to the overall resilience and performance of the ecosystem.
 
 ### Summary
 
 This multi-step framework formalizes the analysis of sensitivity to perturbations by:
 
-- **Linearizing the System:**  
+- **Linearizing the system:**  
   Using the Jacobian \( J \) to understand local dynamics and the fate of small perturbations.
   
-- **Quantifying Interactions:**  
+- **Quantifying interactions:**  
   Formulating explicit expressions for how perturbations in herbivore and predator biomasses propagate through trophic interactions (including omnivory and apparent competition).
   
-- **Linking to Ecosystem Function:**  
+- **Linking to ecosystem function:**  
   Determining how species-level sensitivity translates to changes in overall ecosystem functioning.
 
 By following this approach, we can rigorously characterize the resilience, sensitivity, and robustness of our ecological community, providing a theoretical foundation for further analysis and empirical validation.

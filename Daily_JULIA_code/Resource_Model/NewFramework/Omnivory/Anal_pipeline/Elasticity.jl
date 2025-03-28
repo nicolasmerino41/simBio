@@ -195,8 +195,8 @@ function com_log_eq(p, cell)
     return NaNMath.log.(u_star)
 end
 
-p0 = [0.5, 1.0, 0.1]
-J_elasticity = ForwardDiff.jacobian(com_log_eq, p0)
+p0 = [0.5, 0.32, 0.1]
+J_elasticity =  ForwardDiff.jacobian(p -> com_log_eq(p, cell), p0)
 
 ############################################################################
 ############################################################################
