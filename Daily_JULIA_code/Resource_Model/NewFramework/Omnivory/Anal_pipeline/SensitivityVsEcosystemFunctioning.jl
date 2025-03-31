@@ -43,7 +43,7 @@ end
 # Function to plot the relationship between sensitivity and the partitioned impacts.
 function plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true)
     # Get sensitivity metrics using your existing function (max deviation in total biomass)
-    metrics = compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=tspan, callbacks=callbacks)
+    metrics = compute_sensitivity_metrics(A_eq, A_p; perturbation=removal_fraction, tspan=tspan, callbacks=callbacks)
     
     # Compute the full, direct, and indirect impacts
     impacts = compute_direct_indirect_impacts(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
@@ -55,15 +55,18 @@ function plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0,
     ax1 = Axis(fig[1,1],
                xlabel = "Sensitivity (Max Deviation in Total Biomass)",
                ylabel = "Direct Contribution",
-               title = "Sensitivity vs. Direct Contribution")
+               title = "Sensitivity vs. Direct Contribution", 
+               xticklabelrotation = π/2.5)
     ax2 = Axis(fig[1,2],
                xlabel = "Sensitivity (Max Deviation in Total Biomass)",
                ylabel = "Indirect Contribution",
-               title = "Sensitivity vs. Indirect Contribution")
+               title = "Sensitivity vs. Indirect Contribution",
+               xticklabelrotation = π/2.5)
     ax3 = Axis(fig[2,1],
                xlabel = "Sensitivity (Max Deviation in Total Biomass)",
                ylabel = "Full Impact (Δϕ)",
-               title = "Sensitivity vs. Full Impact")
+               title = "Sensitivity vs. Full Impact",
+               xticklabelrotation = π/2.5)
     
     # Color points by guild
     colors = [metrics.guild[i] == "Herbivore" ? :blue :
@@ -101,7 +104,7 @@ function run_stability_and_sensitivity_analysis(cell;
                     include_predators = true,
                     include_omnivores = true,
                     sp_removed_name = nothing,
-                    artificial_pi = false, pi_size = 1.0,
+                    artificial_pi = true, pi_size = 10.0,
                     H_init = nothing, P_init = nothing,
                     nu_omni_proportion = 1.0, nu_b_proportion = 1.0,
                     r_omni_proportion = 1.0,
@@ -139,10 +142,10 @@ function run_stability_and_sensitivity_analysis(cell;
     return (stable_result = stable_result, fig = fig)
 end
 
-for cell in 1:5
+for cell in 1:1
     run_stability_and_sensitivity_analysis(
         cell;
-        removal_fraction=1.0, tspan=(0.0,50.0), callbacks=false,
+        removal_fraction=0.1, tspan=(0.0,1000.0), callbacks=false,
         mu_range=0.0:0.1:1.0, eps_range=0.0:0.01:1.0, m_alpha_range=0.0:0.1:1.0
     )
 end
