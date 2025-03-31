@@ -1,4 +1,9 @@
-using DifferentialEquations, ForwardDiff, LinearAlgebra
+# INSIGHTS: RUN THE SCRIPTS IN THE FOLLOWING ORDER:
+# 0) o_anal_num_equilibrium
+# 1) PlottingEigenvalues
+# 2) Elasticity
+# 3) MultipleCells
+# 4) SensitivityVsEcosystemFunctioning
 execute_code = false
 function analytical_equilibrium(
     cell, 
@@ -194,15 +199,15 @@ if execute_code
         for i in 0.0:0.1:1.0
             for k in 0.0:0.1:1.0
                 result = analytical_equilibrium( # 0.29 for cell 1 and 0.32 for cell 2
-                    2, 
-                    0.5, 0.32, 0.1;
+                    cell, 
+                    0.5, 0.29, 0.1;
                     # i, j, k;
                     delta_nu = 0.05,
                     d_alpha = 1.0, d_i = 1.0,
                     include_predators = true,
                     include_omnivores = true,
                     sp_removed_name = nothing,
-                    artificial_pi = false, pi_size = 1.0,
+                    artificial_pi = true, pi_size = 1.0,
                     H_init = nothing,
                     P_init = nothing,
                     nu_omni_proportion = 1.0,
@@ -400,15 +405,16 @@ function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 5
     # and compute the maximum absolute deviation in total biomass relative to equilibrium.
     for i in 1:n
          u0_perturbed = copy(u0)
-         u0_perturbed[i] += perturbation * u0[i]
+         u0_perturbed[i] -= perturbation * u0[i] 
          prob = ODEProblem(omnivore_dynamics!, u0_perturbed, tspan, A_p)
          if !callbacks
              sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
          else
             sol = solve(prob, Tsit5(); callback = cb_no_trigger, abstol=1e-8, reltol=1e-6)
          end
-         deviations = [abs(sum(sol(u)) - total_eq) for u in sol.t]
-         sensitivity[i] = maximum(deviations)
+         total_over_time = vec(sum(sol[:, :], dims=1))  # gives a vector of total biomass at each time
+    deviations = abs.(total_over_time .- total_eq)
+    sensitivity[i] = maximum(deviations)
     end
     
     # Compute species traits.
@@ -479,6 +485,7 @@ function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 5
     return (sensitivity = sensitivity, biomass = biomass, degree = degree, connectance = connectance, guild = guilds)
 end
 
+# A_caca = compute_sensitivity_metrics(A_eq, A_p; perturbation = 1.0, tspan = (0.0, 1000.0), callbacks = false).sensitivity
 # --- Function to plot sensitivity vs species traits using Makie ---
 function plot_sensitivity_traits(metrics)
     fig = Figure(resolution = (1100, 700))
