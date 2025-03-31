@@ -299,7 +299,7 @@ function o_setup_community_from_cell(
         end
     end
     if artificial_pi
-        cell_abundance_herbs = [sp in herbivore_names ? pi_size : pi_size * 0.5 for sp in herbivore_list]
+        cell_abundance_herbs = [sp in herbivore_names ? pi_size : sp in omnivore_names ? pi_size * 0.5 : pi_size * 0.1 for sp in herbivore_list]
     end
     
     # 3) Build carnivore (predator) abundance vector.
