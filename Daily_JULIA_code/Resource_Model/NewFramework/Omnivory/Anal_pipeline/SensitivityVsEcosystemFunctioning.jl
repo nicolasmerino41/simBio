@@ -2,15 +2,17 @@
 function compute_ecosystem_function_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true)
     # Get the equilibrium state vector and its total biomass (ϕ)
     u0 = A_eq.u0
+    # println("parameters: ", A_p)
     baseline_phi = sum(u0)
     n = length(u0)
     delta_phi = zeros(n)
-    
+    # println("Baseline total biomass: ", baseline_phi)
     # For each species, remove it (or reduce its biomass by removal_fraction)
     for i in 1:n
-        u0_removed = copy(u0)
-        u0_removed[i] *= (1.0 - removal_fraction)  # if removal_fraction = 1.0 then species i is removed
-        
+        u0_removed = deepcopy(u0)
+        u0_removed[i] -= u0[i] * removal_fraction
+        # u0_removed[i] *= (1.0 - removal_fraction)  # if removal_fraction = 1.0 then species i is removed
+        # println("Removed biomass for species $i: ", u0_removed)
         # Solve the system with the modified initial condition
         prob = ODEProblem(omnivore_dynamics!, u0_removed, tspan, A_p)
         sol = if callbacks
@@ -18,11 +20,24 @@ function compute_ecosystem_function_impact(A_eq, A_p; removal_fraction=1.0, tspa
               else
                   solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
               end
-        final_state = sol(sol.t[end])
+        final_state = sol[:, end]
+        # println("Final biomass for species $i: ", final_state[i])
         phi_removed = sum(final_state)
-        
+        # println("Total biomass after removal for species $i: ", phi_removed)
+        # println("Initial biomass: ", baseline_phi, " and final biomass: ", phi_removed)
         # Full impact: how much the ecosystem function (total biomass) dropped
-        delta_phi[i] = baseline_phi - phi_removed
+        delta_phi[i] = phi_removed - baseline_phi
+        # println("For species $i sum(eachrow(sol[:, :])): ", sum(eachrow(sol[:, :])))
+        # fig = Figure(; size = (900, 700))
+        # ax = Axis(
+        #     fig[1, 1],
+        #     xlabel = "Time",
+        #     ylabel = "Biomass",
+        #     title = "Dynamics for cell"
+        # )
+        # times_combined = sol.t
+        # lines!(ax, times_combined, sum(eachrow(sol[:, :])), color = :blue)
+        # display(fig)
     end
     return delta_phi
 end
@@ -36,8 +51,8 @@ function compute_direct_indirect_impacts(A_eq, A_p; removal_fraction=1.0, tspan=
     # Full impact from removal (computed as before)
     full_impact = compute_ecosystem_function_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
     # The indirect contribution is the additional change beyond the direct loss.
-    indirect = full_impact .- direct
-    return (full=full_impact, direct=direct, indirect=indirect)
+    indirect = full_impact .+ direct 
+    return (full=full_impact, direct=-direct, indirect=indirect)
 end
 
 # Function to plot the relationship between sensitivity and the partitioned impacts.
@@ -81,11 +96,50 @@ function plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0,
     display(fig)
     return fig
 end
-
+function plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true, tolerance_factor=1e-3)
+    # Get sensitivity metrics using your existing function (max deviation in total biomass)
+    metrics = compute_sensitivity_metrics(A_eq, A_p; perturbation=removal_fraction, tspan=tspan, callbacks=callbacks, tolerance_factor=tolerance_factor)
+    
+    # Compute the full, direct, and indirect impacts
+    impacts = compute_direct_indirect_impacts(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
+    
+    # Get species names (assumed to be the concatenation of herbivore and predator names)
+    sp_names = vcat(A_eq.herbivore_list, A_eq.predator_list)
+    
+    fig = Figure(resolution = (1000, 700))
+    ax1 = Axis(fig[1,1],
+               xlabel = "Resilience (Recovery Time)",
+               ylabel = "Direct Contribution",
+               title = "Resilience vs. Direct Contribution", 
+               xticklabelrotation = π/2.5)
+    ax2 = Axis(fig[1,2],
+               xlabel = "Resilience (Recovery Time)",
+               ylabel = "Indirect Contribution",
+               title = "Resilience vs. Indirect Contribution",
+               xticklabelrotation = π/2.5)
+    ax3 = Axis(fig[2,1],
+               xlabel = "Resilience (Recovery Time)",
+               ylabel = "Full Impact (Δϕ)",
+               title = "Resilience vs. Full Impact",
+               xticklabelrotation = π/2.5)
+    
+    # Color points by guild
+    colors = [metrics.guild[i] == "Herbivore" ? :blue :
+              metrics.guild[i] == "Omnivore"   ? :green :
+              metrics.guild[i] == "Predator"   ? :red : :gray
+              for i in 1:length(metrics.guild)]
+    
+    MK.scatter!(ax1, metrics.resilience, impacts.direct, markersize = 10, color = colors)
+    MK.scatter!(ax2, metrics.resilience, impacts.indirect, markersize = 10, color = colors)
+    MK.scatter!(ax3, metrics.resilience, impacts.full, markersize = 10, color = colors)
+    
+    display(fig)
+    return fig
+end
 # --- Example Usage ---
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function
-fig = plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=0.5, tspan=(0.0, 50.0), callbacks=false)
-
+fig = plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0, 1000.0), callbacks=false)
+fig = plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0, 50.0), callbacks=false, tolerance_factor=1e-3)
 # --- Merged Function ---
 function run_stability_and_sensitivity_analysis(cell;
     removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true,
@@ -137,15 +191,15 @@ function run_stability_and_sensitivity_analysis(cell;
     A_p  = stable_result.parameters     # Contains S, R, r_i, K_i, mu, nu, interaction matrices, etc.
     
     # Call the plotting function that combines sensitivity and ecosystem function impact.
-    fig = plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
+    fig = plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
     
     return (stable_result = stable_result, fig = fig)
 end
 
-for cell in 1:1
+for cell in 1:4
     run_stability_and_sensitivity_analysis(
         cell;
-        removal_fraction=0.1, tspan=(0.0,1000.0), callbacks=false,
+        removal_fraction=1.0, tspan=(0.0,1000.0), callbacks=false,
         mu_range=0.0:0.1:1.0, eps_range=0.0:0.01:1.0, m_alpha_range=0.0:0.1:1.0
     )
 end
