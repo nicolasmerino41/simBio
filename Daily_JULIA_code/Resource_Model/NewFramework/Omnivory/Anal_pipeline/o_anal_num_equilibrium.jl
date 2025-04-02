@@ -174,8 +174,8 @@ function analytical_equilibrium(
         parameters  = (
             S = S,
             R = R,
-            r_i = r_i,
             K_i = K_i,
+            r_i = r_i,
             mu = mu_val,
             nu = nu_val,
             P_matrix = P_matrix,
@@ -207,7 +207,7 @@ if execute_code
                     include_predators = true,
                     include_omnivores = true,
                     sp_removed_name = nothing,
-                    artificial_pi = true, pi_size = 1.0,
+                    artificial_pi = true, pi_size = 10.0,
                     H_init = nothing,
                     P_init = nothing,
                     nu_omni_proportion = 1.0,
@@ -393,12 +393,18 @@ end
 #######################################################################################
 #######################################################################################
 # --- Function to compute sensitivity metrics and species traits ---
-function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 50.0), callbacks=true)
+function compute_sensitivity_metrics(
+    A_eq, A_p;
+    perturbation=0.01, tspan=(0.0, 50.0),
+    callbacks=true,
+    tolerance_factor=1e-3
+)
     # Extract the equilibrium state vector and total equilibrium biomass.
     u0 = A_eq.u0
     total_eq = sum(u0)
     n = length(u0)
     sensitivity = zeros(n)
+    resilience = fill(NaN, n)  # resilience: recovery time for each species
     
     # For each species, perturb its equilibrium value by a small fraction,
     # simulate the system using omnivore_dynamics! (the full model),
@@ -415,6 +421,18 @@ function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 5
          total_over_time = vec(sum(sol[:, :], dims=1))  # gives a vector of total biomass at each time
     deviations = abs.(total_over_time .- total_eq)
     sensitivity[i] = maximum(deviations)
+
+    # Resilience: first time at which total biomass is within tolerance of total_eq.
+    tolerance = tolerance_factor * total_eq
+    rec_time = NaN
+    for (j, t_val) in enumerate(sol.t)
+        if abs(total_over_time[j] - total_eq) < tolerance
+            rec_time = t_val
+            break
+        end
+    end
+    resilience[i] = rec_time
+
     end
     
     # Compute species traits.
@@ -482,10 +500,10 @@ function compute_sensitivity_metrics(A_eq, A_p; perturbation=0.01, tspan=(0.0, 5
         connectance[S+alpha] = d / max_possible
     end
      
-    return (sensitivity = sensitivity, biomass = biomass, degree = degree, connectance = connectance, guild = guilds)
+    return (sensitivity = sensitivity,  resilience = resilience, biomass = biomass, degree = degree, connectance = connectance, guild = guilds)
 end
 
-# A_caca = compute_sensitivity_metrics(A_eq, A_p; perturbation = 1.0, tspan = (0.0, 1000.0), callbacks = false).sensitivity
+# A_caca = compute_sensitivity_metrics(A_eq, A_p; perturbation = 1.0, tspan = (0.0, 100000.0), callbacks = false).resilience
 # --- Function to plot sensitivity vs species traits using Makie ---
 function plot_sensitivity_traits(metrics)
     fig = Figure(resolution = (1100, 700))
