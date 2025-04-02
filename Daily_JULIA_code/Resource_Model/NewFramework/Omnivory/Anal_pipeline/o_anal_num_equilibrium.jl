@@ -168,6 +168,8 @@ function analytical_equilibrium(
         equilibrium = (
             H_star = H_star, P_star = P_star,
             u0 = u0,
+            H_vector = sol[1:S, end],
+            P_vector = sol[(S+1):(S+R), end],
             herbivore_list = herbivore_list,
             predator_list = predator_list
             ),
@@ -200,7 +202,7 @@ if execute_code
             for k in 0.0:0.1:1.0
                 result = analytical_equilibrium( # 0.29 for cell 1 and 0.32 for cell 2
                     cell, 
-                    0.5, 0.29, 0.1;
+                    1.0, 0.12, 1.0;
                     # i, j, k;
                     delta_nu = 0.05,
                     d_alpha = 1.0, d_i = 1.0,
@@ -214,7 +216,7 @@ if execute_code
                     nu_b_proportion = 1.0,
                     r_omni_proportion = 1.0,
                     callbacks = false,
-                    plot = false
+                    plot = true
                 );
 
                 A_eq = result.equilibrium       # Contains H_star, P_star, and u0 (equilibrium state)
@@ -230,9 +232,9 @@ if execute_code
                 # println(eigvals)
                 stable = all(real.(eigvals) .< 0)
                 if stable
-                    println("The equilibrium is locally stable")#for mu = $(i), eps = $(j), m_alpha = $(k)")
-                # else
-                #     println("The equilibrium is locally unstable for")
+                    println("The equilibrium is locally stable for mu = $(i), eps = $(j), m_alpha = $(k)")
+                elseif !stable && A_eq.H_star == A_eq.H_vector && A_eq.P_star == A_eq.P_vector
+                    println("The equilibrium is locally unstable")# but works for mu = $(i), eps = $(j), m_alpha = $(k)")
                 end
             end
         end
