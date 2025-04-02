@@ -156,9 +156,9 @@ function total_omnivore_run(
         yscale = log ? log10 : identity
     )
     for i in 1:S+R
-        u0[i] -= u0[i] * removal_fraction
-        new_u0 = deepcopy(sol[:, end])
+        new_u0 = deepcopy(u0)
         new_u0[i] -= new_u0[i] * removal_fraction
+        println("new_u0: ", new_u0)
         prob = ODEProblem(omnivore_dynamics!, new_u0, (time_end, time_end+time_end), params)
         if use_cb
             new_sol = solve(prob, Tsit5(); callback = cb_no_trigger, abstol = 1e-8, reltol = 1e-6)
@@ -168,16 +168,17 @@ function total_omnivore_run(
         times_combined = vcat(sol.t, new_sol.t)
         if i <= S
             lines!(ax, times_combined, sum(eachrow(hcat(sol[:, :], new_sol[:, :]))), color = :blue)
-            println("For species $i, the largest difference is ", maximum(abs.(sum(sol[:, end]) .- sum(eachrow(new_sol[:, :])))))
+            # println("For species $i, the largest difference is ", maximum(abs.(sum(sol[:, end]) .- sum(eachrow(new_sol[:, :])))))
+            println("For species $i the biomass before perturbation is ", sum(sol[:, end]), " and the new is ", sum(new_sol[:, end]))
         else
             lines!(ax, times_combined, sum(eachrow(hcat(sol[:, :], new_sol[:, :]))), color = :red)
-            println("For species $i, the largest difference is ", maximum(abs.(sum(sol[:, end]) .- sum(eachrow(new_sol[:, :])))))
-            println("Because the original is ", sum(sol[:, end]), " and the new is ")
+            # println("For species $i, the largest difference is ", maximum(abs.(sum(sol[:, end]) .- sum(eachrow(new_sol[:, :])))))
+            println("For species $i the biomass before perturbation is ", sum(sol[:, end]), " and the new is ", sum(new_sol[:, end]))
         end
     end
 
     display(fig)
-    
+    return params
 end
 
 @time A_run = total_omnivore_run(
