@@ -1,0 +1,135 @@
+---
+title: "Food Webs"
+author: "Nico"
+date: "2025-04-01"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The following document explains our approach to exploring the stability and functioning of ecological communities. In our framework, we generate *abstract* communities by specifying the number of species in each guild (herbivores, omnivores, predators) and by setting a target connectance. We then simulate the dynamics using an ODE model and extract key stability metrics. This approach allows us to systematically study how community structure influences dynamics and ecosystem functioning.
+
+### Community Composition and Guild Structure
+
+We conceptualize an ecological community as comprising three primary guilds:
+
+- **Herbivores:** Species that consume primary producers.
+
+- **Omnivores:** Species with mixed diets that consume both plants and animals.
+
+- **Predators:** Species that primarily consume other animals.
+
+The total number of species in the herbivore–omnivore compartment is defined as:
+
+$$
+S_{\text{total}} = H + O,
+$$
+where \(H\) is the number of herbivores and \(O\) is the number of omnivores. The number of predators is denoted by \(R\).
+
+Synthetic species names are generated (e.g., "Herbivore 1", "Omnivore 1", "Predator 1") so that we can later map dynamic responses to specific guilds.
+
+### Interaction Networks and Connectance
+
+Interactions among species are represented by several matrices:
+
+- **Predation Matrix (\(P\)):** An \(S_{\text{total}} \times R\) matrix indicating whether a predator preys upon a given herbivore/omnivore.
+
+- **Omnivory Matrix (\(O\)):** An \(S_{\text{total}} \times S_{\text{total}}\) matrix where only rows corresponding to omnivores (i.e. indices \(H+1\) to \(S_{\text{total}}\)) have nonzero entries, indicating consumption of other species.
+
+- **Herbivore-Herbivore Interaction Matrix (\(T\)):** An \(S_{\text{total}} \times S_{\text{total}}\) matrix that encodes direct interactions (such as competition or consumption) among herbivores/omnivores.
+
+- **Predator–Predator Matrices (\(B\) and \(D\)):** Two \(R \times R\) matrices representing beneficial and detrimental interactions among predators, respectively.
+
+The overall **connectance** of the community is defined as the probability that any potential interaction exists. By setting a target connectance (e.g., \(C = 0.2\)), we generate the entries of these matrices using random draws. This allows us to study how the density of interactions influences system stability.
+
+### Dynamical Modeling
+
+The community dynamics are modeled using a system of ordinary differential equations (ODEs). For each species \(i\), the equation takes the form:
+$$
+\frac{dX_i}{dt} = f_i(X_1, X_2, \dots, X_n; \theta),
+$$
+where \(X_i\) represents the biomass (or abundance) of species \(i\) and \(\theta\) encapsulates model parameters such as intrinsic growth rates, carrying capacities, and interaction strengths. For example, the dynamics for a herbivore might include:
+
+- **Intrinsic Growth:** Modeled as logistic growth \(r_i X_i (1 - X_i/K_i)\).
+
+- **Losses due to Predation:** Proportional to the interaction strength \(\nu\) and the biomass of predators attacking species \(i\).
+
+Predator dynamics similarly involve losses (due to mortality) and gains from predation. The full set of ODEs is nonlinear, but by computing the Jacobian matrix \(J\) at the equilibrium \(X^* \) (where \(f(X^*) = 0\)), we can perform linear stability analysis.
+
+### Stability metrics
+
+After linearizing the system around \( X^* \), we obtain:
+$$
+\delta\dot{X} = J\,\delta X.
+$$
+
+The eigenvalues of \(J\) are used to assess stability:
+
+- **Resilience:**  
+  We approximate resilience as the spectral abscissa, i.e., the maximum real part of the eigenvalues of \(J\). More negative values imply a faster return to equilibrium following a perturbation.
+  $$
+  \text{Resilience} \approx \max\{\operatorname{Re}(\lambda_i)\}.
+  $$
+- **Reactivity:**  
+  Even in stable systems, transient amplification of disturbances can occur. Reactivity is computed as the maximum real eigenvalue of the symmetric part of \(J\):
+  $$
+  \text{Reactivity} \approx \max\left\{\operatorname{Re}\left(\lambda_i\left(\frac{J+J^T}{2}\right)\right)\right\}.
+  $$
+- **Persistence:**  
+  Persistence measures the long-term survival of species. In our simulations, it is defined as the fraction of species that maintain an abundance above a specified threshold (e.g., \(10^{-6}\)) after the system has been perturbed.
+
+### Experimental Pipeline
+
+Our pipeline consists of the following steps:
+
+1. **Abstract Community Generation:**  
+   We generate synthetic communities by specifying \(H\), \(O\), \(R\), and connectance \(C\). The abstract parameterisation function constructs species names, assigns equilibrium abundances (or uses defaults), and creates the interaction matrices.
+
+2. **Stability Search:**  
+   Not all parameter combinations yield a stable equilibrium. We search over a range of key parameters (e.g., \(\mu\), \(\varepsilon\), and \(m_\alpha\)) until we find a configuration where all eigenvalues of the Jacobian \(J\) have negative real parts.
+
+3. **Simulation of Dynamics:**  
+   The ODE system is simulated using a numerical integrator (e.g., Tsit5). The final state is used to compute the Jacobian and extract eigenvalues, from which we calculate resilience and reactivity.
+
+4. **Metric Computation:**  
+
+   - **Resilience** is computed from \(J\) as described above.
+   
+   - **Reactivity** is computed from the symmetric part of \(J\).
+   
+   - **Persistence** is determined by the fraction of species above a preset threshold at the end of the simulation.
+
+5. **Parameter Space Exploration:**  
+   We systematically vary community configurations (by changing \(H\), \(O\), \(R\), and \(C\)) and record the corresponding stability metrics in a results table.
+
+6. **Visualization:**  
+   Finally, we generate scatter plots and heatmaps to visualize:
+   
+   - Resilience versus connectance,
+   
+   - Reactivity versus the proportion of omnivores,
+   
+   - Persistence versus total species richness.
+   
+These analyses enable us to understand how structural features of the community affect its stability and functioning.
+
+### Mathematical Foundations
+
+The core mathematical concept is linear stability analysis. By linearizing the nonlinear ODE system around the equilibrium, the Jacobian matrix \(J\) encapsulates the sensitivity of the system to small perturbations. The eigenvalues of \(J\) provide information on whether perturbations decay (if all eigenvalues have negative real parts) or if transient amplification (reactivity) may occur even in a stable system. This linear approximation is key to our measures of resilience and reactivity.
+
+Through our experimental pipeline, we vary structural parameters and directly link them to the computed stability metrics. This integrated approach not only clarifies how community composition and connectance influence stability but also provides insights into the mechanisms that govern ecosystem functioning.
+
+*This document summarizes our conceptual framework and experimental approach, detailing both the ecological ideas and the mathematical basis for our metrics. The following sections of the document present the corresponding computational pipeline that implements these ideas in simulation.*
