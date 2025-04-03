@@ -5,6 +5,7 @@
 # 3) MultipleCells
 # 4) SensitivityVsEcosystemFunctioning
 execute_code = false
+to_float(x) = ForwardDiff.value(x)
 function analytical_equilibrium(
     cell, 
     mu_val, eps_val, mean_m_alpha;
@@ -201,8 +202,8 @@ if execute_code
         for i in 0.0:0.1:1.0
             for k in 0.0:0.1:1.0
                 result = analytical_equilibrium( # 0.29 for cell 1 and 0.32 for cell 2
-                    cell, 
-                    1.0, 0.12, 1.0;
+                    1, 
+                    0.5, 0.29, 0.1;
                     # i, j, k;
                     delta_nu = 0.05,
                     d_alpha = 1.0, d_i = 1.0,
@@ -396,7 +397,7 @@ end
 #######################################################################################
 # --- Function to compute sensitivity metrics and species traits ---
 function compute_sensitivity_metrics(
-    A_eq, A_p;
+    A_eq, A_p, A_J;
     perturbation=0.01, tspan=(0.0, 50.0),
     callbacks=true,
     tolerance_factor=1e-3
@@ -407,6 +408,7 @@ function compute_sensitivity_metrics(
     n = length(u0)
     sensitivity = zeros(n)
     resilience = fill(NaN, n)  # resilience: recovery time for each species
+    analytical_resilience = fill(NaN, n)  # analytical resilience: largest eigenvalue for each species
     
     # For each species, perturb its equilibrium value by a small fraction,
     # simulate the system using omnivore_dynamics! (the full model),
@@ -435,8 +437,9 @@ function compute_sensitivity_metrics(
     end
     resilience[i] = rec_time
 
+    analytical_resilience[i] = maximum(real.(eigen(A_J).values))
     end
-    
+
     # Compute species traits.
     # Trait 1: Equilibrium biomass for each species.
     biomass = copy(u0)
@@ -502,7 +505,7 @@ function compute_sensitivity_metrics(
         connectance[S+alpha] = d / max_possible
     end
      
-    return (sensitivity = sensitivity,  resilience = resilience, biomass = biomass, degree = degree, connectance = connectance, guild = guilds)
+    return (sensitivity = sensitivity,  resilience = resilience,  analytical_resilience = analytical_resilience, biomass = biomass, degree = degree, connectance = connectance, guild = guilds)
 end
 
 # A_caca = compute_sensitivity_metrics(A_eq, A_p; perturbation = 1.0, tspan = (0.0, 100000.0), callbacks = false).resilience
