@@ -96,9 +96,9 @@ function plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0,
     display(fig)
     return fig
 end
-function plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true, tolerance_factor=1e-3)
+function plot_resilience_vs_partitioned_impact(A_eq, A_p, A_J; removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true, tolerance_factor=1e-3)
     # Get sensitivity metrics using your existing function (max deviation in total biomass)
-    metrics = compute_sensitivity_metrics(A_eq, A_p; perturbation=removal_fraction, tspan=tspan, callbacks=callbacks, tolerance_factor=tolerance_factor)
+    metrics = compute_sensitivity_metrics(A_eq, A_p, A_J; perturbation=removal_fraction, tspan=tspan, callbacks=callbacks, tolerance_factor=tolerance_factor)
     
     # Compute the full, direct, and indirect impacts
     impacts = compute_direct_indirect_impacts(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
@@ -122,6 +122,11 @@ function plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, 
                ylabel = "Full Impact (Δϕ)",
                title = "Resilience vs. Full Impact",
                xticklabelrotation = π/2.5)
+    ax4 = Axis(fig[2,2],
+               xlabel = "Analytical Resilience",
+               ylabel = "Full Impact (Δϕ)",
+               title = "Analytical Resilience vs. Full Impact",
+               xticklabelrotation = π/2.5)
     
     # Color points by guild
     colors = [metrics.guild[i] == "Herbivore" ? :blue :
@@ -132,6 +137,7 @@ function plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, 
     MK.scatter!(ax1, metrics.resilience, impacts.direct, markersize = 10, color = colors)
     MK.scatter!(ax2, metrics.resilience, impacts.indirect, markersize = 10, color = colors)
     MK.scatter!(ax3, metrics.resilience, impacts.full, markersize = 10, color = colors)
+    MK.scatter!(ax4, metrics.analytical_resilience, impacts.full, markersize = 10, color = colors)
     
     display(fig)
     return fig
@@ -189,9 +195,10 @@ function run_stability_and_sensitivity_analysis(cell;
     # Extract equilibrium and parameter data from the stable result.
     A_eq = stable_result.equilibrium    # Contains H_star, P_star, u0, herbivore_list, predator_list
     A_p  = stable_result.parameters     # Contains S, R, r_i, K_i, mu, nu, interaction matrices, etc.
-    
+    A_J = stable_result.Jacobian        # The Jacobian at equilibrium
+
     # Call the plotting function that combines sensitivity and ecosystem function impact.
-    fig = plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
+    fig = plot_resilience_vs_partitioned_impact(A_eq, A_p, A_J; removal_fraction=removal_fraction, tspan=tspan, callbacks=callbacks)
     
     return (stable_result = stable_result, fig = fig)
 end
