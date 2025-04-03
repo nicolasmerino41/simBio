@@ -25,24 +25,41 @@ function abstract_run(
     removal_fraction = 0.0,
     conn = 0.2,  # target connectance for synthetic interaction matrices
     cell_abundance_h::Vector{Float64} = Float64[],  # if provided, else defaults will be ones
-    cell_abundance_p::Vector{Float64} = Float64[]
+    cell_abundance_p::Vector{Float64} = Float64[],
+    MF = true
 )
     AAAA = DataFrame()
 
     # Build the synthetic community using the new abstract function.
-    params_setup = a_parametrise_the_community(
-        S, O, R;
-        mu = mu_val,
-        epsilon_val = eps_val,
-        mean_m_alpha = mean_m_alpha,
-        conn = conn,
-        cell_abundance_h = cell_abundance_h,
-        cell_abundance_p = cell_abundance_p,
-        delta_nu = delta_nu,
-        d_alpha = d_alpha,
-        d_i = d_i,
-        r_omni_proportion = r_omni_proportion
-    )
+    if MF
+        params_setup = a_parametrise_the_community(
+            S, O, R;
+            mu = mu_val,
+            epsilon_val = eps_val,
+            mean_m_alpha = mean_m_alpha,
+            conn = conn,
+            cell_abundance_h = cell_abundance_h,
+            cell_abundance_p = cell_abundance_p,
+            delta_nu = delta_nu,
+            d_alpha = d_alpha,
+            d_i = d_i,
+            r_omni_proportion = r_omni_proportion
+        )
+    else
+        params_setup = nonMF_a_parametrise_the_community(
+            S, O, R;
+            mu = mu_val,
+            epsilon_val = eps_val,
+            mean_m_alpha = mean_m_alpha,
+            conn = conn,
+            cell_abundance_h = cell_abundance_h,
+            cell_abundance_p = cell_abundance_p,
+            delta_nu = delta_nu,
+            d_alpha = d_alpha,
+            d_i = d_i,
+            r_omni_proportion = r_omni_proportion
+        )
+    end
     if isnothing(params_setup)
         @error "Error: params_setup is nothing"
         return nothing
@@ -299,7 +316,7 @@ begin
     cb_no_trigger, cb_trigger = build_callbacks(S+O, R, EXTINCTION_THRESHOLD, T_ext, 1)
     @time A_run = abstract_run(
         S, O, R,    
-        0.0, 0.29, 0.1; # mu, epsilon, m_alpha
+        0.5, 0.29, 0.1; # mu, epsilon, m_alpha
         delta_nu = 0.05,
         d_alpha = 1.0, d_i = 1.0,
         time_end = 500.0,
@@ -317,12 +334,13 @@ begin
         r_omni_proportion = 1.0,
         force_nu_to = nothing,
         use_cb = true,
-        perturbation_halfway = true,
+        perturbation_halfway = false,
         species_to_perturb = 10,
         removal_fraction = 0.1,
         conn = 0.1,  # target connectance for synthetic interaction matrices
         cell_abundance_h = [i <= S ? rand()*10.0 : rand()*5.0 for i in 1:S+O],  # if provided, else defaults will be ones
-        cell_abundance_p = [rand() for i in 1:R]
+        cell_abundance_p = [rand() for i in 1:R],
+        MF = false
     )
 
 end
