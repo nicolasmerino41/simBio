@@ -186,6 +186,182 @@ function a_parametrise_the_community(
     )
 end
 
+function nonMF_a_parametrise_the_community(
+    S::Int, O::Int, R::Int;
+    mu = 0.5,
+    epsilon_val = 1.0,
+    mean_m_alpha = 0.1,
+    conn = 0.2,  # target connectance (probability of an interaction)
+    cell_abundance_h::Vector{Float64} = Float64[],  # Observed (or assumed) herbivore/omnivore abundances
+    cell_abundance_p::Vector{Float64} = Float64[],  # Observed carnivore abundances
+    delta_nu = 0.05,
+    d_alpha = 1.0,
+    d_i = 1.0,
+    r_omni_proportion = 1.0,
+    # New parameters for random interaction strengths:
+    mean_P::Float64 = 1.0, sigma_P::Float64 = 0.2,
+    mean_O::Float64 = 1.0, sigma_O::Float64 = 0.2,
+    mean_T::Float64 = 1.0, sigma_T::Float64 = 0.2,
+    mean_B::Float64 = 1.0, sigma_B::Float64 = 0.2,
+    mean_D::Float64 = 1.0, sigma_D::Float64 = 0.2
+)
+    # Convert parameters to Float64:
+    mu             = Float64(mu)
+    epsilon_val    = Float64(epsilon_val)
+    mean_m_alpha   = Float64(mean_m_alpha)
+    delta_nu       = Float64(delta_nu)
+    d_alpha        = Float64(d_alpha)
+    d_i            = Float64(d_i)
+    r_omni_proportion = Float64(r_omni_proportion)
+    conn           = Float64(conn)
+
+    # Total number of "herbivores" is the sum of true herbivores and omnivores.
+    S_total = S + O
+
+    # Define species lists.
+    herbivore_list = vcat(["Herbivore $sp" for sp in 1:S],
+                          ["Omnivore $sp" for sp in 1:O])
+    predator_list  = ["Predator $sp" for sp in 1:R]
+    sp_nm = vcat(herbivore_list, predator_list)
+
+    # Process equilibrium abundances.
+    if S_total > 0
+        if length(cell_abundance_h) == S_total
+            H_eq = copy(cell_abundance_h)
+        else
+            H_eq = ones(S_total)
+        end
+    else
+        H_eq = Float64[]
+    end
+
+    if R > 0
+        if length(cell_abundance_p) == R
+            P_eq = copy(cell_abundance_p)
+        else
+            P_eq = ones(R)
+        end
+    else
+        P_eq = Float64[]
+    end
+
+    # For herbivores/omnivores, H* is H_eq.
+    H_star = copy(H_eq)
+    r_i = ones(S_total)
+    K_i_initial = copy(H_eq)
+
+    if R > 0
+        m_alpha = fill(mean_m_alpha, R)
+        epsilon = fill(epsilon_val, R) * (d_i / d_alpha)
+        K_alpha_initial = copy(m_alpha)
+    else
+        m_alpha = Float64[]
+        epsilon = Float64[]
+        K_alpha_initial = Float64[]
+    end
+
+    # --- Build synthetic interaction matrices based on connectance and random intensities ---
+    # 1. P_matrix (S_total x R): carnivores preying on herbivores.
+    P_matrix = zeros(Float64, S_total, R)
+    for i in 1:S_total
+        for j in 1:R
+            P_matrix[i, j] = rand() < conn ? abs(randn() * sigma_P + mean_P) : 0.0
+        end
+    end
+
+    # 2. O_matrix (S_total x S_total): omnivory interactions; only rows corresponding to omnivores (i > S) are nonzero.
+    O_matrix = zeros(Float64, S_total, S_total)
+    for i in 1:S_total
+        if i > S   # only omnivores have nonzero entries
+            for j in 1:S_total
+                if i != j
+                    O_matrix[i, j] = rand() < conn ? abs(randn() * sigma_O + mean_O) : 0.0
+                end
+            end
+        end
+    end
+
+    # 3. T_matrix (S_total x S_total): herbivore-herbivore (or omnivore-herbivore) interactions.
+    T_matrix = zeros(Float64, S_total, S_total)
+    for i in 1:S_total
+        for j in 1:S_total
+            if i != j
+                T_matrix[i, j] = rand() < conn ? abs(randn() * sigma_T + mean_T) : 0.0
+            end
+        end
+    end
+
+    # 4. B_matrix (R x R): beneficial predator-predator interactions.
+    B_matrix = zeros(Float64, R, R)
+    for alpha in 1:R
+        for beta in 1:R
+            if alpha != beta
+                B_matrix[alpha, beta] = rand() < conn ? abs(randn() * sigma_B + mean_B) : 0.0
+            end
+        end
+    end
+
+    # 5. D_matrix (R x R): detrimental predator-predator interactions.
+    D_matrix = zeros(Float64, R, R)
+    for alpha in 1:R
+        for beta in 1:R
+            if alpha != beta
+                D_matrix[alpha, beta] = rand() < conn ? abs(randn() * sigma_D + mean_D) : 0.0
+            end
+        end
+    end
+
+    # --- Compute candidate ν values for each predator using the equilibrium condition ---
+    nu_candidates = Float64[]
+    for alpha in 1:R
+        H_alpha_tot = sum(P_matrix[:, alpha] .* H_star)
+        B_alpha_tot = sum(B_matrix[alpha, :] .* P_eq)
+        D_alpha_tot = sum(D_matrix[alpha, :] .* P_eq)
+        denominator = epsilon[alpha] * (H_alpha_tot + B_alpha_tot) - D_alpha_tot
+        if denominator > 0
+            push!(nu_candidates, (P_eq[alpha] + m_alpha[alpha]) / denominator)
+        end
+    end
+    nu = isempty(nu_candidates) ? 0.0 : maximum(nu_candidates)
+    nu *= (1.0 + delta_nu)
+
+    # --- Recalculate derived carrying capacities ---
+    K_i = zeros(Float64, S_total)
+    total_H = sum(H_star)
+    for i in 1:S_total
+        P_i_tot = sum(P_matrix[i, :] .* P_eq)
+        O_i_tot = (i > S) ? sum(O_matrix[i, :] .* H_star) : 0.0
+        T_i_tot = sum(T_matrix[i, :] .* H_star)
+        K_i[i] = (1 - mu) * H_star[i] + mu * total_H + nu * P_i_tot - epsilon_val * nu * O_i_tot + nu * T_i_tot
+    end
+
+    K_alpha = zeros(Float64, R)
+    for alpha in 1:R
+        H_alpha_tot = sum(P_matrix[:, alpha] .* H_star)
+        B_alpha_tot = sum(B_matrix[alpha, :] .* P_eq)
+        D_alpha_tot = sum(D_matrix[alpha, :] .* P_eq)
+        K_alpha[alpha] = epsilon[alpha] * nu * H_alpha_tot - P_eq[alpha] + epsilon[alpha] * nu * B_alpha_tot - nu * D_alpha_tot
+    end
+
+    new_di = r_i ./ K_i
+    new_da = m_alpha ./ K_alpha
+
+    return (
+        S = S_total, R = R,
+        H_eq = H_eq, P_eq = P_eq,
+        r_i = r_i, K_i = K_i,
+        mu = mu, nu = nu,
+        P_matrix = P_matrix,
+        O_matrix = O_matrix,
+        T_matrix = T_matrix,
+        B_matrix = B_matrix,
+        D_matrix = D_matrix,
+        epsilon = epsilon, m_alpha = m_alpha, K_alpha = K_alpha,
+        herbivore_list = herbivore_list, predator_list = predator_list,
+        species_names = sp_nm,
+        H_star = H_star, P_star = P_eq  # equilibrium values
+    )
+end
 
 function a_setup_community_from_cell(
     i::Int, j::Int;
@@ -277,29 +453,3 @@ function a_setup_community_from_cell(
         H_star = H_star, P_star = P_star
     )
 end
-
-# A_s = o_setup_community_from_cell(
-#     18, 1;
-#     mu = 0.5,
-#     # nu = 0.01,
-#     mean_m_alpha = 0.1,
-#     epsilon_val = 1.0,
-#     iberian_interact_NA = iberian_interact_NA,
-#     species_dict = species_dict,
-#     # species_names = species_names,
-#     artificial_pi = true,
-#     delta_nu = 0.05
-# )
-
-# A = b_setup_community_from_cell(
-#     18, 1;
-#     mu = 0.5,
-#     # nu = 0.01,
-#     mean_m_alpha = 0.1,
-#     epsilon_val = 1.0,
-#     iberian_interact_NA = iberian_interact_NA,
-#     species_dict = species_dict,
-#     # species_names = species_names,
-#     artificial_pi = true,
-#     delta_nu = 0.05
-# )
