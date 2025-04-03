@@ -1,0 +1,280 @@
+---
+title: "NewFramework6"
+author: "Nico"
+date: "2025-04-03"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chapter 1: Overview of Our Theoretical Framework
+
+## Model Structure
+
+Our model divides the community into three main species groups:
+
+- **Herbivores & Omnivores:**  
+  Herbivores form the base of the community. Omnivores are treated with the herbivores for their growth dynamics but engage in additional trophic interactions (both beneficial and detrimental).
+
+- **Predators:**  
+  Predators feed on herbivores (and omnivores) and also interact with each other.
+
+The interaction dynamics are split into two main components:
+
+- **Beneficial Interactions:** For example, gains from predation and positive predator–predator effects.
+
+- **Detrimental Interactions:** Such as losses from predation, competition, and direct consumption among herbivores.
+
+## Mean-Field (MF) Baseline
+
+Initially, we work with a mean-field scenario where interaction strengths are fixed (typically set to 1.0 outside the summations). This MF baseline provides theoretical expectations that serve as a benchmark. In our framework, the effective predation rate and conversion efficiency are defined as follows:
+
+\[
+\varepsilon = \epsilon\,\psi \quad \text{with} \quad \psi = \frac{d_i}{d_\alpha}\,,
+\]
+
+where \(d_i\) and \(d_\alpha\) are the self‐regulation parameters for herbivores and predators, respectively.
+
+## Exploring Deviations from MF
+
+To capture more realistic dynamics, we generalize the MF framework by randomizing interaction strengths around the MF value while preserving the correct sign. This allows us to explore how departures from the idealized MF assumptions influence stability and overall community dynamics.
+
+## Stability Analysis and Metrics
+
+### Linear Stability
+
+By linearizing the nonlinear dynamics around equilibrium, we compute the Jacobian matrix \(J\):
+
+\[
+\delta \dot{x} = J\,\delta x\,.
+\]
+
+### Stability Metrics
+
+- **Resilience:**  
+  Defined as the spectral abscissa (i.e., the maximum real part of \(J\)'s eigenvalues). More negative values indicate a faster return to equilibrium.
+  
+  \[
+  \text{Resilience} = \max \left\{ \operatorname{Re}(\lambda_i) \right\}\,.
+  \]
+
+- **Reactivity:**  
+  Assessed by the maximum instantaneous growth rate derived from the symmetric part of \(J\):
+  
+  \[
+  S_{\text{sym}} = \frac{J + J^T}{2}\quad \text{and}\quad \text{Reactivity} = \max \left\{ \operatorname{Re}(\lambda_i(S_{\text{sym}})) \right\}\,.
+  \]
+
+- **Persistence:**  
+  Measured as the fraction of species remaining above a specified abundance threshold after a perturbation.
+
+## Sensitivity and Elasticity
+
+Sensitivity coefficients and elasticities quantify how small parameter changes affect equilibrium biomasses:
+
+\[
+E_{x,p} = \frac{\partial \ln x^*}{\partial \ln p}\,.
+\]
+
+This analysis links species‐level responses to overall ecosystem functioning.
+
+# Chapter 2: Detailed Theoretical Framework
+
+## Herbivore and Omnivore Dynamics
+
+For a herbivore (or omnivore) species \(i\), the dynamics are given by
+
+\[
+\frac{\dot{H}_i}{H_i} = r_i \left( 1 - \frac{(1-\mu)H_i + \mu\,H^{tot} + \nu\,P_i^{tot} - \varepsilon\nu\,O_i^{tot} + \nu\,T_i^{tot}}{K_i} \right),
+\]
+
+where:
+
+- \(H_i\) is the biomass of species \(i\),
+- \(r_i\) is the intrinsic growth rate,
+- \(H^{tot} = \sum_{j} H_j\) is the total biomass in the herbivore compartment,
+- \(\mu\) is the competition parameter (balancing self‐regulation and communal effects),
+- \(P_i^{tot} = \sum_{\alpha} P_\alpha\) represents total predation pressure on species \(i\),
+- \(O_i^{tot} = \sum_{j \in \{\text{prey of omnivore } i\}} H_j\) is the biomass available for omnivory,
+- \(T_i^{tot} = \sum_{j \in \{\text{herbivores that consume } i\}} H_j\) accounts for losses from intra-guild interactions,
+- \(K_i\) is the carrying capacity (typically, \(K_i = \frac{r_i}{d_i}\)).
+
+## Predator Dynamics
+
+For predator species \(\alpha\), the dynamics are
+
+\[
+\frac{\dot{P}_\alpha}{P_\alpha} = m_\alpha \left( \frac{\varepsilon\nu\,H_\alpha^{tot} - P_\alpha + \varepsilon\nu\,B_\alpha^{tot} - \nu\,D_\alpha^{tot}}{K_\alpha} - 1 \right),
+\]
+
+with:
+
+- \(P_\alpha\) as the biomass of predator \(\alpha\),
+- \(m_\alpha\) as its intrinsic mortality rate,
+- \(H_\alpha^{tot} = \sum_{i \in \{\text{prey of } \alpha\}} H_i\) is the total available prey biomass,
+- \(B_\alpha^{tot} = \sum_{\beta \in \{\text{predators preyed upon by } \alpha\}} P_\beta\) captures beneficial predator–predator interactions,
+- \(D_\alpha^{tot} = \sum_{\beta \in \{\text{predators that consume } \alpha\}} P_\beta\) represents losses due to predator–predator interactions,
+- \(K_\alpha\) is the predator's carrying capacity (typically \(K_\alpha = \frac{m_\alpha}{d_\alpha}\)).
+
+## Equilibrium Conditions
+
+At equilibrium (\(\dot{H}_i = 0\) and \(\dot{P}_\alpha = 0\)), the system satisfies:
+
+- **Herbivores (and Omnivores):**
+
+  \[
+  K_i = (1-\mu)H_i + \mu\,H^{tot} + \nu\,P_i^{tot} - \varepsilon\nu\,O_i^{tot} + \nu\,T_i^{tot}\,.
+  \]
+
+- **Predators:**
+
+  \[
+  K_\alpha = \varepsilon\nu\,H_\alpha^{tot} - P_\alpha + \varepsilon\nu\,B_\alpha^{tot} - \nu\,D_\alpha^{tot}\,.
+  \]
+
+A species persists if its net resource gains (augmented by beneficial interactions) exceed its losses.
+
+# Chapter 3: Community Construction & Comparison
+
+## Abstract Communities
+
+We generate synthetic (abstract) communities by:
+
+- Randomly drawing species numbers for herbivores, omnivores, and predators.
+
+- Sampling interaction strengths around the MF baseline (with random deviations that preserve the sign).
+
+- Varying parameters to derive theoretical expectations for stability metrics.
+
+## Real Communities
+
+Real communities are built from empirical data by:
+
+- Extracting species abundances and interaction patterns.
+
+- Characterizing communities in terms of species composition, connectance, and the proportion of omnivores.
+
+- Computing stability metrics (resilience, reactivity, persistence) and comparing these with the abstract models.
+
+## Parameter Multiplicity
+
+For a given observed equilibrium, multiple parameter combinations can yield a stable community. Exploring this parameter space helps us understand the robustness and variability of community configurations.
+
+# Chapter 4: Ecosystem Functioning and Perturbation Analysis
+
+## Perturbation Analysis
+
+We simulate small perturbations to investigate how disturbances propagate through the community. For example:
+
+- **For Predators:**
+
+  \[
+  \delta P_\alpha = \varepsilon\nu \sum_{j \rightsquigarrow \alpha} \delta H_j +
+  \varepsilon\nu \sum_{\beta \rightsquigarrow \alpha} \delta P_\beta -
+  \nu \sum_{\gamma \rightsquigarrow \alpha} \delta P_\gamma \,.
+  \]
+
+- **For Herbivores:**
+
+  \[
+  \delta T_i^{\text{eff}} = \nu\,\delta P_i^{tot} - \varepsilon\nu\,\delta O_i^{tot} + \nu\,\delta T_i^{tot}\,.
+  \]
+
+Perturbations in the carrying capacity are captured by:
+
+\[
+\delta K_i = (1-\mu)\,\delta H_i + \mu\,\delta H^{tot} + \nu\,\delta P_i^{tot} - \varepsilon\nu\,\delta O_i^{tot} + \nu\,\delta T_i^{tot}\,.
+\]
+
+## Species Contributions to Ecosystem Functioning
+
+Two approaches are used to assess species’ contributions:
+
+1. **Direct and Indirect Contributions:**
+
+   \[
+   \Delta \phi_i = \phi_i + \phi_{/i}\,\bar{a}_i N_i\,,
+   \]
+
+   where \(\phi_i\) is the direct contribution and \(\bar{a}_i N_i\) scales the indirect effects.
+
+2. **Removal Impact:**
+
+   \[
+   \Delta \phi_i = \phi - \phi_{/i}\,,
+   \]
+   
+   which can be normalized as
+
+   \[
+   \frac{\Delta \phi_i}{\phi} = \frac{\frac{\phi_i}{\phi} + \bar{a}_i N_i}{1 + \bar{a}_i N_i}\,.
+   \]
+
+Linking these contributions with stability metrics helps us predict which species or interactions are critical for overall ecosystem performance.
+
+# Chapter 5: Future Directions and Proposed Path Forward
+
+## Synthesizing Theoretical Predictions
+
+- **Abstract Pipeline:**  
+  Generate expected stability outcomes using synthetic communities. Then, assess how randomized interaction strengths (deviating from the MF value) affect these outcomes.
+
+- **Real Pipeline:**  
+  Characterize real communities by species composition and network properties, compute the same stability metrics, and compare with theoretical predictions.
+
+## Parameter Space Exploration
+
+- Sample over key parameters (e.g., \(\mu\), \(\varepsilon\), \(m_\alpha\)) to explore the multiplicity of feasible configurations.
+- Analyze how different parameter sets influence both species‐level and ecosystem‐level responses.
+
+## Global Sensitivity and Uncertainty Analysis
+
+- Apply techniques such as Sobol indices or Monte Carlo simulations to quantify how uncertainty in each parameter propagates to stability metrics.
+
+- Identify which parameters most strongly determine resilience, reactivity, or persistence.
+
+## Network Motif Analysis
+
+- Decompose the food web into recurring motifs (e.g., omnivory loops, predator–prey chains).
+
+- Evaluate the contribution of each motif to overall system stability.
+
+## Bifurcation and Critical Threshold Analysis
+
+- Systematically vary key parameters (e.g., connectance, conversion efficiencies, self-regulation strengths) to map bifurcation diagrams.
+
+- Identify critical thresholds where the system transitions from stable to oscillatory or chaotic dynamics.
+
+## Dynamic Perturbations and Trait-Based Extensions
+
+- Extend perturbation studies to include dynamic (time-varying) environmental forcing.
+
+- Incorporate species traits and evolutionary dynamics to explore adaptive responses over longer timescales.
+
+## Linking Stability to Ecosystem Functioning
+
+- Integrate perturbation propagation analyses with ecosystem functioning measures (e.g., total biomass production, nutrient cycling).
+
+- Assess trade-offs between stability and productivity to pinpoint critical interactions.
+
+---
+
+This document serves as a comprehensive record of our methodology and provides a structured guide for further exploration. Each chapter builds on the previous one, ensuring that our framework—from the theoretical model to the analysis of real and abstract communities—is clearly defined and ready for simulation and sensitivity analysis.
+
+
