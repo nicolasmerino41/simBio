@@ -20,9 +20,10 @@ include("Resource_Model/NewFramework/MF/bipartite_dynamics!.jl")
 include("Resource_Model/NewFramework/MF/b_attempt_setup_community.jl")
 include("Resource_Model/NewFramework/Omnivory/omnivore_names.jl")
 include("Resource_Model/NewFramework/Omnivory/O_FI_functions.jl")
-include("Resource_Model/NewFramework/Omnivory/Omnivore_dynamics.jl")
+include("Resource_Model/NewFramework/Omnivory/Omnivore_dynamics!.jl")
 include("Resource_Model/NewFramework/Omnivory/O_attempt_setup_community.jl")
 include("Resource_Model/NewFramework/Omnivory/Anal_pipeline/o_anal_num_equilibrium.jl")
+include("Resource_Model/NewFramework/Omnivory/Abstract/A_FI_functions.jl")
 
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
