@@ -433,7 +433,7 @@ function run_experiment_real(; cell_range=1:10, time_end=500.0,
     
     results = DataFrame(community_type=String[], cell=Int[],
                         S=Int[], O=Int[], R=Int[], conn=Float64[],
-                        mu=Float64[], eps=Float64[], m_alpha=Float64[],
+                        mu=Float64[], eps=Float64[], m_alpha=Float64[], nu=Float64[],
                         resilience=Float64[], reactivity=Float64[], persistence=Float64[],
                         prop_omn=Float64[], total_species=Int[], avg_conn=Float64[], avg_degree=Float64[])
     lock_obj = ReentrantLock()
@@ -459,7 +459,7 @@ function run_experiment_real(; cell_range=1:10, time_end=500.0,
                 lock(lock_obj) do
                     push!(results, (
                         "Real", cell, S_real, O_real, R_real, conn_val,
-                        stable.mu, stable.eps, stable.m_alpha, resil, react, persist,
+                        stable.mu, stable.eps, stable.m_alpha, stable.comm.parameters.nu, resil, react, persist,
                         struct_metrics.prop_omn, struct_metrics.total_species, struct_metrics.avg_conn, struct_metrics.avg_degree
                     ))
                 end
@@ -481,7 +481,7 @@ function run_experiment_abstract(; S_range=10:10:30, O_range=0:10:30, R_range=5:
     mu_range=0.0:0.1:1.0, eps_range=0.0:0.1:1.0, m_alpha_range=0.05:0.05:1.0, time_end=500.0)
     
     results = DataFrame(community_type=String[], cell = Int[], S=Int[], O=Int[], R=Int[], conn=Float64[],
-                        mu=Float64[], eps=Float64[], m_alpha=Float64[],
+                        mu=Float64[], eps=Float64[], m_alpha=Float64[], nu =Float64[],
                         resilience=Float64[], reactivity=Float64[], persistence=Float64[],
                         prop_omn=Float64[], total_species=Int[], avg_conn=Float64[], avg_degree=Float64[])
     for S in S_range
@@ -499,7 +499,7 @@ function run_experiment_abstract(; S_range=10:10:30, O_range=0:10:30, R_range=5:
                             persist = compute_persistence(sol)
                             struct_metrics = compute_structural_metrics_abstract(s.comm)
                             push!(results, (
-                                "Abstract", 1, S, O, R, conn, s.mu, s.eps, s.m_alpha,
+                                "Abstract", 1, S, O, R, conn, s.mu, s.eps, s.m_alpha, s.comm.nu,
                                 resil, react, persist,
                                 struct_metrics.prop_omn, struct_metrics.total_species, struct_metrics.avg_conn, struct_metrics.avg_degree
                             ))
@@ -555,7 +555,7 @@ function plot_combined_results(
     real_idx = findall(results.community_type .== "Real")
     abs_idx  = findall(results.community_type .== "Abstract")
     
-    fig = Figure(resolution=(1000,800))
+    fig = Figure(resolution=(1000,600))
     
     if log_resilience
         real_res = log.(results.resilience[real_idx].*-1)
@@ -565,9 +565,28 @@ function plot_combined_results(
         abs_res = results.resilience[abs_idx]
     end
     
-    if log_reactivity
-        real_react = log.(results.reactivity[real_idx])
-        abs_react = log.(results.reactivity[abs_idx])
+   if log_reactivity
+        real_react = results.reactivity[real_idx]
+        abs_react = results.reactivity[abs_idx]
+
+        for (i, val) in enumerate(real_react)
+            if val > 0.0
+                real_react[i] = log(val)
+            elseif val < 0.0
+                real_react[i] = -log(-val)
+            else
+                real_react[i] = 0.0  # handle log(0) case if needed
+            end
+        end
+        for (i, val) in enumerate(abs_react)
+            if val > 0.0
+                abs_react[i] = log(val)
+            elseif val < 0.0
+                abs_react[i] = -log(-val)
+            else
+                abs_react[i] = 0.0  # handle log(0) case if needed
+            end
+        end
     else
         real_react = results.reactivity[real_idx]
         abs_react = results.reactivity[abs_idx]
@@ -617,6 +636,15 @@ function plot_combined_results(
     scatter!(ax5, results.avg_conn[abs_idx], abs_react,
              markersize=8, marker=:utriangle, color=results[abs_idx, variable_to_color_by],
              colormap=cmap, colorrange=(cmin, cmax))
+
+    # Plot 6: Resilience vs. Total Species
+    ax6 = Axis(fig[3,2], xlabel="Total Species", ylabel=log_resilience ? "Log 1/Resilience" : "Resilience", title="Resilience vs. Total Species")
+    scatter!(ax6, results.total_species[real_idx], real_res,
+             markersize=12, marker=:circle, color=results[real_idx, variable_to_color_by],
+             colormap=cmap, colorrange=(cmin, cmax))
+    scatter!(ax6, results.total_species[abs_idx], abs_res,
+             markersize=8, marker=:utriangle, color=results[abs_idx, variable_to_color_by],
+             colormap=cmap, colorrange=(cmin, cmax))
     
     # Plot 6: Colorbar
     Colorbar(fig[3,3], limits=(cmin, cmax), colormap=cmap)
@@ -628,18 +656,19 @@ end
 # -----------------------------------------------------------------------------
 # 7. Running the Comparison Pipeline
 # -----------------------------------------------------------------------------
-# combined_results = run_experiment_comparison(;
-#     cell_range=1:10,
-#     S_range=20:10:50, O_range=0:5:20, R_range=5:5:10, conn_range=0.0:0.01:0.2,
-#     mu_range=0.0:0.2:1.0, eps_range=0.0:0.5:1.0, m_alpha_range=0.05:0.1:0.25,
-#     time_end=500.0
-# )
+combined_results_with_nu_good = run_experiment_comparison(;
+    cell_range=1:10,
+    S_range=20:10:50, O_range=0:5:10, R_range=5:5:10, conn_range=0.0:0.05:0.2,
+    mu_range=0.0:0.25:1.0, eps_range=0.0:0.5:1.0, m_alpha_range=0.05:0.1:0.25,
+    time_end=500.0
+)
+combined_results = CSV.File("combined_results.csv") |> DataFrame
 
-println(combined_results[1:10, :])
+# println(combined_results[1:10, :])
 plot_combined_results(
-    combined_results;
-    variable_to_color_by = :m_alpha,
-    log_resilience = true,
+    combined_results_with_nu_good;
+    variable_to_color_by = :eps,
+    log_resilience = false,
     log_reactivity = false
 )
 
