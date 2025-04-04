@@ -234,7 +234,7 @@ function compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = 
 end
 # compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = false)
 ##### TRYING THE FUNCTION #####
-if false
+if true
     
     if isempty(va)
         DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
@@ -248,7 +248,7 @@ if false
         DA_global_closeness
     ]
     va_names = ["Connectance", "Average Degree", "Average Clustering", "Global Betweenness", "Global Closeness"]
-    together = false
+    together = true
     number_of_the_metric = 3
     # max_value = 1
     begin

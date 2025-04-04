@@ -145,7 +145,7 @@ end
 # --- Example Usage ---
 # Assuming A_eq and A_p were obtained from your analytical_equilibrium function
 fig = plot_sensitivity_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0, 1000.0), callbacks=false)
-fig = plot_resilience_vs_partitioned_impact(A_eq, A_p; removal_fraction=1.0, tspan=(0.0, 50.0), callbacks=false, tolerance_factor=1e-3)
+fig = plot_resilience_vs_partitioned_impact(A_eq, A_p, A_J; removal_fraction=1.0, tspan=(0.0, 50.0), callbacks=false, tolerance_factor=1e-3)
 # --- Merged Function ---
 function run_stability_and_sensitivity_analysis(cell;
     removal_fraction=1.0, tspan=(0.0,50.0), callbacks=true,
@@ -203,7 +203,7 @@ function run_stability_and_sensitivity_analysis(cell;
     return (stable_result = stable_result, fig = fig)
 end
 
-for cell in 1:4
+for cell in 1:10
     run_stability_and_sensitivity_analysis(
         cell;
         removal_fraction=1.0, tspan=(0.0,1000.0), callbacks=false,

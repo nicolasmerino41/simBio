@@ -206,5 +206,5 @@ end
     r_omni_proportion = 1.0, # leave at 1.0 for no effect
     force_nu_to = nothing, # leave at nothing for no effect
     use_cb = false,
-    removal_fraction = 1.0
+    removal_fraction = 0.5
 )

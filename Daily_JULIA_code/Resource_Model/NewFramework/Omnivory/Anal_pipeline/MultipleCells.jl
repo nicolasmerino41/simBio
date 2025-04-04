@@ -6,7 +6,7 @@ to_float(x) = ForwardDiff.value(x)
 
 # --- PART 1. Find a stable configuration for each cell and record elasticities ---
 # Define a list of cell identifiers. (Assume cells are indexed by integers or similar.)
-num_cells = 2
+num_cells = 3
 cells = [i for i in 1:num_cells]  # adjust as needed
 
 # We will store, for each cell, a tuple containing:
