@@ -1,0 +1,30 @@
+# 📊 My Weave Report with Makie
+
+Welcome! This document includes:
+- Julia code via Weave.jl
+- A Makie plot
+- A LaTeX math equation
+
+## 📐 LaTeX Equation
+
+Here's Einstein's famous formula:
+
+$$E = mc^2$$
+
+## 🖼️ Makie Plot
+
+```julia
+using CairoMakie
+
+# High-resolution figure (increased canvas size)
+f = Figure(resolution = (1600, 1200))  # 4x sharper than before
+
+Axis(f[1, 1], xlabel="x", ylabel="sin(x)", title="High-Res Sine Wave")
+lines!(f[1, 1], 0..2π, sin, color=:blue, linewidth=3)
+
+# Save at higher DPI
+save("sine_plot.png", f; px_per_unit=5.0)  # px_per_unit boosts effective DPI
+
+```
+
+![High-Res Sine Plot](sine_plot.png)
