@@ -22,7 +22,7 @@ function find_stable_configurations_real_stop(cell::Int;
                           comm.parameters.nu_omni, comm.parameters.nu_b)
                 sol, J = simulate_community(u0, params, time_end)
                 if all(real.(eigen(J).values) .< 0)
-                    println("Cell $cell: Stable config found: μ=$(mu_val), ε=$(eps_val), mₐ=$(m_alpha_val)")
+                    # println("Cell $cell: Stable config found: μ=$(mu_val), ε=$(eps_val), mₐ=$(m_alpha_val)")
                     push!(stable_configs, (comm=comm, sol=sol, J=J, mu=mu_val, eps=eps_val, m_alpha=m_alpha_val))
                     if stop_early
                         return stable_configs
@@ -75,7 +75,7 @@ mu_range=0.0:0.1:1.0, eps_range=0.0:0.1:1.0, m_alpha_range=0.05:0.05:1.0)
                 end
             end
         catch e
-            println("Skipping cell $cell: ", e)
+            # println("Skipping cell $cell: ", e)
         end
     end
     DA_metric = deepcopy(float.(DA_sum))
