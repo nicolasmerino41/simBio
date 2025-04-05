@@ -172,13 +172,15 @@ function compute_average_species_metrics(cell_indices::AbstractVector{Int})
     return species_avg_df
 end
 
-# Example usage:
-# Assume that idx is defined and contains the cell indices (or use 1:number_of_cells)
-cell_range = 1:5950
-@time avg_species_metrics = compute_average_species_metrics(cell_range)
+if false
+    # Example usage:
+    # Assume that idx is defined and contains the cell indices (or use 1:number_of_cells)
+    cell_range = 1:5950
+    @time avg_species_metrics = compute_average_species_metrics(cell_range)
 
-# Display the aggregated DataFrame.
-display(avg_species_metrics)
+    # Display the aggregated DataFrame.
+    display(avg_species_metrics)
+end
 
 ##### COMPUTE THE NRI OF EACH CELL AND PLOT IT #####
 function compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = false, resolution = (600, 600))
@@ -234,7 +236,7 @@ function compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = 
 end
 # compute_and_map_NRI(; plot = true, title = "NRI", standardise_by_NPP = false)
 ##### TRYING THE FUNCTION #####
-if true
+if false
     
     if isempty(va)
         DA_density, DA_avg_degree, DA_avg_clustering, DA_global_betweenness, DA_global_closeness =
