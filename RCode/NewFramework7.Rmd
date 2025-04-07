@@ -25,74 +25,87 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # A Generalized Framework for Trophic Dynamics
 
-We present a generalized formulation of a model describing the dynamics of ecological communities composed of herbivores and predators. Unlike our earlier mean‐field (MF) approach where interaction strengths were fixed (typically set to 1.0) and separated into distinct matrices (for omnivory, herbivore–herbivore consumption, and predator–predator interactions), here we merge all trophic interactions into a single matrix. This merged matrix captures all positive and negative effects among species, and it allows for non‐MF scenarios. In addition, we include a separate competition matrix that affects only the herbivore compartment.
+We present a generalized formulation of a model describing the dynamics of ecological communities composed of herbivores and predators. Unlike our earlier mean‐field (MF) approach, here we merge all trophic interactions into a single matrix \(A\). In addition, we include a competition matrix \(C\) (of size \(S \times S\)) that captures intra‐guild competition among herbivores. This formulation allows us for departures from the MF scenario by randomizing the interaction strengths around a given mean.
 
 ## Trophic Interactions
 
-Let \(X\) be the vector of biomasses for all species in the community, where the first \(S\) entries correspond to the herbivore compartment (including both pure herbivores and omnivores) and the remaining \(R\) entries correspond to predators.
+Let \(X\) be the vector of biomasses for all species, with the first \(S\) entries corresponding to the herbivore compartment (including both pure herbivores and omnivores) and the remaining \(R\) entries corresponding to predators.
 
 - **Merged Trophic Interaction Matrix (\(A\))**  
-  \(A\) is an \((S+R) \times (S+R)\) matrix. Each entry \(a_{ij}\) represents the per‐unit effect that species \(j\) has on species \(i\) via trophic interactions.  
-  - Positive entries indicate beneficial effects (e.g. energy gains through predation or omnivory), and negative entries indicate detrimental effects (e.g. losses from being preyed upon).  
-  - This matrix is general enough to allow “non‐classical” interactions (for example, if a herbivore feeds on a predator, the corresponding \(a_{ij}\) would reflect that, with its sign determined by the biological context).
+  \(A\) is an \((S+R) \times (S+R)\) matrix. Each entry \(A_{ij}\) represents the net effect (per unit biomass) that species \(j\) exerts on species \(i\) via trophic interactions. Positive values indicate beneficial effects (e.g., energy gains through predation or omnivory), and negative values indicate detrimental effects (e.g., losses from being preyed upon). Importantly, each entry is given by:
+  \[
+  A_{ij} = \frac{a_{ij}}{d_i},
+  \]
+  where \(a_{ij}\) is the raw interaction strength and \(d_i\) is the self‐regulation parameter for species \(i\). This scaling ensures that the intrinsic self‐regulation of species \(i\) is factored into its net response.
 
 - **Competition Matrix (\(C\))**  
-  \(C\) is an \(S \times S\) matrix that only affects the herbivore compartment. The entries \(c_{ij}\) (typically nonnegative) capture the intensity of competition between herbivores (and omnivores).  
+  \(C\) is an \(S \times S\) matrix that affects only the herbivore compartment. The entries \(C_{ij}\) represent the competitive impact of species \(j\) on species \(i\) and are scaled as:
+  \[
+  C_{ij} = \frac{c_{ij}}{d_i},
+  \]
+  where \(c_{ij}\) is the raw competition coefficient.
 
 ## Model Equations
 
+With this formulation, the trophic effects are entirely captured by the matrix \(A\) and competition by \(C\). For now, we assume that the self‐regulation parameter \(d_i\) is normalized to 1.
+
 ### Herbivore (and Omnivore) Dynamics
 
-For each herbivore (or omnivore) species \(i\) (with \(1 \leq i \leq S\)), the per‐capita growth rate is given by
+For each herbivore (or omnivore) species \(i\) (\(1 \leq i \leq S\)), the dynamics are given by
 
 \[
-\frac{\dot{H}_i}{H_i} = r_i \left(1 - \frac{(1-\mu)H_i + \mu\,H^{tot} + \sum_{j=1}^{S+R} a_{ij} X_j + \sum_{j=1}^{S} c_{ij} H_j}{K_i}\right),
+\frac{\dot{H}_i}{H_i} = r_i \left( 1 - \frac{H_i + \sum_{j=1}^{S+R} A_{ij} X_j + \sum_{j=1}^{S} C_{ij} H_j}{K_i} \right),
 \]
 
 where:
 
 - \(H_i\) is the biomass of species \(i\).
-- \(r_i\) is the intrinsic growth rate.
-- \(H^{tot} = \sum_{j=1}^{S} H_j\) is the total biomass of the herbivore compartment.
-- \(\mu\) is a competition parameter that weighs the balance between self‐regulation and the influence of total biomass.
-- \(a_{ij}\) are the entries of the merged trophic interaction matrix, summarizing all trophic influences (both positive and negative) from species \(j\) on species \(i\).
-- \(c_{ij}\) are the entries of the competition matrix \(C\), affecting only herbivores.
-- \(K_i\) is the carrying capacity for species \(i\) (often defined as \(K_i = \frac{r_i}{d_i}\), with \(d_i\) being the self‐regulation parameter).
+- \(r_i\) is its intrinsic growth rate.
+- \(X_j\) denotes the biomass of species \(j\) (with \(X = [H_1,\dots,H_S,\,P_1,\dots,P_R]\)).
+- \(K_i\) is the carrying capacity for species \(i\) (typically \(K_i = \frac{r_i}{d_i}\), and here \(d_i = 1\)).
+- The term \(H_i\) represents intrinsic self‐regulation.
+- The summation \(\sum_{j=1}^{S+R} A_{ij} X_j\) accounts for all trophic interactions (both beneficial and detrimental) on species \(i\).
+- The summation \(\sum_{j=1}^{S} C_{ij} H_j\) represents competitive interactions among herbivores.
 
 ### Predator Dynamics
 
-For each predator species \(\alpha\) (with \(S+1 \leq \alpha \leq S+R\)), the dynamics are given by
+For each predator species \(\alpha\) (\(S+1 \leq \alpha \leq S+R\)), the dynamics are modeled by
 
 \[
-\frac{\dot{P}_\alpha}{P_\alpha} = m_\alpha \left( \frac{\sum_{j=1}^{S+R} a_{\alpha j} X_j - P_\alpha}{K_\alpha} - 1 \right),
+\frac{\dot{P}_\alpha}{P_\alpha} = m_\alpha \left( \frac{\sum_{j=1}^{S+R} A_{\alpha j} X_j - P_\alpha}{K_\alpha} - 1 \right),
 \]
 
 where:
 
 - \(P_\alpha\) is the biomass of predator \(\alpha\).
-- \(m_\alpha\) is the intrinsic mortality rate.
-- The term \(\sum_{j=1}^{S+R} a_{\alpha j} X_j\) represents the net trophic gain from all interactions.
-- \(K_\alpha\) is the predator carrying capacity, typically \(K_\alpha = \frac{m_\alpha}{d_\alpha}\) (with \(d_\alpha\) the predator self‐regulation parameter).
+- \(m_\alpha\) is its intrinsic mortality rate.
+- The term \(\sum_{j=1}^{S+R} A_{\alpha j} X_j\) represents the net trophic gain from all interactions.
+- \(K_\alpha\) is the carrying capacity for predator \(\alpha\) (typically \(K_\alpha = \frac{m_\alpha}{d_\alpha}\)).
 
 ## Equilibrium Conditions and Viability
 
-At equilibrium (\(\dot{H}_i = 0\) and \(\dot{P}_\alpha = 0\)), the biomasses satisfy:
+At equilibrium (\(\dot{H}_i = 0\) and \(\dot{P}_\alpha = 0\)), the biomass levels satisfy:
 
-- **Herbivores:**
+- **Herbivores (including omnivores):**
   \[
-  K_i = (1-\mu)H_i + \mu\,H^{tot} + \sum_{j=1}^{S+R} a_{ij} X_j + \sum_{j=1}^{S} c_{ij} H_j.
+  K_i = H_i + \sum_{j=1}^{S+R} A_{ij} X_j + \sum_{j=1}^{S} C_{ij} H_j.
   \]
-
+  
 - **Predators:**
   \[
-  K_\alpha = \sum_{j=1}^{S+R} a_{\alpha j} X_j - P_\alpha.
+  K_\alpha = \sum_{j=1}^{S+R} A_{\alpha j} X_j - P_\alpha.
   \]
 
-For predator viability, we require that the net trophic gain exceeds losses:
+For predators, viability requires that the net trophic gain exceeds the predator’s own biomass:
 
 \[
-\sum_{j=1}^{S+R} a_{\alpha j} X_j > P_\alpha.
+\sum_{j=1}^{S+R} A_{\alpha j} X_j > P_\alpha.
 \]
+
+---
+
+This generalized framework now incorporates the scaling of interaction strengths by the self‐regulation parameters, and it merges all trophic interactions into one matrix \(A\) while keeping a separate competition matrix \(C\) for herbivores. This setup allows us to explore deviations from the MF scenario by randomizing interaction strengths and to analyze the stability and dynamics of the system under more general conditions.
+
 
 ## Perturbation and Sensitivity
 
