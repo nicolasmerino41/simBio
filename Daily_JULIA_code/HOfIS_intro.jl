@@ -24,6 +24,9 @@ include("Resource_Model/NewFramework/Omnivory/Omnivore_dynamics!.jl")
 include("Resource_Model/NewFramework/Omnivory/O_attempt_setup_community.jl")
 include("Resource_Model/NewFramework/Omnivory/Anal_pipeline/o_anal_num_equilibrium.jl")
 include("Resource_Model/NewFramework/Omnivory/Abstract/A_FI_functions.jl")
+include("Resource_Model/NewFramework/GeneralModel/General_dynamics!.jl")
+include("Resource_Model/NewFramework/GeneralModel/g_anal_num_equilibrium.jl")
+    include("Resource_Model/NewFramework/GeneralModel/G_FI_functions.jl")
 
 global EXTINCTION_THRESHOLD = 1e-6
 global T_ext               = 250.0
