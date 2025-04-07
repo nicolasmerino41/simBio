@@ -371,9 +371,9 @@ end
 
 A_run = general_run(
     1, # cell
-    0.2, 0.5, 0.1; # STABLE;
+    # 0.2, 0.5, 0.1; # STABLE;
     # 0.1, 0.45, 0.3; # semi-STABLE;
-    # 0.2, 0.05, 0.1; # UNSTABLE;
+    0.2, 0.05, 0.1; # UNSTABLE;
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
     time_end = 1000.0,

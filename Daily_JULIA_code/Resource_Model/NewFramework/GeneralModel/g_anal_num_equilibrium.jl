@@ -176,7 +176,7 @@ function g_analytical_equilibrium(
 end
 
 # --- Compute equilibrium and assess local stability ---
-# if execute_code
+if execute_code
 #     for j in 0.0:0.1:1.0
 #         for i in 0.0:0.1:1.0
 #             for k in 0.1:0.1:0.3
@@ -228,4 +228,4 @@ end
 #             end
 #         end
 #     end
-# end
+end

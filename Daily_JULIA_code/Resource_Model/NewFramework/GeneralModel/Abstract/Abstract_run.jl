@@ -66,7 +66,7 @@ function g_abstract_run(
     herbivore_list = params_setup.herbivore_list
     predator_list  = params_setup.predator_list
 
-    println("Herbivore list length: ", length(herbivore_list))
+    # println("Herbivore list length: ", length(herbivore_list))
     
     # Initial conditions: if not provided, use the baseline equilibrium.
     if isnothing(H_init)
