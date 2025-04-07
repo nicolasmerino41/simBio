@@ -25,8 +25,7 @@ function omnivore_run(
     use_cb = false,
     perturbation_halfway = false,
     species_to_perturb = 0,
-    removal_fraction = 0.0,
-
+    removal_fraction = 0.0
 )
     AAAA = DataFrame()
     local_i, local_j = idx[cell][1], idx[cell][2]
@@ -102,7 +101,7 @@ function omnivore_run(
     H_star     = params_setup.H_star
     P_star     = params_setup.P_star
     herbivore_list = params_setup.herbivore_list
-    println("Herbivore list: ", length(herbivore_list))
+    # println("Herbivore list: ", length(herbivore_list))
 
     # Initial conditions: use provided or baseline abundances.
     if isnothing(H_init)
@@ -231,7 +230,7 @@ function omnivore_run(
         end
         display(fig)
     end
-    println("S: $S")
+    # println("S: $S")
     # Post-processing: extract final densities.
     H_end = sol[1:S, end]
     P_end = sol[S+1:S+R, end]
@@ -248,7 +247,7 @@ function omnivore_run(
     P_biomass = sum(P_end)
     biomass_at_the_end = H_biomass + P_biomass
     ratio = (H_biomass == 0.0 ? NaN : (P_biomass / H_biomass))
-    println("Estimated nu = $nu_val")
+    # println("Estimated nu = $nu_val")
     
     single_run_results = DataFrame(
         cell_id                 = cell,
@@ -329,7 +328,7 @@ function omnivore_run(
     
     initial_biomass = sum(u0)
     final_biomass = sum(sol[:, end])
-    println("Initial biomass was $initial_biomass and final biomass is $final_biomass")
+    # println("Initial biomass was $initial_biomass and final biomass is $final_biomass")
 
     if perturbation_halfway
         if round(new_biomass_at_the_end, digits=0) == round(biomass_at_the_end, digits=0)
@@ -343,14 +342,15 @@ function omnivore_run(
         end
         if new_herbivore_survival_rate != herbivore_survival_rate || new_predator_survival_rate != predator_survival_rate
             println("The survival rates after the perturbation changed.")
-        end        
+        end
+        diff = []
+        for i in 2:size(new_sol, 2)
+            # println("The biomass respect to equilibrium is ", abs(sum(new_sol[:, i]) - biomass_at_the_end))
+            push!(diff, abs(sum(new_sol[:, i]) - biomass_at_the_end))
+        end
+        println("The maximum absolute difference is ", maximum(diff), " and it was found at time ", new_sol.t[argmax(diff)])        
     end
-    diff = []
-    for i in 2:size(new_sol, 2)
-        # println("The biomass respect to equilibrium is ", abs(sum(new_sol[:, i]) - biomass_at_the_end))
-        push!(diff, abs(sum(new_sol[:, i]) - biomass_at_the_end))
-    end
-    println("The maximum absolute difference is ", maximum(diff), " and it was found at time ", new_sol.t[argmax(diff)])
+    
     if do_you_want_params && do_you_want_sol
         return AAAA, params, sol
     elseif do_you_want_params || do_you_want_sol
@@ -362,10 +362,10 @@ function omnivore_run(
 end
 
 # cb_no_trigger, cb_trigger = build_callbacks(37, 8, EXTINCTION_THRESHOLD, T_ext, 1)
-for i in 1:10
-@time A_run = omnivore_run(
+# for i in 1:10
+A_run = omnivore_run(
     1, # cell
-    1.0, 1.0, 0.1; # mu, epsilon, m_alpha
+    0.5, 0.29, 0.1; # mu, epsilon, m_alpha
     delta_nu = 0.05,
     d_alpha = 1.0, d_i = 1.0,
     time_end = 1000.0,
@@ -373,7 +373,7 @@ for i in 1:10
     do_you_want_sol = false,
     include_predators = true,
     include_omnivores = true,
-    plot = true,
+    plot = false,
     sp_removed_name = nothing,
     artificial_pi = true, pi_size = 10.0,
     H_init = nothing,
@@ -388,8 +388,8 @@ for i in 1:10
     r_omni_proportion = 1.0, # leave at 1.0 for no effect
     force_nu_to = nothing, # leave at nothing for no effect
     use_cb = false,
-    perturbation_halfway = true,
-    species_to_perturb = i,
+    perturbation_halfway = false,
+    species_to_perturb = 0,
     removal_fraction = 1.0
 )
-end
+# end
