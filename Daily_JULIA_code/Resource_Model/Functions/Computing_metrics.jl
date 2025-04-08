@@ -255,12 +255,12 @@ if false
     # max_value = 1
     begin
         if together
-            fig = Figure(resolution = (2300, 900))
+            fig = Figure(resolution = (2300, 1500))
             ax1 = Axis(fig[1, 1], title = "Connectance")
             ax2 = Axis(fig[1, 2], title = "Average Degree")
-            ax3 = Axis(fig[1, 3], title = "Average Clustering")
-            ax4 = Axis(fig[1, 4], title = "Global Betweenness")
-            ax5 = Axis(fig[1, 5], title = "Global Closeness")
+            ax3 = Axis(fig[2, 1], title = "Average Clustering")
+            ax4 = Axis(fig[2, 2], title = "Global Betweenness")
+            ax5 = Axis(fig[3, 1], title = "Global Closeness")
 
             Makie.heatmap!(ax1, DA_density; interpolate=false, colormap=custom_palette)
             Makie.heatmap!(ax2, DA_avg_degree; interpolate=false, colormap=custom_palette)

@@ -291,11 +291,11 @@ function g_abstract_run(
 end
 
 begin
-    S, O, R = 35, 5, 8
+    S, O, R = 10, 0, 10
     # cb_no_trigger, cb_trigger = build_callbacks(S+O, R, EXTINCTION_THRESHOLD, T_ext, 1)
     @time A_run = g_abstract_run(
         S, O, R,    
-        0.5, 0.29, 0.1; # mu, epsilon, m_alpha
+        0.1, 0.1, 0.05; # mu, epsilon, m_alpha
         delta_nu = 0.05,
         d_alpha = 1.0, d_i = 1.0,
         time_end = 500.0,
