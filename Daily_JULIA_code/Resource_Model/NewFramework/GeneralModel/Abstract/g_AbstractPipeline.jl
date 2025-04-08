@@ -1,10 +1,26 @@
 # =============================================================================
 # 1. ODE Dynamics and Simulation (using your omnivore_dynamics!)
 # =============================================================================
-function simulate_community(u0, params, time_end=500.0; initial_deviation=0.0)
+function simulate_community(u0, params, time_end=500.0; initial_deviation=0.0, maxiters=2000)
+    # Perturb the initial condition slightly.
     u0 = u0 .+ randn(length(u0)) .* initial_deviation
     prob = ODEProblem(general_dynamics!, u0, (0.0, time_end), params)
-    sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6)
+    
+    # Try solving the ODE with Tsit5.
+    sol = nothing
+    try
+        sol = solve(prob, Tsit5(); abstol=1e-8, reltol=1e-6, maxiters=maxiters)
+    catch e
+        # Check if the error message hints at stiffness or divergence
+        # if isa(e, StiffError) || isa(e, DomainError) || occursin("stiff", string(e))
+        #     println("Skipping simulation due to detected stiffness (or similar error): ", e)
+            return nothing
+        # else
+        #     rethrow(e)
+        # end
+    end
+
+    # If the solution is obtained, compute the Jacobian at the end of the simulation.
     function f_wrapper(u)
         du = similar(u)
         general_dynamics!(du, u, params, 0.0)
@@ -53,23 +69,11 @@ function compute_structural_metrics_abstract(comm)
     conn_vals = zeros(S + R)
     # For herbivores (rows 1:S), define maximum possible interactions as:
     # max_possible = R + 2*(S-1)
-    for i in 1:S
-        d = sum(abs.(A[i, :]))
-        max_possible = R + 2*(S - 1)
-        conn_vals[i] = max_possible > 0 ? d / max_possible : 0.0
-    end
-    # For predators (rows S+1:S+R), maximum possible is:
-    # max_possible = S + 2*(R-1)
-    for alpha in 1:R
-        idx = S + alpha
-        d = sum(abs.(A[idx, :]))
-        max_possible = S + 2*(R - 1)
-        conn_vals[idx] = max_possible > 0 ? d / max_possible : 0.0
-    end
-    avg_conn = mean(conn_vals)
+    conn = sum(A .!= 0.0)// ((S+R)^2)
+    avg_conn = conn
     
     # Compute the degree for each species as the sum of the absolute interaction strengths.
-    degree = [sum(abs.(A[i, :])) for i in 1:(S + R)]
+    degree = [sum(abs.(A[i, :] .!= 0.0)) for i in 1:(S + R)]
     avg_degree = mean(degree)
     
     return (prop_omn = prop_omn, total_species = total_species, avg_conn = avg_conn, avg_degree = avg_degree)
@@ -101,8 +105,8 @@ function find_stable_configurations_abstract(S::Int, O::Int, R::Int; conn=0.2,
                           comm.A_matrix, comm.C_matrix, comm.epsilon,
                           comm.m_alpha, comm.K_alpha)
                 sol, J = simulate_community(u0, params, time_end)
-                if all(real.(eigen(J).values) .< 0)
-                    # println("Abstract: Stable config found: μ=$(mu_val), ε=$(eps_val), mₐ=$(m_alpha_val), conn=$(conn)")
+                if all(real.(eigen(J).values) .< 0) && !any(sol[:, end] .< EXTINCTION_THRESHOLD)
+                    println("Abstract: Stable config found: μ=$(mu_val), ε=$(eps_val), mₐ=$(m_alpha_val), conn=$(conn), S=$(S), O=$(O), R=$(R)")
                     push!(stable_configs, (comm=comm, sol=sol, J=J, mu=mu_val, eps=eps_val, m_alpha=m_alpha_val))
                 end
             end
@@ -138,7 +142,7 @@ function run_experiment_abstract(; S_range=10:10:30, O_range=0:10:30, R_range=5:
 
     for S in S_range
         for O in O_range
-            for R in R_range
+            Threads.@threads for R in R_range
                 for conn in conn_range
                     try
                         stable_configs = find_stable_configurations_abstract(S, O, R; conn=conn,
@@ -159,7 +163,7 @@ function run_experiment_abstract(; S_range=10:10:30, O_range=0:10:30, R_range=5:
                             end
                         end
                     catch e
-                        # println("Skipping configuration S=$S, O=$O, R=$R, conn=$conn: ", e)
+                        println("Skipping configuration S=$S, O=$O, R=$R, conn=$conn: ", e)
                     end
                 end
             end
@@ -184,14 +188,14 @@ Subplots include comparisons of:
   - Resilience vs. Average Degree,
   - Reactivity vs. Average Connectance.
 """
-function plot_experiment_results_abstract(results::DataFrame; variable_to_color_by::Symbol = :mu, log_resilience=false)
+function plot_experiment_results_abstract(results::DataFrame; variable_to_color_by::Symbol = :mu, log_resilience=false, log_reactivity=false)
     cmap = cgrad(:viridis)
     # Compute overall color range from the chosen variable.
     cmin = minimum(results[!, variable_to_color_by])
     cmax = maximum(results[!, variable_to_color_by])
     
     # Since all results here are abstract, we use triangles.
-    fig = Figure(resolution=(1000,600))
+    fig = Figure(;size=(1000,600))
 
     if log_resilience
         res = log.(results.resilience.*-1)
@@ -199,42 +203,67 @@ function plot_experiment_results_abstract(results::DataFrame; variable_to_color_
         res = results.resilience
     end
     
+    # Separate indices for Real and Abstract communities.
+    abs_idx  = findall(results.community_type .== "Abstract")
+    
+    if log_reactivity
+        
+        abs_react = results.reactivity[abs_idx]
+
+        for (i, val) in enumerate(abs_react)
+            if val > 0.0
+                abs_react[i] = log(val)
+            elseif val < 0.0
+                abs_react[i] = -log(-val)
+            else
+                abs_react[i] = 0.0  # handle log(0) case if needed
+            end
+        end
+    else
+        abs_react = results.reactivity[abs_idx]
+    end
+    
     ax1 = Axis(fig[1,1], xlabel="Average Connectance", ylabel=log_resilience ? "Log 1/Resilience" : "Resilience", title="Resilience vs. Connectance")
     scatter!(ax1, results.avg_conn, res, markersize=10, marker=:utriangle,
-             color=results[!, variable_to_color_by], colormap=cmap, colorrange=(cmin, cmax))
-    
-    ax2 = Axis(fig[1,2], xlabel="Proportion Omnivores", ylabel="Reactivity", title="Reactivity vs. Proportion Omnivores")
-    scatter!(ax2, results.prop_omn, results.reactivity, markersize=10, marker=:utriangle,
              color=results[!, variable_to_color_by], colormap=cmap, colorrange=(cmin, cmax))
     
     ax3 = Axis(fig[2,1], xlabel="Total Species", ylabel="Persistence", title="Persistence vs. Total Species")
     scatter!(ax3, results.total_species, results.persistence, markersize=10, marker=:utriangle,
              color=results[!, variable_to_color_by], colormap=cmap, colorrange=(cmin, cmax))
     
-    ax4 = Axis(fig[2,2], xlabel="Average Degree", ylabel=log_resilience ? "Log 1/Resilience" : "Resilience", title="Resilience vs. Average Degree")
+    ax4 = Axis(fig[1,2], xlabel="Average Degree", ylabel=log_resilience ? "Log 1/Resilience" : "Resilience", title="Resilience vs. Average Degree")
     scatter!(ax4, results.avg_degree, res, markersize=10, marker=:utriangle,
              color=results[!, variable_to_color_by], colormap=cmap, colorrange=(cmin, cmax))
     
     ax5 = Axis(fig[3,1], xlabel="Average Connectance", ylabel="Reactivity", title="Reactivity vs. Average Connectance")
-    scatter!(ax5, results.avg_conn, results.reactivity, markersize=10, marker=:utriangle,
+    scatter!(ax5, results.avg_conn, abs_react, markersize=10, marker=:utriangle,
+             color=results[!, variable_to_color_by], colormap=cmap, colorrange=(cmin, cmax))
+
+    ax2 = Axis(fig[3,2], xlabel="Proportion Omnivores", ylabel="Reactivity", title="Reactivity vs. Proportion Omnivores")
+    scatter!(ax2, results.prop_omn, abs_react, markersize=10, marker=:utriangle,
+            color=results[!, variable_to_color_by], colormap=cmap, colorrange=(cmin, cmax))
+
+    ax6 = Axis(fig[2,2], xlabel="Total Species", ylabel="Resilience", title="Resilience vs. Total Species")
+    scatter!(ax6, results.total_species, res, markersize=10, marker=:utriangle,
              color=results[!, variable_to_color_by], colormap=cmap, colorrange=(cmin, cmax))
     
     # Add a colorbar.
-    # Colorbar(fig[3,2], limits=(cmin, cmax), colormap=cmap)
+    Colorbar(fig[3,3], limits=(cmin, cmax), colormap=cmap)
     display(fig)
 end
 
 # =============================================================================
 # 7. Running the Abstract-Community Pipeline
 # =============================================================================
-abstract_results = run_experiment_abstract(; 
-    S_range=35, O_range=5, R_range=8, conn_range=0.1,
-    mu_range=0.5, eps_range=0.29, m_alpha_range=0.1, time_end=500.0)
-println(abstract_results)
+fixed_abstract_results_comp8 = run_experiment_abstract(; 
+    S_range=10:10:10, O_range=0:1:5, R_range=1:10, conn_range=0.1:0.1:0.2,
+    mu_range=0.8, eps_range=0.1:0.25:0.9, m_alpha_range=0.05:0.1:0.15, time_end=500.0)
+# println(abstract_results)
 plot_experiment_results_abstract(
-    abstract_results;
-    variable_to_color_by=:mu,
-    log_resilience=false
+    fixed_abstract_results_comp8;
+    variable_to_color_by=:eps,
+    log_resilience=false,
+    log_reactivity=false
 )
 
 #####################################################################################
@@ -259,7 +288,7 @@ plot_experiment_results_abstract(
                           comm.A_matrix, comm.C_matrix, comm.epsilon,
                           comm.m_alpha, comm.K_alpha)
                 sol, J = simulate_community(u0, params, time_end)
-                if all(real.(eigen(J).values) .< 0)
+                if all(real.(eigen(J).values) .< 0) 
                     println("Abstract: Stable config found: μ=$(mu_val), ε=$(eps_val), mₐ=$(m_alpha_val), conn=$(conn)")
                     push!(stable_configs, (comm=comm, sol=sol, J=J, mu=mu_val, eps=eps_val, m_alpha=m_alpha_val))
                 end
