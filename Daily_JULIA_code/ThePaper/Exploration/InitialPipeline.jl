@@ -1,5 +1,3 @@
-using DifferentialEquations, Random, Statistics, Plots
-
 # ----------------------------
 # Step 1: Define the Full Model
 # ----------------------------
@@ -58,10 +56,9 @@ data_full = Array(sol_full)
 # ----------------------------
 # Step 2: Compute Metrics for the Full Model
 # ----------------------------
-
 # Define a threshold for persistence (e.g., abundance > 0.1)
-threshold = 0.1
-persistence_full = sum(data_full[end, :] .> threshold) / n
+threshold = 1e-2
+persistence_full = sum(data_full[:, end] .> threshold) / n
 
 # Compute fluctuations: average standard deviation over the simulation for each species
 fluctuations_full = mean([std(data_full[:, i]) for i in 1:n])
@@ -109,7 +106,7 @@ end
 perturb_time = 25.0
 perturbation_factor = 0.5
 recovery_times_full = simulate_perturbation(u0, p_full, tspan, perturb_time, perturbation_factor)
-mean_return_time_full = mean(skipmissing(recovery_times_full))
+mean_return_time_full = mean(filter(!isnan, recovery_times_full))
 println("  Mean Return Time after perturbation: ", mean_return_time_full)
 
 # ----------------------------
@@ -161,7 +158,35 @@ println("  Mean Return Time (Full vs. Simplified): ", mean_return_time_full, " v
 # Optional: Plotting the Time Series
 # ----------------------------
 # Plot the time series of species abundances for the full model
-plt1 = plot(sol_full, title="Full Model Time Series", xlabel="Time", ylabel="Species Abundance")
-# Plot the time series for the simplified model
-plt2 = plot(sol_simpl, title="Simplified Model Time Series", xlabel="Time", ylabel="Species Abundance")
-plot(plt1, plt2, layout=(2,1))
+begin 
+    
+    fig = Figure(; size = (1000, 600))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = "Time",
+        ylabel = "Biomass",
+        title = "Full"
+    )
+    times_full = sol_full.t
+    # Plot herbivore/omnivore dynamics: species that are in herbivore_names are blue; those in omnivore_names are green.
+    for i in 1:length(sol_full[:, end])
+        lines!(ax, times_full, sol_full[i, :], label = "Species$(i)", color = :green)
+    end
+
+    ax2 = Axis(
+            fig[1, 2],
+            xlabel = "Time",
+            ylabel = "Biomass",
+            title = "Simplified"
+        )
+    times_simpl = sol_simpl.t
+    # Plot herbivore/omnivore dynamics: species that are in herbivore_names are blue; those in omnivore_names are green.
+    for i in 1:length(sol_simpl[:, end])
+        lines!(ax2, times_simpl, sol_simpl[i, :], label = "Species$(i)", color = :red)
+    end
+    
+    hlines!(ax, [0.0], label = "", color = :black, linestyle = :dot)
+    hlines!(ax2, [0.0], label = "", color = :black, linestyle = :dot)
+
+    display(fig)
+end
