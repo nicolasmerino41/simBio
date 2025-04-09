@@ -1,0 +1,25 @@
+---
+title: "Exploration of How Community Behaviours Can be Explained from a few General Attributes"
+author: "Nico, Núria, Jeff & Miguel"
+date: "03/18/2025"
+format:
+  pdf:
+    documentclass: article
+    fontsize: 12pt
+    toc: true
+    toc-depth: 3
+    math: mathjax
+    geometry: margin=1in
+    # Additional PDF options can be added here
+  html:
+    toc: true
+    toc-depth: 4
+    math: mathjax
+    css: styles.css  # Replace with your custom CSS file if desired
+    # Additional HTML options can be added here
+variables:
+  simulation_mode: "default"
+  parameter_set: "baseline"
+  # Add more custom variables as needed
+---
+
