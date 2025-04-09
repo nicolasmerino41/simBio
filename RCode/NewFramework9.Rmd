@@ -1,0 +1,221 @@
+---
+title: "NewFramework8.5"
+author: "Nicolàs Merino"
+date: "2025-04-09"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Framework for Predicting Trophic Community Behavior from Fixed Abundances and Structural Properties
+
+### 1. Basic Concept and Goals
+
+Our objective is to develop an effective model for trophic (predator–prey) communities. In this framework, we assume that the equilibrium abundances of species, denoted by \( B_i^* \), are known from empirical observations. We then adjust the carrying capacities \( k_i \) in our model so that the generalized Lotka–Volterra (GLV) equations yield these fixed abundances. This allows us to “anchor” the model with real data. The main aim is to determine whether community attributes—such as stability (e.g., return times after a perturbation), persistence, and overall biomass—can be predicted using this fixed abundance information combined with structural properties of the network (e.g., connectivity, average degree, degree distribution, and trophic hierarchy).
+
+### 2. Theoretical and Mathematical Framework
+
+#### a. The Generalized Lotka–Volterra Model
+
+The basic form of the GLV model for species \(i\) is given by:
+\[
+\frac{dB_i}{dt} = B_i \left( r_i - D_i B_i + \sum_{j \neq i} A_{ij}\,B_j \right),
+\]
+where  
+- \(B_i\) is the biomass (or abundance) of species \(i\),  
+- \(r_i\) is its intrinsic growth rate,  
+- \(D_i\) represents density-dependent mortality (self-regulation),  
+- \(A_{ij}\) is the interaction coefficient between species \(i\) and \(j\).
+
+We define the carrying capacity for species \(i\) by
+\[
+k_i = \frac{r_i}{D_i},
+\]
+and rescale the abundances as
+\[
+N_i = \frac{B_i}{k_i}.
+\]
+At equilibrium, when \(B_i = B_i^*\) for each species, the system satisfies:
+\[
+0 = B_i^*\left( r_i - D_i B_i^* + \sum_{j \neq i} A_{ij}\,B_j^* \right).
+\]
+By adjusting the \(k_i\) (or equivalently \( r_i \) and \( D_i \)) we force the model to reproduce the known \( B_i^* \).
+
+#### b. Structural Properties in Trophic Networks
+
+In trophic (predator–prey) communities, the interaction matrix \(A\) is highly structured:
+
+- **Directionality:** Predators benefit from prey while prey are negatively affected.
+
+- **Connectivity and Degree Distribution:** Not every species interacts with every other; network metrics like connectance \(c\), average degree, and the degree distribution describe which species are hubs and how species are distributed among trophic levels.
+
+- **Trophic Levels:** The hierarchy among basal species, herbivores, and carnivores gives the network a cascading, directional structure.
+
+These structural details allow us to compute emergent parameters that effectively summarize the network:
+\[
+\mu_{\text{eff}} = S \langle \alpha_{ij} \rangle, \quad \sigma_{\text{eff}} = \sqrt{S}\, \operatorname{std}(\alpha_{ij}), \quad \gamma_{\text{eff}} = \operatorname{corr}(\alpha_{ij}, \alpha_{ji}),
+\]
+where \(\alpha_{ij} = \frac{A_{ij}}{D_i}\) for \( i \neq j \) and \(S\) is the number of species.
+
+#### c. Abundance Distribution Considerations
+
+Empirical studies typically show that species abundance distributions (SADs) are fat-tailed, often following a lognormal form. Although the theory for rescaled abundances \(N_i\) may yield a Gaussian \(P(N)\) in the disordered limit, the actual abundances are given by
+\[
+B_i = k_i\, N_i.
+\]
+If the carrying capacities \(k_i\) are lognormally distributed, then even if \(N_i\) is Gaussian, the product \(B_i\) will exhibit a fat-tailed, lognormal behavior. The lognormal distribution is characterized in logarithmic space by its mean \(\mu_{\text{log}}\) and standard deviation \(\sigma_{\text{log}}\). From these, the moments of the abundances are calculated as:
+\[
+E[B_i] = \exp\left(\mu_{\text{log}} + \frac{\sigma_{\text{log}}^2}{2}\right), \quad \operatorname{Var}(B_i) = \exp\left(2\mu_{\text{log}} + \sigma_{\text{log}}^2\right) \left[\exp(\sigma_{\text{log}}^2)-1\right].
+\]
+We then define the relative variance (a measure of heterogeneity) as:
+\[
+\text{RelVar} = \frac{\operatorname{Var}(B)}{[E(B)]^2}.
+\]
+
+#### d. Stability and Return Time Predictions
+
+A key community attribute is stability, often quantified by the return time \(T\) – the time taken for the community to return to equilibrium after a perturbation. In the effective model approach, an analytical expression for the predicted return time might take the form:
+\[
+T_{\text{pred}} \approx \frac{1}{1 - \phi\, \gamma_{\text{eff}}\, \text{RelVar}},
+\]
+where
+
+- \(\phi\) is the persistence (fraction of surviving species),
+
+- \(\gamma_{\text{eff}}\) encapsulates the effective asymmetry in interactions,
+
+- \(\text{RelVar}\) is derived from the lognormal fit of the observed \(B_i\).
+
+This formulation shows that if we know the equilibrium abundances (and thus can fit the SAD) as well as the network’s structural properties, we can predict an emergent community attribute—stability—as measured by the return time.
+
+---
+
+### 3. Implementation, Evaluation, and Outlook
+
+#### Implementation
+
+1. **Fixed Abundances:**  
+   Use empirical or pre-determined equilibrium abundances \(B_i^*\) and adjust \(k_i\) so that the model satisfies:
+   \[
+   B_i^* = k_i - \frac{1}{D_i}\sum_{j \neq i} A_{ij}\,B_j^*.
+   \]
+
+2. **Structural Parameter Extraction:**  
+   Characterize the interaction network by measuring properties such as connectance, degree distribution, and trophic structure. Compute emergent parameters \(\mu_{\text{eff}}\), \(\sigma_{\text{eff}}\), and \(\gamma_{\text{eff}}\).
+
+3. **Abundance Distribution Fitting:**  
+   Fit the observed \(B_i^*\) values (for surviving species) to a lognormal distribution to obtain \(\mu_{\text{log}}\) and \(\sigma_{\text{log}}\) and compute the relative variance \(\text{RelVar}\).
+
+4. **Stability Prediction:**  
+   Use the effective parameters and the relative variance to predict community stability (e.g., return time) via an expression such as:
+   \[
+   T_{\text{pred}} \approx \frac{1}{1 - \phi\, \gamma_{\text{eff}}\, \text{RelVar}}.
+   \]
+
+#### Evaluation
+
+- **Perturbation Experiments:**  
+  In simulations, introduce a disturbance (such as reducing all \(B_i\) by a fixed factor) and measure the time required for the community to recover to near the equilibrium values.
+  
+- **Comparison of Models:**  
+  Compare the return times and other stability metrics of (a) the full model (with all detailed interactions), (b) the simplified or “disordered” model (with averaged interactions), and (c) the predicted return time from the analytical expression based on structural and abundance-distribution data.
+
+- **Visualization:**  
+  Plot these metrics across different scenarios (e.g., varying species number) to understand how well the structural properties and the SAD predict community behavior.
+
+---
+
+### 4. Conclusion
+
+By fixing the equilibrium abundances and reverse-engineering the carrying capacities accordingly, we can constrain our GLV model to reflect real communities. Combining this with detailed structural information about the interaction network, we extract a few emergent parameters. Integrating these with data from the species abundance distribution (via a lognormal fit) enables us to predict key community attributes—such as stability and return time—using a reduced set of macroscopic descriptors. This approach aims to determine if the dynamics of trophic communities can be effectively understood and predicted from structural properties and observed abundances alone.
+
+## Pipeline for Predicting Trophic Community
+
+In this study we assume that the equilibrium abundances of species are known from empirical data, and we “fix” these abundances as \(B_i^*\). We then adjust the carrying capacities \(k_i\) so that the generalized Lotka–Volterra (GLV) model reproduces the known equilibrium. In predator–prey (trophic) networks, the interaction matrix is structured (directed, often asymmetric), and its features—such as connectance and degree distribution—are readily measurable. By combining this network structure with the information from the species abundance distribution (SAD) (which typically follows a lognormal distribution), we aim to predict community‐level attributes such as persistence and stability (measured by, e.g., the return time to equilibrium after a perturbation).
+
+The overall approach is as follows:
+
+1. **Fixed Abundances as Constraints:**  
+   We assume the equilibrium abundances, \(B_i^*\), are known (or generated from a lognormal distribution). We then “reverse‐engineer” the model by setting the carrying capacities:
+   \[
+   k_i = B_i^* + \sum_{j \neq i} A_{ij}\,B_j^*,
+   \]
+   and by letting the intrinsic growth rate \(r_i = k_i\) (with self‐regulation \(D_i=1\)). This guarantees that the equilibrium of the GLV model
+   \[
+   \frac{dB_i}{dt} = B_i\Bigl(r_i - B_i + \sum_{j \neq i} A_{ij}\,B_j\Bigr)
+   \]
+   will (ideally) yield \(B_i^*\).
+
+2. **Trophic Network (Predator–Prey) Structure:**  
+   We generate a directed interaction matrix \(A\) for a predator–prey community. For each pair \(i\neq j\), we decide with a fixed probability \(p\) (the network connectance) whether a predator–prey relationship exists. If so, we randomly designate one species as the predator and the other as the prey; then we set:
+   - \(A_{ij} = \beta\) if \(i\) is the predator preying on \(j\),
+   - \(A_{ji} = -\epsilon\,\beta\) where \(\epsilon\) is the conversion efficiency.
+   Otherwise, if no link is present, \(A_{ij}=0\).
+
+3. **Emergent Parameters and Structural Metrics:**  
+   From the interaction matrix, we compute emergent (aggregate) parameters such as:
+   - \(\mu_{\rm eff} = n\,\langle\alpha_{ij}\rangle\) (average interaction strength),
+   - \(\sigma_{\rm eff} = \sqrt{n}\,\operatorname{std}(\alpha_{ij})\) (interaction variability),
+   - \(\gamma_{\rm eff}\), the reciprocity (correlation between \(\alpha_{ij}\) and \(\alpha_{ji}\)).
+   Here, \(\alpha_{ij}=A_{ij}\) since \(D_i=1\). We also compute network metrics (e.g. connectance, average degree).
+
+4. **Species Abundance Distribution (SAD):**  
+   Since the fixed equilibrium abundances are assumed known, we fit them to a lognormal distribution. This fit yields log-space parameters \(\mu_{\text{log}}\) and \(\sigma_{\text{log}}\), from which the mean and variance of \(B\) are:
+   \[
+   E[B] = \exp\Bigl(\mu_{\text{log}}+\frac{\sigma_{\text{log}}^2}{2}\Bigr),\quad \operatorname{Var}(B) = \exp(2\mu_{\text{log}}+\sigma_{\text{log}}^2)\Bigl[\exp(\sigma_{\text{log}}^2)-1\Bigr].
+   \]
+   The relative variance,
+   \[
+   \text{RelVar} = \frac{\operatorname{Var}(B)}{[E(B)]^2},
+   \]
+   provides a measure of the fat‐tailed nature of the abundance distribution.
+
+5. **Stability Prediction via Perturbation:**  
+   We conduct a perturbation experiment by multiplying all species abundances by a fixed factor (e.g. 0.5) at a time \(t_{\text{perturb}}\). The recovery (or return) time for each species is the time it takes to come back to within a defined tolerance (e.g. 10%) of its pre‐perturbation abundance.  
+   A hypothetical analytical prediction for the mean return time may take the form
+   \[
+   T_{\rm pred} \approx \frac{1}{1 - \phi\,\gamma_{\rm eff}\,\text{RelVar}},
+   \]
+   where \(\phi\) is the persistence (fraction of species with \(B_i > \text{threshold}\)). This relation encapsulates the idea that both the network structure (via \(\gamma_{\rm eff}\)) and the heterogeneity in abundances (via RelVar) govern stability.
+
+6. **Implementation and Evaluation:**  
+   We perform this analysis for different community sizes (e.g., 20, 40, and 60 species) and multiple iterations to capture randomness. For each simulation, we compare:
+   - The persistence and return times obtained from the full GLV model,
+   - The dynamics of a simplified (or “disordered”) model (in which off‐diagonal interactions are replaced with their average),
+   - The analytical prediction based on fixed abundances, network structure, and the fitted SAD.
+   These quantities are then visualized—using box plots or similar graphics—to compare how persistence, return times, and relative variance vary with species richness.
+
+---
+
+### In Summary
+
+- **Basic Framework:** We fix the equilibrium abundances \(B_i^*\) and determine the carrying capacities \(k_i\) such that the GLV model
+  \[
+  \frac{dB_i}{dt} = B_i\Bigl(r_i - B_i + \sum_{j\neq i} A_{ij}\,B_j\Bigr)
+  \]
+  yields the desired equilibrium with \(r_i = k_i\).  
+- **Trophic Structure:** The predator–prey interactions are modeled by a directed, asymmetric interaction matrix \(A\) built from empirical structural features (e.g., connectance, degree distribution).
+- **Emergent Properties:** From the network, we extract effective parameters (\(\mu_{\rm eff}\), \(\sigma_{\rm eff}\), \(\gamma_{\rm eff}\)) that summarize the overall interaction patterns.
+- **Abundance Distribution:** The fixed abundances are fitted to a lognormal, yielding parameters that allow computation of the relative variance (RelVar), a key descriptor of heterogeneity.
+- **Stability Prediction:** By combining the network structure (via \(\gamma_{\rm eff}\) and persistence \(\phi\)) with the SAD (via RelVar), we derive a prediction for community stability (e.g., the return time after a disturbance).
+- **Evaluation:** Finally, we simulate the full and simplified models across varying species numbers (e.g., 20, 40, 60) over many iterations and compare persistence, return times, and abundance heterogeneity to validate whether the fixed-abundance plus structure information can predict community behavior.
+
+This overall approach aims to disentangle how much of the community dynamics are governed solely by structural properties and the observed abundance pattern, even in the presence of trophic (predator–prey) interactions.
+
+---
