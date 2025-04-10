@@ -1,4 +1,5 @@
 begin
+    PC = "nicol"
     using Pkg
     Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
@@ -11,9 +12,7 @@ begin
     using Dates, Distributions, Serialization, StatsBase, JLD2, Random
     using ColorSchemes, Colors #Crayons, 
     using Makie, CairoMakie # ImageMagick
-    if ode_true
-        using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
-    end
+    using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
     # if end_true
     #     using DifferentialEquations # EcologicalNetworksDynamics, 
     # end
