@@ -1,0 +1,87 @@
+---
+title: "Trophic community modelling with SAD-driven stability predictions"
+author: "Nico & Jeff"
+date: "2025-04-10"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this approach, I aim to model trophic communities using a GLV system while forcing the system to fixed equilibrium abundances. The goal is to use the SAD along with network structural properties to predict community-level attributes such as stability (return times and persistence for now).
+
+### Model calibration
+
+We begin with the GLV model:
+\[
+\frac{dB_i}{dt} = B_i \left( r_i - B_i + \sum_{j \neq i} A_{ij}\,B_j \right),
+\]
+
+I draw the equilibrium abundances \(B_i^*\) from a lognormal distribution (emulating an ecologically realistic distribution). To force the model to yield these fixed abundances, I calibrate the carrying capacities by choosing
+\[
+r_i = k_i = B_i^* - \sum_{j \neq i} A_{ij}\,B_j^*.
+\]
+
+### Trophic network structure
+
+I build the interaction matrix \(A\) so it presents only trophic relationships.
+
+- \(A_{ij} = \varepsilon\,\beta\),
+
+- \(A_{ji} = -\beta\),
+with \(\beta\) drawn from an exponential distribution. I use connectance to determine the probability of an existing link.
+
+### Species Abundance Distribution
+
+By fitting the observed abundances to a lognormal, I obtain log parameters \(\mu_{\text{log}}\) and \(\sigma_{\text{log}}\). The mean and variance in the original scale are then given by:
+\[
+E[B] = \exp\!\Bigl(\mu_{\text{log}}+\frac{\sigma_{\text{log}}^2}{2}\Bigr), \quad \operatorname{Var}(B) = \exp\!\Bigl(2\mu_{\text{log}}+\sigma_{\text{log}}^2\Bigr)\Bigl[\exp(\sigma_{\text{log}}^2)-1\Bigr].
+\]
+Then, I define the relative variance as:
+\[
+\text{RelVar} = \frac{\operatorname{Var}(B)}{[E(B)]^2},
+\]
+which captures the abundance heterogeneity (how fat-tailed the abundance distribution is).
+
+*I based this on your III.3.3 SI Barbier et al. 2018*
+
+### Stability prediction via press perturbation
+
+To assess stability, I simulate an environmental press perturbation by modifying the carrying capacities (I also considered modifying abundances), which reduces each species’ intrinsic growth rate by a fraction \(\delta\), so that
+\[
+r_i' = (1-\delta)r_i.
+\]
+
+The system will then switch from the original equilibrium \(B_i^*\) to a new equilibrium \(B_i^{**}\), which is determined by:
+
+\[
+\frac{dB_i}{dt} = B_i \left( r_i' - B_i + \sum_{j \neq i} A_{ij}\,B_j \right).
+\]
+The return time \(T\) for each species is defined as the time required for its abundance to return to within 10% of the new equilibrium value (**makes sense?**).
+
+### Analytical prediction for return times
+
+Then I explored whether we can try to analytically predict what those return times will be from the emergent network parameters from the interaction matrix \(A\) (I only use the effective reciprocity \(\gamma_{\rm eff}\) because by forcing the model to match the observed abundances, we're already accounting for much of the variation that would otherwise come from differences in \(k\) or from the absolute scale of interactions (\( \mu \) & \( \sigma \)), right?. Along with that, I also include the relative variance derived from the SAD (and I had persitence \(\phi\) before but now is always 1 under fixed conditions):
+
+\[
+T_{\text{pred}} \approx \frac{1}{1 - \phi\,\gamma_{\rm eff}\,\text{RelVar}}.
+\]
+
+This formula would imply that higher network asymmetry (larger \(\gamma_{\rm eff}\)) and a higher relative variance (more heterogeneity in species abundances) will lead to longer return times. Does that match the simulated return times? That's what I'm currently on. 
+
+
