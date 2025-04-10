@@ -12,7 +12,7 @@ function full_model!(du, B, p, t)
     r, A = p
     n = length(B)
     for i in 1:n
-        du[i] = B[i] * ( r[i] - B[i] + sum(A[i, :] .* B) )
+        du[i] = B[i] * (r[i] - B[i] + sum(A[i, :] .* B))
     end
 end
 
@@ -27,17 +27,17 @@ function simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit
     prob1 = ODEProblem(full_model!, u0, tspan1, p)
     sol1 = solve(prob1, solver, reltol=1e-8, abstol=1e-8)
     pre_state = sol1.u[end]
-    
+
     # Modify the intrinsic growth rates (carrying capacities) for a press perturbation.
     r, A = p
     r_press = (1 - delta) .* r
     p_press = (r_press, A)
-    
+
     # Integrate the system with new parameters from t_perturb to end.
     tspan2 = (t_perturb, tspan[2])
     prob2 = ODEProblem(full_model!, pre_state, tspan2, p_press)
     sol2 = solve(prob2, solver, reltol=1e-8, abstol=1e-8)
-    
+
     # Approximate the new equilibrium as the final state.
     new_equil = sol2.u[end]
     n = length(new_equil)
@@ -58,14 +58,14 @@ function simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit
         end
     end
     if plot
-        fig = Figure(; size = (800,600))
-        ax = Axis(fig[1,1], xlabel="Time", ylabel="Abundance", title="Community Response to a Perturbation")
+        fig = Figure(; size=(800, 600))
+        ax = Axis(fig[1, 1], xlabel="Time", ylabel="Abundance", title="Community Response to a Perturbation")
         # Plot time series for each species 
-         for i in 1:n
-                # Extract the time series for species i across all time steps.
-                lines!(ax, sol2.t, sol2[i, :], label="Species $i")
-          end
-          display(fig)
+        for i in 1:n
+            # Extract the time series for species i across all time steps.
+            lines!(ax, sol2.t, sol2[i, :], label="Species $i")
+        end
+        display(fig)
     end
     return return_times
 end
@@ -75,32 +75,33 @@ end
 function predicted_return_time(φ, γ_eff, relVar)
     # For press perturbations with fixed abundances (φ may be 1), the formula simplifies to:
     # T_pred ≈ 1 / (1 - γ_eff * relVar)
-    denom = 1 - φ * γ_eff * relVar
+    denom = 1 - φ * γ_eff * relVar 
     return denom > 0 ? 1 / denom : Inf
 end
 
 # ---------------------------
 # Pipeline Parameters
 # ---------------------------
-species_scenarios = [10, 20, 30, 40, 50]   # Different number of species
-Niter = 1000                        # Iterations per scenario
+species_scenarios = [10, 20, 30]   # Different number of species
+Niter = 1                      # Iterations per scenario
 tspan = (0.0, 100.0)               # Total integration time
 t_perturb = 50.0                   # Time of press perturbation
 delta = 0.2                        # Relative reduction in carrying capacity (20% reduction)
 
 # Containers for results (per species scenario)
-results = Dict{Int, Dict{Symbol, Vector{Float64}}}()
+results_shit = Dict{Int,Dict{Symbol,Vector{Float64}}}()
 
 # ---------------------------
 # Main Loop: Over Species Scenarios and Iterations
 # ---------------------------
+# lock_result = ReentrantLock()
 for n in species_scenarios
     persistence_arr = Float64[]
     rt_full_arr = Float64[]
     rt_simpl_arr = Float64[]
     pred_rt_arr = Float64[]
     relvar_arr = Float64[]
-    
+
     for iter in 1:Niter
         try
             #############################
@@ -111,7 +112,7 @@ for n in species_scenarios
             μ_log_obs = 0.5
             σ_log_obs = 1.0
             fixed_B = rand(LogNormal(μ_log_obs, σ_log_obs), n)
-            
+
             #############################
             # Step 2: Construct a Trophic (Predator–Prey) Network
             #############################
@@ -122,7 +123,7 @@ for n in species_scenarios
                     if i != j && rand() < connectance
                         if rand() < 0.5
                             β = rand(Exponential(1.0))
-                            A[i, j] = 0.3*β     # i preys on j
+                            A[i, j] = 0.3 * β     # i preys on j
                             A[j, i] = -β     # effect on prey
                         else
                             β = rand(Exponential(1.0))
@@ -132,7 +133,7 @@ for n in species_scenarios
                     end
                 end
             end
-            
+
             #############################
             # Step 3: Calibrate Model with Fixed Abundances
             #############################
@@ -144,7 +145,7 @@ for n in species_scenarios
                 s = 0.0
                 for j in 1:n
                     if i != j
-                        s += A[i,j] * fixed_B[j]
+                        s += A[i, j] * fixed_B[j]
                     end
                 end
                 k[i] = fixed_B[i] - s
@@ -163,11 +164,11 @@ for n in species_scenarios
             B_eq_full = sol[:, end]
             thresh = 1e-3
             φ = sum(B_eq_full .> thresh) / n   # With fixed abundances, φ should be 1 (or near 1)
-            println("φ = $φ")
+            # println("φ = $φ")
 
-            if false
-                fig = Figure(;size = (800,600))
-                ax = Axis(fig[1,1], xlabel="Time", ylabel="Abundance", title="Community Before a Perturbation")
+            if true
+                fig = Figure(; size=(800, 600))
+                ax = Axis(fig[1, 1], xlabel="Time", ylabel="Abundance", title="Before a Perturbation Full Model")
                 # Plot time series for each species
                 for i in 1:n
                     # Extract the time series for species i across all time steps.
@@ -179,21 +180,24 @@ for n in species_scenarios
             #############################
             # Step 5: Press Perturbation via Carrying Capacity Change (Full Model)
             #############################
-            rt_full = simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit5(), plot=false)
+            rt_full = simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit5(), plot=true)
             mean_rt_full = mean(skipmissing(rt_full))
-            
+
             #############################
             # Step 6: Construct the Simplified Model
             #############################
-            offdiag_vals = [A[i, j] for i in 1:n for j in 1:n if i != j]
-            avg_off = mean(offdiag_vals)
+            offdiag_vals = [A[i, j] for i in 1:n for j in 1:n if i != j && A[i, j] < 0.0]
+            avg_off = abs(mean(offdiag_vals))
             A_simpl = zeros(n, n)
+
             for i in 1:n
                 for j in 1:n
                     if i == j
                         A_simpl[i, j] = 0.0
-                    else
-                        A_simpl[i, j] = avg_off
+                    elseif i != j && A[i, j] > 0.0
+                        A_simpl[i, j] = avg_off*0.3
+                    elseif i != j && A[i, j] < 0.0
+                        A_simpl[i, j] = -avg_off
                     end
                 end
             end
@@ -201,17 +205,30 @@ for n in species_scenarios
             prob_simpl = ODEProblem(full_model!, u0, tspan, p_simpl)
             sol_simpl = solve(prob_simpl, Tsit5(), reltol=1e-8, abstol=1e-8)
             B_eq_simpl = sol_simpl.u[end]
-            rt_simpl = simulate_press_perturbation(u0, p_simpl, tspan, t_perturb, delta; solver=Tsit5())
+
+            if true
+                fig = Figure(; size=(800, 600))
+                ax = Axis(fig[1, 1], xlabel="Time", ylabel="Abundance", title="Before a Perturbation Simplified Model")
+                # Plot time series for each species
+                for i in 1:n
+                    # Extract the time series for species i across all time steps.
+                    species_ts = sol_simpl[i, :]
+                    lines!(ax, sol_simpl.t, species_ts, label="Species $i")
+                end
+                display(fig)
+            end
+
+            rt_simpl = simulate_press_perturbation(u0, p_simpl, tspan, t_perturb, delta; solver=Tsit5(), plot=true)
             mean_rt_simpl = mean(skipmissing(rt_simpl))
-            
+
             #############################
             # Step 7: Abundance Distribution Metrics
             #############################
             fit_ln = fit(LogNormal, fixed_B)
-            mean_ln = exp(fit_ln.μ + (fit_ln.σ^2)/2)
-            var_ln = exp(2*fit_ln.μ + fit_ln.σ^2) * (exp(fit_ln.σ^2)-1)
+            mean_ln = exp(fit_ln.μ + (fit_ln.σ^2) / 2)
+            var_ln = exp(2 * fit_ln.μ + fit_ln.σ^2) * (exp(fit_ln.σ^2) - 1)
             RelVar = var_ln / mean_ln^2
-            
+
             #############################
             # Step 8: Emergent Network Parameters
             #############################
@@ -225,12 +242,12 @@ for n in species_scenarios
             else
                 γ_eff = 0.0
             end
-            
+
             #############################
             # Step 9: Predict Return Time Using the Emergent & Abundance Metrics
             #############################
             T_pred = predicted_return_time(φ, γ_eff, RelVar)
-            
+
             #############################
             # Save Metrics for the Current Iteration
             #############################
@@ -243,13 +260,14 @@ for n in species_scenarios
             @warn "Iteration skipped due to error" exception = e
         end
     end
-    results[n] = Dict(:persistence => persistence_arr,
-                      :return_full => rt_full_arr,
-                      :return_simpl => rt_simpl_arr,
-                      :return_pred => pred_rt_arr,
-                      :relvar => relvar_arr)
+    results_shit[n] = Dict(
+        :persistence => persistence_arr,
+        :return_full => rt_full_arr,
+        :return_simpl => rt_simpl_arr,
+        :return_pred => pred_rt_arr,
+        :relvar => relvar_arr
+    )
 end
-
 
 # ---------------------------
 # Plotting Results
@@ -267,28 +285,28 @@ function flatten_data(data_by_group)
 end
 
 # === Prepare data ===
-persistence_groups = [results[s][:persistence] for s in species_scenarios]
-return_full_groups = [results[s][:return_full] for s in species_scenarios]
-return_simpl_groups = [results[s][:return_simpl] for s in species_scenarios]
-return_pred_groups = [results[s][:return_pred] for s in species_scenarios]
-relvar_groups = [results[s][:relvar] for s in species_scenarios]
+persistence_groups = [results_shit[s][:persistence] for s in species_scenarios]
+return_full_groups = [results_shit[s][:return_full] for s in species_scenarios]
+return_simpl_groups = [results_shit[s][:return_simpl] for s in species_scenarios]
+return_pred_groups = [results_shit[s][:return_pred] for s in species_scenarios]
+relvar_groups = [results_shit[s][:relvar] for s in species_scenarios]
 # === Plot 1: Persistence ===
 begin
     fig1 = Figure()
-    ax1 = Axis(fig1[1, 1], xlabel = "Species Count", ylabel = "Persistence (φ)", 
-            title = "Persistence Across Scenarios", xticks = (category_ids, category_labels))
+    ax1 = Axis(fig1[1, 1], xlabel="Species Count", ylabel="Persistence (φ)",
+        title="Persistence Across Scenarios", xticks=(category_ids, category_labels))
     cats, vals = flatten_data(persistence_groups)
     MK.boxplot!(ax1, cats, vals)
     display(fig1)
 end
 # === Plot 2: Return Times ===
 begin
-    fig2 = Figure(resolution = (1000, 300))
+    fig2 = Figure(resolution=(1000, 300))
 
     # Full Model
     ax2 = Axis(
-        fig2[1, 1], xlabel = "Species Count", ylabel = "Mean Return Time", 
-        title = "Return Time (Full Model)", xticks = (category_ids, category_labels),
+        fig2[1, 1], xlabel="Species Count", ylabel="Mean Return Time",
+        title="Return Time (Full Model)", xticks=(category_ids, category_labels),
         # yticks = 0:0.1:1.0
     )
     cats, vals = flatten_data(return_full_groups)
@@ -296,8 +314,8 @@ begin
 
     # Simplified Model
     ax3 = Axis(
-        fig2[1, 2], xlabel = "Species Count", ylabel = "Mean Return Time", 
-        title = "Return Time (Simplified Model)", xticks = (category_ids, category_labels),
+        fig2[1, 2], xlabel="Species Count", ylabel="Mean Return Time",
+        title="Return Time (Simplified Model)", xticks=(category_ids, category_labels),
         # yticks = 0:0.1:1.0
     )
     cats, vals = flatten_data(return_simpl_groups)
@@ -305,8 +323,8 @@ begin
 
     # Predicted
     ax4 = Axis(
-        fig2[1, 3], xlabel = "Species Count", ylabel = "Predicted Return Time", 
-        title = "Predicted Return Time", xticks = (category_ids, category_labels),
+        fig2[1, 3], xlabel="Species Count", ylabel="Predicted Return Time",
+        title="Predicted Return Time", xticks=(category_ids, category_labels),
         # yticks = 0:0.1:1.0
     )
     cats, vals = flatten_data(return_pred_groups)
@@ -315,8 +333,18 @@ begin
     display(fig2)
 end
 
+# === Plot 4: Relative Variance ===
 begin
-    fig2 = Figure(resolution = (1000, 300))
+    fig3 = Figure()
+    ax5 = Axis(fig3[1, 1], xlabel="Species Count", ylabel="Relative Variance",
+        title="RelVar of Fixed Abundances", xticks=(category_ids, category_labels))
+    cats, vals = flatten_data(relvar_groups)
+    MK.boxplot!(ax5, cats, vals)
+    display(fig3)
+end
+
+begin
+    fig2 = Figure(resolution=(1000, 300))
 
     function mean_sd_plot!(ax, data_groups, title)
         means = [mean(g) for g in data_groups]
@@ -336,92 +364,16 @@ begin
     end
 
     # Full Model
-    ax2 = Axis(fig2[1, 1], yticks= 0:0.1:3.0)
+    ax2 = Axis(fig2[1, 1])
     mean_sd_plot!(ax2, return_full_groups, "Return Time (Full Model)")
 
     # Simplified Model
-    ax3 = Axis(fig2[1, 2], yticks= 0:0.1:3.0)
+    ax3 = Axis(fig2[1, 2])
     mean_sd_plot!(ax3, return_simpl_groups, "Return Time (Simplified Model)")
 
     # Predicted Return Time
-    ax4 = Axis(fig2[1, 3], yticks= 0:0.1:3.0)
+    ax4 = Axis(fig2[1, 3])
     mean_sd_plot!(ax4, return_pred_groups, "Predicted Return Time")
 
     display(fig2)
 end
-# === Plot 4: Relative Variance ===
-begin
-    fig3 = Figure()
-    ax5 = Axis(fig3[1, 1], xlabel = "Species Count", ylabel = "Relative Variance", 
-            title = "RelVar of Fixed Abundances", xticks = (category_ids, category_labels))
-    cats, vals = flatten_data(relvar_groups)
-    MK.boxplot!(ax5, cats, vals)
-    display(fig3)
-end
-
-###############################################################################
-###############################################################################
-##################### CHECKING WHAT'S GOING ON ################################
-###############################################################################
-# ---------------------------
-# Set simulation parameters
-# ---------------------------
-n = 20                              # number of species
-Random.seed!(1234)
-
-# Define intrinsic growth rates (r) uniformly distributed between 1 and 2.
-r = rand(Uniform(1.0, 2.0), n)
-
-# Construct an interaction matrix A.
-# Off-diagonals are set to a small positive value (e.g. 0.1) and self-regulation on the diagonal is -1.
-A = fill(0.1, n, n)
-for i in 1:n
-    A[i,i] = -1.0
-end
-
-# Initial abundances chosen uniformly between 0.5 and 1.5.
-u0 = rand(Uniform(0.5, 1.5), n)
-
-# ---------------------------
-# Simulate pre-perturbation dynamics (from t = 0 to t = 50)
-# ---------------------------
-tspan1 = (0.0, 50.0)
-p = (r, A)
-prob1 = ODEProblem(full_model!, u0, tspan1, p)
-sol1 = solve(prob1, Tsit5(), reltol=1e-8, abstol=1e-8)
-
-# ---------------------------
-# Apply the perturbation (press-like perturbation): 
-# Reduce abundances instantaneously by a fixed factor at t = 50.
-# ---------------------------
-perturb_factor = 0.5  # 50% reduction
-u_perturbed = sol1.u[end] .* perturb_factor
-
-# ---------------------------
-# Simulate post-perturbation dynamics (from t = 50 to t = 100)
-# ---------------------------
-tspan2 = (50.0, 100.0)
-prob2 = ODEProblem(full_model!, u_perturbed, tspan2, p)
-sol2 = solve(prob2, Tsit5(), reltol=1e-8, abstol=1e-8)
-
-# ---------------------------
-# Combine the solutions: time series before and after the perturbation.
-# ---------------------------
-# Remove duplicate time point (t = 50) when concatenating.
-t_combined = vcat(sol1.t, sol2.t[2:end])
-B_combined = vcat(sol1.u, sol2.u[2:end])
-
-# ---------------------------
-# Plot the response of the community using GLMakie.
-# ---------------------------
-fig = Figure(resolution = (800,600))
-ax = Axis(fig[1,1], xlabel="Time", ylabel="Abundance", title="Community Response to a Perturbation")
-# Plot time series for each species
-for i in 1:n
-    # Extract the time series for species i across all time steps.
-    species_ts = [B[i] for B in B_combined]
-    lines!(ax, t_combined, species_ts, label="Species $i")
-end
-axislegend(ax; position = :rb)  # Optional legend at right-bottom
-fig
-
