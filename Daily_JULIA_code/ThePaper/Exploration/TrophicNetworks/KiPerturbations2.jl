@@ -1,7 +1,6 @@
 # -----------------------------
 # Function Definitions
 # -----------------------------
-
 # Full GLV predator–prey model.
 function full_model!(du, B, p, t)
     r, A = p
@@ -286,6 +285,7 @@ begin
 
     display(fig1)
 end
+
 begin
     # Example 2: Boxplots of Compound Errors by Connectance (grouped by δ)
     unique_delta = sort(unique(df.delta))
