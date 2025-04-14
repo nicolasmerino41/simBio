@@ -92,7 +92,7 @@ end
 #############################
 # Pipeline Parameters
 #############################
-species_scenarios = [10, 20, 30]
+species_scenarios = [20, 30, 50]
 Niter = 100
 tspan = (0.0, 100.0)
 t_perturb = 50.0
@@ -212,7 +212,6 @@ df = DataFrame(sim_results)
 
 # Display the first few rows.
 println(first(df, 10))
-
 #############################
 # Plotting: Return Time vs. Species Count for Each Perturbation and for Each Metric (Full, Simplified, Predicted)
 #############################
@@ -239,7 +238,7 @@ begin
         conn_vals = df_d.connectance
         
         conn_cat_dodge = Dict{Float64, Int64}()
-        for (i, conn) in enumerate(unique(vals))
+        for (i, conn) in enumerate(unique(conn_vals))
             conn_cat_dodge[conn] = i
         end
         conn_cat_dodge = [conn_cat_dodge[c] for c in conn_vals]
