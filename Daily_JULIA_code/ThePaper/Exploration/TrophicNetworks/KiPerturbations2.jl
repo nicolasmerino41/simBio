@@ -289,12 +289,12 @@ end
 begin
     # Example 2: Boxplots of Compound Errors by Connectance (grouped by δ)
     unique_delta = sort(unique(df.delta))
-    fig2 = Figure(resolution = (400*length(unique_delta), 600))
-    for (col_idx, δ) in enumerate(unique_delta)
+    fig2 = Figure(; size = (400*length(unique_delta), 600))
+    for (col_idx, δ) in enumerate(unique_delta[3])
         df_d = filter(row -> row.delta == δ, df)
         ax = Axis(fig2[1, col_idx], xlabel = "Connectance", ylabel = "Compound Err (Basic)", 
             title = "δ = $(δ)")
-        boxplot!(ax, df_d.connectance, df_d.compound_err_basic; show_notch=true)
+        MK.boxplot!(ax, df_d.connectance, df_d.compound_err_basic; show_notch=true)
     end
     display(fig2)
 end
