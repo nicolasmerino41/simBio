@@ -1,0 +1,152 @@
+---
+title: "NewFramework10"
+author: "Nico, Núria & Jeff"
+date: "2025-04-15"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Model Simplification and Stability Analysis of Trophic Communities
+
+In this document we describe the process of transitioning from a fully‐detailed consumer–resource model to a simplified, mean‐field scenario while comparing stability predictions. We start by writing out the detailed equations, then linearize them via the Jacobian, and finally outline a ladder of simplifications that allow us to assess how much structural detail is needed to reproduce similar stability behavior.
+
+## Fully Detailed Consumer Dynamics
+
+For consumers, the dynamics can be written as
+\[
+\frac{1}{B_i}\frac{dB_i}{dt} \;=\; d_i\,\Biggl[ -\frac{m_i}{d_i} - B_i + \sum_{j \in \text{preys of } i} \frac{d_j\,\varepsilon\,a_{ij}\,B_j}{d_j} - \sum_{j \in \text{predators of } i} \frac{a_{ji}\,B_j}{d_j}\Biggr],
+\]
+
+where
+
+- \(B_i\) is the biomass of consumer \(i\),
+
+- \(d_i\) is a species‐specific scaling factor,
+
+- \(m_i\) is the mortality, and
+
+- \(a_{ij}\) are the raw interaction coefficients.
+
+We introduce the following definitions:
+\[
+K_i = \frac{r_i}{d_i} \quad \text{(Carrying Capacity)},
+\]
+\[
+\xi_i = \frac{m_i}{d_i} \quad \text{(Mortality Threshold)},
+\]
+\[
+\varepsilon = \epsilon\,\frac{d_j}{d_i} \quad \text{(Conversion Efficiency)},
+\]
+and define the scaled loss interaction as
+\[
+A_{ji} = \frac{a_{ji}}{d_i}\,.
+\]
+
+Thus, the consumer dynamics can be rewritten as
+\[
+\frac{1}{B_i}\frac{dB_i}{dt} \;=\; \frac{m_i}{\xi_i}\Biggl[ -\xi_i - B_i + \sum_{j \in \text{preys of } i} \varepsilon\,A_{ij}\,B_j - \sum_{j \in \text{predators of } i} A_{ji}\,B_j \Biggr] \,. 
+\]
+
+## Calibration to Fix Equilibrium Abundances
+
+In a mean‐field scenario, to force the model to reproduce observed equilibrium abundances \(B_i^* \), we determine the effective threshold \(\xi_i^*\) such that
+\[
+\xi_i^* \;=\; B_i^* \;+\; \varepsilon\,A\,B_{\text{preys of } i} \;-\; A\,B_{\text{predators of } i} \,. 
+\]
+
+This balance ensures that the net growth of each consumer is zero at the prescribed equilibrium.
+
+## Linearization and the Jacobian
+
+For local stability analysis, we linearize the dynamics around the equilibrium \(B_i^*\). The Jacobian is given by
+\[
+J_{ij} \;=\; d_i\,B_i^*\Bigl[-\delta_{ij} + \varepsilon\,A_{ij}\text{ (for preys)} - A_{ji}\text{ (for predators)}\Bigr]\,,
+\]
+where \(\delta_{ij}\) is the Kronecker delta.
+
+Since \(d_i = \frac{m_i}{\xi_i}\) and we define the relative yield as
+\[
+\psi_i = \frac{B_i^*}{\xi_i}\,,
+\]
+the Jacobian can also be expressed as
+\[
+J_{ij} \;=\; m_i\,\psi_i \left[-\delta_{ij} + \varepsilon\,A_{ij}\; -\; A_{ji}\right]\,.
+\]
+
+This form shows that the local stability depends on the mortality \(m_i\), the scaled abundance \(\psi_i\), and the net interaction effects.
+
+## Ladder of Simplification
+
+The next step is to gradually simplify the model by reducing heterogeneity and structural detail:
+
+1. **Full Model:**  
+   Every consumer has its own specific parameters (\(\varepsilon_i\)) and every interaction \(A_{ij}\) is individually specified.
+
+2. **Species-Level Homogenization:**  
+   Assume that for each consumer \(i\), the conversion efficiency \(\varepsilon\) is identical for all its preys. This step reduces within-species heterogeneity.
+
+3. **Mean-Field Approximation:**  
+   Replace the interaction coefficients \(A_{ij}\) by a community average. In this case, all consumers share the same effective interaction values. Additional quantities such as in- and out-degrees, which now become the only differentiating factors, are used to compute \(\xi_i^*\).
+
+4. **Assessing Stability via Perturbations:**  
+   We study the sensitivity of the community to press perturbations. If a press perturbation leads to a perturbation in \(B_i\) expressed by
+   \[
+   \delta B_i \;=\; \sum_j V_{ij}\,\delta \xi_j\,,
+   \]
+   where \(V_{ij}\) is the sensitivity matrix, then we can compare how the fully detailed model versus the simplified versions predict the response of the community.
+
+## Simulation-Oriented Compound Stability Metrics
+
+To evaluate our analytical predictions against simulations, we compute several simulation-oriented stability metrics:
+
+- **Return Time (\(T_R\)):** The time it takes for each species to recover to within 10% of its new equilibrium after a press perturbation.
+
+- **Maximum Overshoot (\(M_{OS}\)):** The maximal relative deviation from equilibrium observed during the recovery.
+
+- **Integrated Recovery Error (\(I_{RE}\)):** The average relative error from equilibrium over the recovery period.
+
+For each simulation run, we can define a relative error for return time as
+\[
+\text{err}_{T} \;=\; \frac{|T_{\text{sim}} - T_{\text{pred}}|}{\frac{T_{\text{sim}} + T_{\text{pred}}}{2}}\,,
+\]
+and for overshoot and recovery error we assume the ideal is zero so that their observed values are directly the errors. A compound error can then be defined by averaging these three:
+\[
+\text{Compound Error} \;=\; \frac{\text{err}_{T} + \text{err}_{OS} + \text{err}_{I_{RE}}}{3}\,.
+\]
+
+We can compute these errors for a basic prediction as well as for an extended prediction that incorporates additional structural information (e.g., the coefficient of variation of the degree).
+
+## Summary
+
+Starting from the fully detailed model, we:
+
+- Define the consumer dynamics with species-specific parameters.
+
+- Calibrate the model to force fixed equilibrium abundances.
+
+- Linearize the dynamics to obtain a Jacobian representation.
+
+- Progressively simplify the model (homogenize efficiencies and interactions) until a mean-field scenario is reached.
+
+- Evaluate the model’s stability by performing press perturbation experiments and computing simulation-oriented metrics (return time, overshoot, integrated recovery error).
+
+- Assess the quality of the analytical prediction by comparing the simulation outcomes with both a basic and an extended prediction model, using a compound error metric.
+
+This ladder of simplification allows us to quantify how much structural detail is necessary to accurately predict community stability. As you remove detailed information (by averaging interactions, homogenizing efficiencies, etc.), you can track the change in the compound stability error to understand which aspects of network structure most influence the dynamics.
