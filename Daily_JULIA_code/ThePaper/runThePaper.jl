@@ -1,5 +1,5 @@
 begin
-    PC = "MM-1"
+    PC = "nicol"
     using Pkg
     Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))

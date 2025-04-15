@@ -82,8 +82,8 @@ end
 # ---------------------------
 # Pipeline Parameters
 # ---------------------------
-species_scenarios = [10, 20, 30]   # Different number of species
-Niter = 1                      # Iterations per scenario
+species_scenarios = [10, 30, 50]   # Different number of species
+Niter = 100                      # Iterations per scenario
 tspan = (0.0, 100.0)               # Total integration time
 t_perturb = 50.0                   # Time of press perturbation
 delta = 0.2                        # Relative reduction in carrying capacity (20% reduction)
@@ -94,8 +94,10 @@ results_shit = Dict{Int,Dict{Symbol,Vector{Float64}}}()
 # ---------------------------
 # Main Loop: Over Species Scenarios and Iterations
 # ---------------------------
-# lock_result = ReentrantLock()
-for n in species_scenarios
+# A lock for pushing safely from multiple threads.
+results_lock = ReentrantLock()
+
+Threads.@threads for n in species_scenarios
     persistence_arr = Float64[]
     rt_full_arr = Float64[]
     rt_simpl_arr = Float64[]
@@ -166,7 +168,7 @@ for n in species_scenarios
             φ = sum(B_eq_full .> thresh) / n   # With fixed abundances, φ should be 1 (or near 1)
             # println("φ = $φ")
 
-            if true
+            if false
                 fig = Figure(; size=(800, 600))
                 ax = Axis(fig[1, 1], xlabel="Time", ylabel="Abundance", title="Before a Perturbation Full Model")
                 # Plot time series for each species
@@ -180,7 +182,7 @@ for n in species_scenarios
             #############################
             # Step 5: Press Perturbation via Carrying Capacity Change (Full Model)
             #############################
-            rt_full = simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit5(), plot=true)
+            rt_full = simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit5(), plot=false)
             mean_rt_full = mean(skipmissing(rt_full))
 
             #############################
@@ -206,7 +208,7 @@ for n in species_scenarios
             sol_simpl = solve(prob_simpl, Tsit5(), reltol=1e-8, abstol=1e-8)
             B_eq_simpl = sol_simpl.u[end]
 
-            if true
+            if false
                 fig = Figure(; size=(800, 600))
                 ax = Axis(fig[1, 1], xlabel="Time", ylabel="Abundance", title="Before a Perturbation Simplified Model")
                 # Plot time series for each species
@@ -218,7 +220,7 @@ for n in species_scenarios
                 display(fig)
             end
 
-            rt_simpl = simulate_press_perturbation(u0, p_simpl, tspan, t_perturb, delta; solver=Tsit5(), plot=true)
+            rt_simpl = simulate_press_perturbation(u0, p_simpl, tspan, t_perturb, delta; solver=Tsit5(), plot=false)
             mean_rt_simpl = mean(skipmissing(rt_simpl))
 
             #############################
@@ -251,11 +253,14 @@ for n in species_scenarios
             #############################
             # Save Metrics for the Current Iteration
             #############################
-            push!(persistence_arr, φ)
-            push!(rt_full_arr, mean_rt_full)
-            push!(rt_simpl_arr, mean_rt_simpl)
-            push!(pred_rt_arr, T_pred)
-            push!(relvar_arr, RelVar)
+            lock(results_lock) do
+                # Push results to the lock-protected array
+                push!(persistence_arr, φ)
+                push!(rt_full_arr, mean_rt_full)
+                push!(rt_simpl_arr, mean_rt_simpl)
+                push!(pred_rt_arr, T_pred)
+                push!(relvar_arr, RelVar)
+            end
         catch e
             @warn "Iteration skipped due to error" exception = e
         end
