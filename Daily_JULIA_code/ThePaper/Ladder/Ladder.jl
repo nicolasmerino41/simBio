@@ -65,7 +65,7 @@ function simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit
     end
     
     if plot
-        fig = Figure(resolution = (800,600))
+        fig = Figure(; size = (800,600))
         ax = Axis(fig[1,1], xlabel="Time", ylabel="Abundance", title="Community Response")
         for i in 1:n
             # Plot time series for species i
@@ -113,7 +113,6 @@ function predicted_return_time(phi, gamma_eff, relVar)
     return denom > 0 ? 1 / denom : Inf
 end
 
-
 #############################
 # Pipeline Parameters
 #############################
@@ -138,7 +137,6 @@ results_lock = ReentrantLock()
 #############################
 # Main Simulation Loop (Threads)
 #############################
-
 for n in species_scenarios
     for conn in connectance_list
         for delta in delta_list
@@ -192,7 +190,7 @@ for n in species_scenarios
                     phi = sum(B_eq_full .> thresh) / n   # Persistence metric
                     
                     # Step 5: Press perturbation simulation (full model).
-                    rt_full = simulate_press_perturbation(u0, p_model, tspan, t_perturb, delta; solver=Tsit5(), plot=false)
+                    rt_full = simulate_press_perturbation(u0, p_model, tspan, t_perturb, delta; solver=Tsit5(), plot=true)
                     mean_rt_full = mean(skipmissing(rt_full))
                     
                     # Step 6: Simplified model simulation.
