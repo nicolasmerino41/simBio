@@ -30,9 +30,9 @@ In this document we describe the process of transitioning from a fully‐detaile
 ## Fully Detailed Consumer Dynamics
 
 For consumers, the dynamics can be written as
-\[
-\frac{1}{B_i}\frac{dB_i}{dt} \;=\; d_i\,\Biggl[ -\frac{m_i}{d_i} - B_i + \sum_{j \in \text{preys of } i} \frac{d_j\,\varepsilon\,a_{ij}\,B_j}{d_j} - \sum_{j \in \text{predators of } i} \frac{a_{ji}\,B_j}{d_j}\Biggr],
-\]
+$$
+\frac{1}{B_i}\frac{dB_i}{dt} \;=\; d_i\,\Biggl[ -\frac{m_i}{d_i} - B_i + \sum_{j \in \text{preys of } i} \frac{d_j\,\varepsilon\,a_{ij}\,B_j}{d_j d_i} - \sum_{j \in \text{predators of } i} \frac{a_{ji}\,B_j}{d_i}\Biggr],
+$$
 
 where
 
@@ -44,12 +44,28 @@ where
 
 - \(a_{ij}\) are the raw interaction coefficients.
 
+For resources, the dynamics can be written as
+$$
+\frac{1}{B_i}\frac{dB_i}{dt} \;=\; d_i\,\Biggl[ -\frac{r_i}{d_i} - B_i - \sum_{j \in \text{predators of } i} \frac{a_{ji}}{d_i}B_j\Biggr],
+$$
+
+where
+
+- \(B_i\) is the biomass of consumer \(i\),
+
+- \(d_i\) is a species‐specific scaling factor,
+
+- \(r_i\) is growth rate, and
+
+- \(a_{ij}\) are the raw interaction coefficients.
+
+
 We introduce the following definitions:
 \[
 K_i = \frac{r_i}{d_i} \quad \text{(Carrying Capacity)},
 \]
 \[
-\xi_i = \frac{m_i}{d_i} \quad \text{(Mortality Threshold)},
+\xi_i = \frac{m_i}{d_i} \quad \text{(Overpopulation Threshold)},
 \]
 \[
 \varepsilon = \epsilon\,\frac{d_j}{d_i} \quad \text{(Conversion Efficiency)},
@@ -123,9 +139,9 @@ To evaluate our analytical predictions against simulations, we compute several s
 - **Integrated Recovery Error (\(I_{RE}\)):** The average relative error from equilibrium over the recovery period.
 
 For each simulation run, we can define a relative error for return time as
-\[
+$$
 \text{err}_{T} \;=\; \frac{|T_{\text{sim}} - T_{\text{pred}}|}{\frac{T_{\text{sim}} + T_{\text{pred}}}{2}}\,,
-\]
+$$
 and for overshoot and recovery error we assume the ideal is zero so that their observed values are directly the errors. A compound error can then be defined by averaging these three:
 \[
 \text{Compound Error} \;=\; \frac{\text{err}_{T} + \text{err}_{OS} + \text{err}_{I_{RE}}}{3}\,.
