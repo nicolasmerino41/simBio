@@ -89,22 +89,31 @@ In a mean‐field scenario, to force the model to reproduce observed equilibrium
 
 This balance ensures that the net growth of each consumer is zero at the prescribed equilibrium.
 
+## Calibration for Resource Equilibrium
+
+For each resource \(i\), we enforce the equilibrium by setting its per‐capita growth to zero:
+$$
+0 \;=\; d_i\Bigl(\tfrac{r_i}{d_i} - B_i^* - \sum_{j\in\mathrm{predators}(i)} A_{ji}\,B_j^*\Bigr)
+\quad\Longrightarrow\quad
+r_i^* \;=\; d_i\Bigl(B_i^* + \sum_{j\in\mathrm{predators}(i)} A_{ji}\,B_j^*\Bigr).
+$$
+
 ## Linearization and the Jacobian
 
 For local stability analysis, we linearize the dynamics around the equilibrium \(B_i^*\). The Jacobian is given by
-\[
+$$
 J_{ij} \;=\; d_i\,B_i^*\Bigl[-\delta_{ij} + \varepsilon\,A_{ij}\text{ (for preys)} - A_{ji}\text{ (for predators)}\Bigr]\,,
-\]
+$$
 where \(\delta_{ij}\) is the Kronecker delta.
 
 Since \(d_i = \frac{m_i}{\xi_i}\) and we define the relative yield as
-\[
+$$
 \psi_i = \frac{B_i^*}{\xi_i}\,,
-\]
+$$
 the Jacobian can also be expressed as
-\[
+$$
 J_{ij} \;=\; m_i\,\psi_i \left[-\delta_{ij} + \varepsilon\,A_{ij}\; -\; A_{ji}\right]\,.
-\]
+$$
 
 This form shows that the local stability depends on the mortality \(m_i\), the scaled abundance \(\psi_i\), and the net interaction effects.
 
@@ -123,9 +132,9 @@ The next step is to gradually simplify the model by reducing heterogeneity and s
 
 4. **Assessing Stability via Perturbations:**  
    We study the sensitivity of the community to press perturbations. If a press perturbation leads to a perturbation in \(B_i\) expressed by
-   \[
+   $$
    \delta B_i \;=\; \sum_j V_{ij}\,\delta \xi_j\,,
-   \]
+   $$
    where \(V_{ij}\) is the sensitivity matrix, then we can compare how the fully detailed model versus the simplified versions predict the response of the community.
 
 ## Simulation-Oriented Compound Stability Metrics
