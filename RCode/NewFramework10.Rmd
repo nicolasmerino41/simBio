@@ -84,7 +84,7 @@ Thus, the consumer dynamics can be rewritten as
 
 In a mean‐field scenario, to force the model to reproduce observed equilibrium abundances \(B_i^* \), we determine the effective threshold \(\xi_i^*\) such that
 \[
-\xi_i^* \;=\; B_i^* \;+\; \varepsilon\,A\,B_{\text{preys of } i} \;-\; A\,B_{\text{predators of } i} \,. 
+\xi_i^* \;=\; -B_i^* \;+\; \varepsilon\,A\,B_{\text{preys of } i} \;-\; A\,B_{\text{predators of } i} \,. 
 \]
 
 This balance ensures that the net growth of each consumer is zero at the prescribed equilibrium.
