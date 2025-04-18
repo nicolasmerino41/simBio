@@ -23,7 +23,7 @@ function trophic_ode!(du, u, p, t)
             pred_sum += A[i, j] * u[j]
         end
         # Resource i dynamics
-        du[i] = u[i] * d_res[i] * ( (r_res[i] / d_res[i]) - u[i] - pred_sum )
+        du[i] = u[i] * d_res[i] * ( (r_res[i] / d_res[i]) - u[i] + pred_sum )
     end
 
     # Consumers dynamics (indices R+1 to R+C)
@@ -41,12 +41,12 @@ function trophic_ode!(du, u, p, t)
 
         # Losses to predators (only A_used[i,j]<0)
         sum_pred = sum(
-            abs(A[i,j]) * u[j]
+            A[i,j] * u[j]
             for j in 1:R+C if A[i,j] < 0.0;
             init = 0.0
         )
         
-        du[i] = u[i] * (m_cons[k] / xi_cons[k]) * ( -xi_cons[k] - u[i] + sum_prey - sum_pred )
+        du[i] = u[i] * (m_cons[k] / xi_cons[k]) * ( -xi_cons[k] - u[i] + sum_prey + sum_pred )
     end
 end
 
@@ -100,12 +100,12 @@ function calibrate_params(
 
             # Losses to predators (only A_used[i,j]<0)
             pred_sum = sum(
-                abs(A_used[i,j]) * B_eq[j]
+                A_used[i,j] * B_eq[j]
                 for j in 1:total if A_used[i,j] < 0.0;
                 init = 0.0
             )
 
-            ξ = -C_eq[k] + prey_sum - pred_sum
+            ξ = -C_eq[k] + prey_sum + pred_sum
             new_xi_cons[k] = ξ > 0 ? ξ : NaN
         end
 
@@ -113,7 +113,7 @@ function calibrate_params(
         for i in 1:R
             # Consumer rows are R+1:total; losses where those entries <0
             pred_sum = sum(
-                abs(A_used[i,j]) * B_eq[j]
+                A_used[i,j] * B_eq[j]
                 for j in 1:R+C if A_used[i,j] < 0.0;
                 init = 0.0
             )
