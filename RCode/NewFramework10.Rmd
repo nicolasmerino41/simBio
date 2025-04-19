@@ -59,7 +59,6 @@ where
 
 - \(a_{ij}\) are the raw interaction coefficients.
 
-
 We introduce the following definitions:
 \[
 K_i = \frac{r_i}{d_i} \quad \text{(Carrying Capacity)},
