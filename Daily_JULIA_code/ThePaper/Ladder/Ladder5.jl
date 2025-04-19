@@ -1,22 +1,22 @@
 # 1) Grab the column‐names (they are Strings)
-rt_cols = filter(n -> startswith(n, "return_time_"), names(new_results2))
-re_cols = filter(n -> startswith(n, "resilience_"),   names(new_results2))
+rt_cols = filter(n -> startswith(n, "return_time_"), names(new_results4))
+re_cols = filter(n -> startswith(n, "resilience_"),   names(new_results4))
 @assert length(rt_cols) == length(re_cols)
 
 # 2) Build the “long” DataFrame
-n    = nrow(new_results2)
+n    = nrow(new_results4)
 long = DataFrame(step=String[], return_time=Float64[], resilience=Float64[])
 
 for rt_col in rt_cols
     # derive the matching resilience column
     s    = replace(rt_col, "return_time_" => "")          # e.g. "Full", "S1", …
     re_col = "resilience_$s"
-    @assert re_col in names(new_results2)
+    @assert re_col in names(new_results4)
 
     df_temp = DataFrame(
       step        = fill(s, n),
-      return_time = new_results2[!, rt_col],
-      resilience  = new_results2[!, re_col],
+      return_time = new_results4[!, rt_col],
+      resilience  = new_results4[!, re_col],
     )
     append!(long, df_temp)
 end
@@ -75,10 +75,12 @@ end
 ############################# RETURN TIMES ##################################
 #############################################################################
 #############################################################################
-for r_val in R_vals, c_val in C_vals
-    # Filter the DataFrame for the specific combination of R and C
-    df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results2)
-
+# for r_val in R_vals, c_val in C_vals
+#     # Filter the DataFrame for the specific combination of R and C
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+for S_val in S_vals
+    # Filter the DataFrame for the specific combination of S
+    df_subset = filter(row -> row.species_count == S_val, new_results4)
     begin
         step_keys = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -89,8 +91,9 @@ for r_val in R_vals, c_val in C_vals
         ]
 
         full_rt = df_subset.return_time_Full
-        fig = Figure(; size = (1400, 1000))
-        Label(fig[0, :], "RETURN TIMES (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        fig = Figure(; size = (1400, 700))
+        # Label(fig[0, :], "RETURN TIMES (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        Label(fig[0, :], "RETURN TIMES (S = $S_val)", fontsize=24, tellwidth=false)
 
         for (i, s) in enumerate(step_keys)
             row, col = get_grid_position(i)
@@ -125,10 +128,12 @@ end
 ############################ RESILIENCE #####################################
 #############################################################################
 #############################################################################
-for r_val in R_vals, c_val in C_vals
-    # Filter the DataFrame for the specific combination of R and C
-    df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results2)
-
+# for r_val in R_vals, c_val in C_vals
+#     # Filter the DataFrame for the specific combination of R and C
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+for S_val in S_vals
+    # Filter the DataFrame for the specific combination of S
+    df_subset = filter(row -> row.species_count == S_val, new_results4)
     begin
         step_keys = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -139,9 +144,9 @@ for r_val in R_vals, c_val in C_vals
         ]
 
         full_res = df_subset.resilience_Full
-        fig = Figure(; size = (1400, 1000))
-        Label(fig[0, :], "RESILIENCE (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
-
+        fig = Figure(; size = (1400, 700))
+        # Label(fig[0, :], "RESILIENCE (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        Label(fig[0, :], "RESILIENCE (S = $S_val)", fontsize=24, tellwidth=false)
         for (i, s) in enumerate(step_keys)
             row, col = get_grid_position(i)
 
@@ -173,10 +178,12 @@ end
 ########################### REACTIVITY ######################################
 #############################################################################
 #############################################################################
-for r_val in R_vals, c_val in C_vals
-    # Filter the DataFrame for the specific combination of R and C
-    df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results2)
-
+# for r_val in R_vals, c_val in C_vals
+#     # Filter the DataFrame for the specific combination of R and C
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+for S_val in S_vals
+    # Filter the DataFrame for the specific combination of S
+    df_subset = filter(row -> row.species_count == S_val, new_results4)
     begin
         step_keys = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -187,8 +194,9 @@ for r_val in R_vals, c_val in C_vals
         ]
 
         full_rct = df_subset.reactivity_Full
-        fig = Figure(; size = (1400, 1000))
-        Label(fig[0, :], "REACTIVITY (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        fig = Figure(; size = (1400, 700))
+        # Label(fig[0, :], "REACTIVITY (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        Label(fig[0, :], "REACTIVITY (S = $S_val)", fontsize=24, tellwidth=false)
 
         for (i, s) in enumerate(step_keys)
             row, col = get_grid_position(i)
@@ -221,10 +229,12 @@ end
 ############################ PERSISTENCE ####################################
 #############################################################################
 #############################################################################
-for r_val in R_vals, c_val in C_vals
-    # Filter the DataFrame for the specific combination of R and C
-    df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results2)
-
+# for r_val in R_vals, c_val in C_vals
+#     # Filter the DataFrame for the specific combination of R and C
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+for S_val in S_vals
+    # Filter the DataFrame for the specific combination of S
+    df_subset = filter(row -> row.species_count == S_val, new_results4)
     begin
         step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -246,8 +256,9 @@ for r_val in R_vals, c_val in C_vals
         ]
 
         full_p = df_subset.after_persistence_Full
-        fig = Figure(; size = (1400, 1000))
-        Label(fig[0, :], "PERSISTENCE (after perturbation) (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        fig = Figure(; size = (1400, 700))
+        # Label(fig[0, :], "PERSISTENCE (after perturbation) (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        Label(fig[0, :], "PERSISTENCE (after perturbation) (S = $S_val)", fontsize=24, tellwidth=false)
 
         for (i, s) in enumerate(step_keys)
             row, col = get_grid_position(i)
@@ -280,9 +291,12 @@ end
 ######################## SENSITIVITY CORRELATION ############################
 #############################################################################
 #############################################################################
-for r_val in R_vals, c_val in C_vals
+# for r_val in R_vals, c_val in C_vals
+#     # Filter the DataFrame for the specific combination of R and C
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+for S_val in [10, 20, 30, 40]
     # Filter the DataFrame for the specific combination of R and C
-    df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results2)
+    df_subset = filter(row -> row.species_count == S_val, new_results4)
 
     begin
         step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
@@ -293,9 +307,9 @@ for r_val in R_vals, c_val in C_vals
             "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
         ]
 
-        fig = Figure(; size = (1400, 1000))
-        Label(fig[0, :], "SENSITIVITY CORRELATION (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
-
+        fig = Figure(; size = (1400, 700))
+        # Label(fig[0, :], "SENSITIVITY CORRELATION (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        Label(fig[0, :], "SENSITIVITY CORRELATION (S = $S_val)", fontsize=24, tellwidth=false)
         for (i, s) in enumerate(step_keys)
             row, col = get_grid_position(i)
 
