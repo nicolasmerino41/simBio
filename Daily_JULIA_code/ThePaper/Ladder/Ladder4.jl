@@ -1,3 +1,4 @@
+include("Ladder1.jl")
 """
     cp(R_eq, C_eq, p_calib)
 
@@ -78,9 +79,11 @@ function cp(R_eq::Vector{Float64},
     return new_xi_cons, new_r_res
 end
 
-# -----------------------------------------------------------
-# Main simulation pipeline
-# -----------------------------------------------------------
+################################################################################
+################################################################################
+######################### RUN PIPELINE #########################################
+################################################################################
+################################################################################
 function rp(
     R_vals, C_vals, conn_vals, delta_vals;
     ladder_steps=1:12,
@@ -352,9 +355,11 @@ function rp(
     return DataFrame(results)
 end
 
-# -----------------------------------------------------------
-# Ladder‐of‐simplification transforms
-# -----------------------------------------------------------
+##########################################################################
+##########################################################################
+################### Ladder‐of‐simplification transforms ##################
+##########################################################################
+##########################################################################
 function transform_for_ladder_step(step, A_adj, ε_full)
     total = size(A_adj,1)
 
@@ -460,7 +465,7 @@ function transform_for_ladder_step(step, A_adj, ε_full)
     end
 end
 
-begin
+if false
     # Specify parameter ranges:
     R_vals = [10, 20, 30, 40]            # e.g., try 4 and 6 resources
     C_vals = [5, 10, 15, 20]            # e.g., try 5 and 8 consumers
@@ -486,7 +491,8 @@ begin
         epsilon_mean = 0.2
     )
 end
-serialize("Daily_JULIA_Code/ThePaper/Ladder/new_results3.jls", new_results3)
+# serialize("Daily_JULIA_Code/ThePaper/Ladder/new_results3.jls", new_results3)
+new_results3 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/new_results3.jls")
 
 println("First 10 rows of simulation results:")
 println(first(df_results, 10))
