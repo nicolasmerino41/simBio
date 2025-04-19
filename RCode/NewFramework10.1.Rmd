@@ -1,0 +1,166 @@
+---
+title: "NewFramework10.1"
+author: "Nico, Núria & Jeff"
+date: "2025-04-19"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Model Framework and Analysis Pipeline
+
+We combine a fully‐detailed ODE trophic model, an extended ladder of simplifications, explicit structural heterogeneity, and an analytical sensitivity‐based validation.
+
+### 1. Fully Detailed Consumer–Resource Dynamics
+
+**Resources** (\(i=1,\dots,R\)):
+$$
+\frac{1}{B_i}\frac{dB_i}{dt}
+= d_i\Bigl[-\tfrac{r_i}{d_i} - B_i
+  + \sum_{j=R+1}^{R+C}A_{ij}\,B_j\Bigr].
+$$
+
+**Consumers** (\(i=R+1,\dots,R+C\)):
+$$
+\frac{1}{B_i}\frac{dB_i}{dt}
+= \frac{m_i}{\xi_i}\Bigl[-\xi_i - B_i
+  + \sum_{j=1}^{R+C}\varepsilon_{ij}\,A_{ij}\,B_j
+  - \sum_{j=1}^{R+C}A_{ji}\,B_j\Bigr].
+$$
+Here
+
+- \(d_i\): self-regulation,
+
+- \(r_i\): intrinsic growth (resources),
+
+- \(m_i\): mortality (consumers),
+
+- \(\xi_i=m_i/d_i\): overpopulation thresholds,
+
+- \(A_{ij}\): scaled interaction (\(>0\) if \(i\) eats \(j\)),
+
+- \(\varepsilon_{ij}\): conversion efficiencies.
+
+### 2. Equilibrium Calibration
+
+Prescribe equilibrium biomasses \(B_i^* \) by sampling separate basal vs. consumer distributions (allowing **trophic pyramids**).  Solve
+$$
+0 = d_i\Bigl(\tfrac{r_i}{d_i} - B_i^* - \sum_j A_{ij}B_j^*\Bigr),\quad
+0 = \frac{m_i}{\xi_i}\Bigl(-\xi_i - B_i^* + \sum_j\varepsilon_{ij}A_{ij}B_j^* - \sum_jA_{ji}B_j^*\Bigr)
+$$
+for \(\{r_i^* ,\xi_i^* \}\), yielding closed‐form thresholds and resource rates.
+
+### 3. Linearization and Sensitivity Matrix
+
+Linearize about \(B^*\) to obtain Jacobian
+$$
+J_{ij} = \frac{\partial}{\partial B_j}\Bigl(\dot B_i\Bigr)\Big|_{B^*}
+= m_i\psi_i\bigl[-\delta_{ij} + \varepsilon_{ij}A_{ij} - A_{ji}\bigr],
+\quad
+\psi_i = \frac{B_i^*}{\xi_i}.
+$$
+Define diagonal
+$$
+D_{ii} = 
+\begin{cases}
+\frac{m_i}{\xi_i}, & i>R,\\
+0, & i\le R,
+\end{cases}
+$$
+then the **press‐perturbation sensitivity matrix** is
+$$
+V = J^{-1}D,\qquad
+V_{ij} = \frac{\partial B_i}{\partial \xi_j}\Big|_{B^*}.
+$$
+A uniform small press \(\delta\xi\) on all thresholds predicts
+\(\delta B_{\rm ana}=V\,\mathbf1\,\delta\xi,\)
+to be compared with simulated
+\(\delta B_{\rm sim}=(B_{\rm post}-B^*)/\delta\xi.\)
+
+### 4. Extended Ladder of Simplifications (16 Steps)
+
+1. **Full** \((A,\varepsilon)\)  
+
+2. **Species‑homog** \(\varepsilon\) 
+
+3. **Global** \(\varepsilon\)  
+
+4. **Random** \(\varepsilon\)  
+
+5–8. **Mean‑A** × \{full, species, global, random \(\varepsilon\)\}  
+
+9–12. **Global \(\lvert A\rvert\)** × same \(\varepsilon\) variants  
+
+13–16. **Topology‑filtered** (degree‐CV, modularity, trophic‐variance, niche‐model)
+
+At each step \(s\):
+- Re‐calibrate \(\{B^*,r^*,\xi^*\}\),
+
+- Integrate ODE to extract **return time** \(T_R\), **overshoot**, **integrated recovery error**, **resilience**, **reactivity**,
+
+- Compute \(V_s\) and correlate its uniform‐press prediction with simulation.
+
+### 5. Structural Heterogeneity Metrics
+
+For each network \(A\) we record:
+
+- **Degree CV**: \(\mathrm{CV}(\{\text{prey‐counts per consumer}\})\),
+
+- **Trophic variance**: \(\mathrm{Var}(\{\text{shortest‐path lengths from basals}\})\),
+
+- **Modularity**: community‐structure score,
+
+- **Pyramid skew**: ratio of log‐normal \( \sigma  \) for resource vs consumer equilibrium draws.
+
+These metrics become predictors in post‑processing.
+
+### 6. Simulation‑Oriented Stability Metrics
+
+- **Return Time** \(T_R\),
+
+- **Maximum Overshoot** \(M_{OS}\),
+
+- **Integrated Recovery Error** \(I_{RE}\),
+
+- **Resilience** and **Reactivity**,
+
+- **Sensitivity correlation** \(\mathrm{corr}(\delta B_{\rm ana},\,\delta B_{\rm sim})\).
+
+### 7. Post‑Processing Pipeline
+
+1. **Combine** results into a long table with columns  
+   \(\{\text{step},T_R,\dots,\delta T_R,\dots,\mathrm{resilience},\mathrm{reactivity},\mathrm{sens\_corr},\mathrm{degree\_CV},\dots\}.\)
+   
+2. **Summarize** mean and distribution of \(\delta T_R,\delta\mathrm{Res},\delta\mathrm{Reac}\) by step.
+
+3. **Fit** regression models  
+   \(\delta T_R\sim1+\mathrm{step}+\mathrm{degree\_CV}+\dots\)  
+   and linear/quadratic trends in step index.
+   
+4. **Visualize**: line plots of mean relative error vs step, boxplots by step, coefficient tables.
+
+### 8. Outlook
+
+- **Sweep** over ecological realism: pyramid slopes, degree heterogeneity (niche vs ER), modularity.
+
+- **Mixed‐effects** to account for replication.
+
+- **Use** \(V\) to rank keystone species by \(\sum_i\lvert V_{ij}\rvert\).
+
+- **Assess** whether simplification accuracy generalizes across realistic network structures.
