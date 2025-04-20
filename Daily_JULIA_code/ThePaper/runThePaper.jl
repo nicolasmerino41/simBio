@@ -2,22 +2,39 @@ begin
     PC = "nicol"
     const EXTINCTION_THRESHOLD = 1e-6
     using Pkg
-    Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
+    Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\Daily_JULIA_code\\ThePaper"))
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
     meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
-    using ArchGDAL #, Shapefile, NCDatasets
-    using CSV, DataFrames, NaNMath
+    # using ArchGDAL #, Shapefile, NCDatasets
+    using CSV, DataFrames
     using NamedArrays, StaticArrays, OrderedCollections
-    using Rasters, RasterDataSources #, DimensionalData
-    using DynamicGrids, Dispersal
-    using Dates, Distributions, Serialization, StatsBase, JLD2, Random
+    # using Rasters, RasterDataSources #, DimensionalData
+    # using DynamicGrids, Dispersal
+    using Dates, Distributions, Serialization, StatsBase, Random #JLD2
     using ColorSchemes, Colors #Crayons, 
-    using Makie, CairoMakie # ImageMagick
+    using CairoMakie # ImageMagick
     using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
     # if end_true
     #     using DifferentialEquations # EcologicalNetworksDynamics, 
     # end
     # using Plots
-    const DG, MK, AG, RS, Disp, DF = DynamicGrids, Makie, ArchGDAL, Rasters, Dispersal, DataFrames
+    const MK, DF = Makie, DataFrames
     const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 end
+
+# Pkg.add("DifferentialEquations")
+# Pkg.add("DiffEqCallbacks")
+# Pkg.add("LinearAlgebra")
+# Pkg.add("Logging")
+# Pkg.add("ForwardDiff")
+# Pkg.add("CSV")
+# Pkg.add("DataFrames")
+# Pkg.add("NamedArrays")
+# Pkg.add("StaticArrays")
+# Pkg.add("OrderedCollections")
+# Pkg.add("Dates")
+# Pkg.add("Distributions")
+# Pkg.add("Serialization")
+# Pkg.add("StatsBase")
+# Pkg.add("Random")
+# Pkg.add("GLM")
