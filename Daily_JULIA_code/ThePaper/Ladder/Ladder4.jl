@@ -1,83 +1,4 @@
 include("Ladder1.jl")
-"""
-    cp(R_eq, C_eq, p_calib)
-
-Given:
-  - R_eq::Vector{Float64}: target resource biomasses (length R)
-  - C_eq::Vector{Float64}: target consumer biomasses (length C)
-  - p_calib = (R, C, m_cons, d_res, epsilon, A_used)
-
-where
-  * R, C        are numbers of resources/consumers,
-  * m_cons      is a length‑C vector of mortalities,
-  * d_res       is a length‑R vector of resource self‑damping,
-  * epsilon     is a (R+C)x(R+C) efficiency matrix,
-  * A_used      is the already‑weighted interaction matrix (positive for “i eats j”, negative for “j eats i”).
-
-Returns `(new_xi_cons, new_r_res)` of lengths C and R respectively.
-"""
-function cp(R_eq::Vector{Float64},
-            C_eq::Vector{Float64},
-            p_calib)
-    R, C, m_cons, d_res, epsilon, A_used = p_calib
-    total = R + C
-    B_eq = vcat(R_eq, C_eq)
-
-    new_xi_cons = zeros(C)
-    new_r_res   = zeros(R)
-
-    # 1) Consumer thresholds
-    for k in 1:C
-        i = R + k
-
-        # Gains from prey (only A_used[i,j]>0)
-        prey_sum = sum(
-            epsilon[i,j] * A_used[i,j] * B_eq[j]
-            for j in 1:total if A_used[i,j] > 0.0;
-            init = 0.0
-        )
-
-        # Losses to predators (only A_used[i,j]<0)
-        pred_sum = sum(
-            A_used[i,j] * B_eq[j]
-            for j in 1:total if A_used[i,j] < 0.0;
-            init = 0.0
-        )
-
-        ξ = -C_eq[k] + prey_sum - pred_sum
-        new_xi_cons[k] = ξ > 0 ? ξ : NaN
-
-        if prey_sum - pred_sum > new_xi_cons[k]
-            # println("Hey, worked and RY is $(C_eq[k]/ξ) because C is $(C_eq[k]) and ξ is $(ξ)")
-            if C_eq[k]/ξ > 0.3
-                new_xi_cons[k] = NaN
-            end
-        else
-            # println("Nope and RY is $(C_eq[k]/ξ) because C is $(C_eq[k]) and ξ is $(ξ)")
-            new_xi_cons[k] = NaN
-        end
-    end
-
-    # 2) Resource growth rates
-    for i in 1:R
-        # Consumer rows are R+1:total; losses where those entries <0
-        pred_sum = sum(
-            A_used[i,j] * B_eq[j]
-            for j in 1:R+C if A_used[i,j] < 0.0;
-            init = 0.0
-        )
-        r = d_res[i] * (R_eq[i] + pred_sum)
-        new_r_res[i] = r > 0 ? r : NaN
-
-        # if new_r_res[i]  >=  d_res[i]*(B_eq[i] + pred_sum)
-        #     println("Resources are fine and r/d is $(new_r_res[i]/d_res[i])")
-        # else
-        #     println("Resources are not fine and r/d is $(new_r_res[i]/d_res[i])")
-        # end
-    end
-
-    return new_xi_cons, new_r_res
-end
 
 ################################################################################
 ################################################################################
@@ -133,11 +54,11 @@ function rp(
 
                     # 3) full ε
                     # ε_full = fill(epsilon_mean, total, total)
-                    ε_full = clamp.(rand(Normal(0.2, 0.1), total, total), 0, 1)
+                    ε_full = clamp.(rand(Normal(epsilon_mean, epsilon_mean), total, total), 0, 1)
 
                     # 4) calibrate ONCE with full A & ε
                     p_cal = (R, C, m_cons, d_res, ε_full, A_adj)
-                    xi_cons, r_res = cp(R_eq, C_eq, p_cal)
+                    xi_cons, r_res = calibrate_params(R_eq, C_eq, p_cal)
 
                     # maybe retry if NaN
                     tries=1
@@ -165,7 +86,7 @@ function rp(
                         p_cal = (R, C, m_cons, d_res, ε_full, A_adj)
                         
                         R_eq, C_eq = fixed[1:R], fixed[R+1:end]
-                        xi_cons, r_res = cp(R_eq, C_eq, p_cal)
+                        xi_cons, r_res = calibrate_params(R_eq, C_eq, p_cal)
 
                         tries+=1
                     end
@@ -363,77 +284,72 @@ end
 function transform_for_ladder_step(step, A_adj, ε_full)
     total = size(A_adj,1)
 
-    if step == 1
+    if step == 1 # Full
         return A_adj, ε_full
-    elseif step == 2
+    elseif step == 2 # S2 epsilon mean per row
         ε2 = similar(ε_full)
         for i in 1:total
             ε2[i,:] .= mean(ε_full[i,:])
         end
         return A_adj, ε2
-    elseif step == 3
+    elseif step == 3 # S3 epsilon global mean
         return A_adj, fill(mean(ε_full), total, total)
-    elseif step == 4
+    elseif step == 4 # S4 epsilon re-randomised
         ε4 = similar(ε_full)
         for i in 1:total, j in 1:total
             ε4[i, j] = clamp(rand(Normal(mean(ε_full), std(ε_full))), 0, 1)
         end
         return A_adj, ε4
-    elseif 5 ≤ step ≤ 8
-        # 5: ε_full; 6: random per row; 7: global .5
+    elseif 5 ≤ step ≤ 8 # A is averaged separately for positive and negative values
+        
         pos, neg = mean(A_adj[A_adj.>0]), mean(A_adj[A_adj.<0])
-        # println("pos: $pos, neg: $neg for step $step")
-        # if isnan(neg)
-        #     println("Negative values of A are $(A_adj[A_adj.<0])")
-        # end
+        
         A5 = map(x-> x>0 ? pos : x<0 ? neg : 0, A_adj)
-        if step==5
+        if step==5 # ϵ is full
             return A5, ε_full
-        elseif step==6
+        elseif step==6 # ϵ is mean per row
             ε6 = similar(ε_full)
-            for i in 1:total
+            for i in 1:total 
                 ε6[i,:] .= mean(ε_full[i,:])
             end
             return A5, ε6
-        elseif step==7
+        elseif step==7 # ϵ is global mean
             ε7 = fill(mean(ε_full), total, total)
             return A5, ε7
-        elseif step==8
+        elseif step==8 # ϵ is re-randomised
             ε8 = similar(ε_full)
             for i in 1:total, j in 1:total
                 ε8[i, j] = clamp(rand(Normal(mean(ε_full), std(ε_full))), 0, 1)
             end
             return A5, ε8
         end
-    elseif 9 ≤ step ≤ 12
-        # 9: ε_full; 10: Average per row; 11: Global .5; 12: re-randomised
+    elseif 9 ≤ step ≤ 12 # A is averaged across all non-zero values
+        
         m = mean(abs.(A_adj[A_adj .!= 0]))
         A6 = ifelse.(A_adj .!= 0, m*sign.(A_adj), 0.0)
-        # println("m: $m for step $step")
-        if step==9
+        
+        if step==9 # ϵ is full
             return A6, ε_full
-        elseif step==10
+        elseif step==10 # ϵ is mean per row
             ε10 = similar(ε_full)
             for i in 1:total
                 ε10[i,:] .= mean(ε_full[i,:])
             end
             return A6, ε10
-        elseif step==11
+        elseif step==11 # ϵ is global mean
             return A6, fill(mean(ε_full), total, total)
-        else
+        elseif step==12 # ϵ is re-randomised
             ε12 = similar(ε_full)
             for i in 1:total*total
                 ε12[i] = clamp(rand(Normal(mean(ε_full), std(ε_full))), 0, 1)
             end
             return A6, ε12
         end
-    elseif 13 ≤ step ≤ 16
+    elseif 13 ≤ step ≤ 16 # A is fully randomised with same sparsity pattern as A_adj
         # Fully randomized A matrix using Normal(mean, std) of abs non-zero A entries
         A_vals = abs.(A_adj[A_adj .!= 0])
         A_mean, A_std = mean(A_vals), std(A_vals)
-        # println("Randomised A from N($A_mean, $A_std) for step $step")
     
-        # Randomise A with same sparsity pattern as A_adj
         A_rand = similar(A_adj)
         for i in 1:total, j in 1:total
             if A_adj[i, j] != 0
@@ -443,17 +359,17 @@ function transform_for_ladder_step(step, A_adj, ε_full)
             end
         end
     
-        if step == 13
+        if step == 13 # ϵ is full
             return A_rand, ε_full
-        elseif step == 14
+        elseif step == 14 # ϵ is mean per row
             ε14 = similar(ε_full)
             for i in 1:total
                 ε14[i, :] .= mean(ε_full[i, :])
             end
             return A_rand, ε14
-        elseif step == 15
+        elseif step == 15 # ϵ is global mean
             return A_rand, fill(mean(ε_full), total, total)
-        else
+        elseif step == 16 # ϵ is re-randomised
             ε16 = similar(ε_full)
             for i in 1:total, j in 1:total
                 ε16[i, j] = clamp(rand(Normal(mean(ε_full), std(ε_full))), 0, 1)
@@ -496,53 +412,3 @@ new_results3 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/new_results3.jls")
 
 println("First 10 rows of simulation results:")
 println(first(df_results, 10))
-
-"""
-    build_jacobian(B_eq, p)
-
-Analytically constructs the (R+C)×(R+C) Jacobian at equilibrium B_eq,
-given p = (R,C,m_cons,xi_cons,r_res,d_res,ε,A).
-"""
-function build_jacobian(B_eq, p)
-    R, C, m_cons, xi_cons, r_res, d_res, ε, A = p
-    total = R + C
-    J = zeros(total, total)
-
-    # Resource block
-    for i in 1:R
-        # ∂(du_i)/∂B_i = - d_res[i] * B_eq[i]
-        J[i,i] = -d_res[i]*B_eq[i]
-        # ∂(du_i)/∂B_j (j a consumer)
-        for j in (R+1):total
-            J[i,j] =  d_res[i]*B_eq[i]*A[i,j]
-        end
-    end
-
-    # Consumer block
-    for k in 1:C
-        i = R + k
-        ψ = B_eq[i] / xi_cons[k]
-        prefactor = m_cons[k] * ψ
-        for j in 1:total
-            # -δ_{ij} + ε[i,j]*A[i,j]  - A[j,i]
-            J[i,j] = prefactor * ( (i==j ? -1 : 0) + ε[i,j]*A[i,j] - A[j,i] )
-        end
-    end
-
-    return J
-end
-
-"""
-    compute_analytical_V(J, R, C, m_cons, xi_cons)
-
-Return V = J^{-1} * D, with D_{ii}=m_i/xi_i for consumers (i>R), D_{ii}=0 for resources.
-"""
-function compute_analytical_V(J, R, C, m_cons, xi_cons)
-    total = size(J,1)
-    D = zeros(total, total)
-    for k in 1:C
-        D[R+k, R+k] = m_cons[k] / xi_cons[k]
-    end
-    # Solve J * V = D  ⇒  V = J \ D
-    return J \ D
-end
