@@ -55,86 +55,85 @@ end
 ################## CALIBRATE PARAMETRISATION ################################
 #############################################################################
 #############################################################################
-# --- Revised Calibration Function ---
-# p_calib = (R, C, m_cons, d_res, ε, A)
-function calibrate_params(
-    R_eq::Vector{Float64},
-    C_eq::Vector{Float64},
-    p_calib
-)
-    R, C, m_cons, d_res, epsilon, A_adj = p_calib
+"""
+    cp(R_eq, C_eq, p_calib)
+
+Given:
+  - R_eq::Vector{Float64}: target resource biomasses (length R)
+  - C_eq::Vector{Float64}: target consumer biomasses (length C)
+  - p_calib = (R, C, m_cons, d_res, epsilon, A_used)
+
+where
+  * R, C        are numbers of resources/consumers,
+  * m_cons      is a length‑C vector of mortalities,
+  * d_res       is a length‑R vector of resource self‑damping,
+  * epsilon     is a (R+C)x(R+C) efficiency matrix,
+  * A_used      is the already‑weighted interaction matrix (positive for “i eats j”, negative for “j eats i”).
+
+Returns `(new_xi_cons, new_r_res)` of lengths C and R respectively.
+"""
+function calibrate_params(R_eq::Vector{Float64},
+            C_eq::Vector{Float64},
+            p_calib)
+    R, C, m_cons, d_res, epsilon, A_used = p_calib
     total = R + C
     B_eq = vcat(R_eq, C_eq)
 
-    viable = false
-    count  = 0
+    new_xi_cons = zeros(C)
+    new_r_res   = zeros(R)
 
-    while !viable
-        # 1) Randomize strengths on the +1/–1 adjacency
-        A_used = zeros(total, total)
-        for i in 1:total, j in 1:total
-            if A_adj[i,j] == +1
-                A_used[i,j] =  rand()     # positive link strength
-            elseif A_adj[i,j] == -1
-                A_used[i,j] = -rand()     # negative link strength
+    # 1) Consumer thresholds
+    for k in 1:C
+        i = R + k
+
+        # Gains from prey (only A_used[i,j]>0)
+        prey_sum = sum(
+            epsilon[i,j] * A_used[i,j] * B_eq[j]
+            for j in 1:total if A_used[i,j] > 0.0;
+            init = 0.0
+        )
+
+        # Losses to predators (only A_used[i,j]<0)
+        pred_sum = sum(
+            A_used[i,j] * B_eq[j]
+            for j in 1:total if A_used[i,j] < 0.0;
+            init = 0.0
+        )
+
+        ξ = -C_eq[k] + prey_sum - pred_sum
+        new_xi_cons[k] = ξ > 0 ? ξ : NaN
+
+        if prey_sum - pred_sum > new_xi_cons[k]
+            # println("Hey, worked and RY is $(C_eq[k]/ξ) because C is $(C_eq[k]) and ξ is $(ξ)")
+            if C_eq[k]/ξ > 0.5
+                new_xi_cons[k] = NaN
             end
-        end
-
-        # 2) Prepare output vectors
-        total = R + C
-        B_eq = vcat(R_eq, C_eq)
-
-        local new_xi_cons = zeros(C)
-        local new_r_res   = zeros(R)
-
-        # 1) Consumer thresholds
-        for k in 1:C
-            i = R + k
-
-            # Gains from prey (only A_used[i,j]>0)
-            prey_sum = sum(
-                epsilon[i,j] * A_used[i,j] * B_eq[j]
-                for j in 1:total if A_used[i,j] > 0.0;
-                init = 0.0
-            )
-
-            # Losses to predators (only A_used[i,j]<0)
-            pred_sum = sum(
-                A_used[i,j] * B_eq[j]
-                for j in 1:total if A_used[i,j] < 0.0;
-                init = 0.0
-            )
-
-            ξ = -C_eq[k] + prey_sum + pred_sum
-            new_xi_cons[k] = ξ > 0 ? ξ : NaN
-        end
-
-        # 2) Resource growth rates
-        for i in 1:R
-            # Consumer rows are R+1:total; losses where those entries <0
-            pred_sum = sum(
-                A_used[i,j] * B_eq[j]
-                for j in 1:R+C if A_used[i,j] < 0.0;
-                init = 0.0
-            )
-            r = d_res[i] * (R_eq[i] + pred_sum)
-            new_r_res[i] = r > 0 ? r : NaN
-        end
-
-        # 5) Viability check
-        count += 1
-        if (!any(isnan, new_xi_cons) && !any(isnan, new_r_res)) || count ≥ 10
-            viable = true
-            if count ≥ 10 && (any(isnan, new_xi_cons) || any(isnan, new_r_res))
-                @warn "calibrate_params: gave up after 10 tries"
-            end
-        end
-        if viable
-            return new_xi_cons, new_r_res, A_used
+        else
+            # println("Nope and RY is $(C_eq[k]/ξ) because C is $(C_eq[k]) and ξ is $(ξ)")
+            new_xi_cons[k] = NaN
         end
     end
-end
 
+    # 2) Resource growth rates
+    for i in 1:R
+        # Consumer rows are R+1:total; losses where those entries <0
+        pred_sum = sum(
+            A_used[i,j] * B_eq[j]
+            for j in 1:R+C if A_used[i,j] < 0.0;
+            init = 0.0
+        )
+        r = d_res[i] * (R_eq[i] + pred_sum)
+        new_r_res[i] = r > 0 ? r : NaN
+
+        # if new_r_res[i]  >=  d_res[i]*(B_eq[i] + pred_sum)
+        #     println("Resources are fine and r/d is $(new_r_res[i]/d_res[i])")
+        # else
+        #     println("Resources are not fine and r/d is $(new_r_res[i]/d_res[i])")
+        # end
+    end
+
+    return new_xi_cons, new_r_res
+end
 #############################################################################
 #############################################################################
 ################## JACOBIAN, RESILIENCE AND RESISTANCE ######################
@@ -198,74 +197,79 @@ end
 ################## SIMULATE PRESS PERTURBATIONS #############################
 #############################################################################
 #############################################################################
-function simulate_press_perturbation(u0, p, tspan, t_perturb, delta; solver=Tsit5(), plot=false, show_warnings=true, full_or_simple = true)
-    # Unpack p: (R, C, m_cons, xi_cons, r_res, d_res, epsilon, A)
+function simulate_press_perturbation(
+    u0, p, tspan, t_perturb, delta;
+    solver=Tsit5(),
+    plot=false,
+    show_warnings=true,
+    full_or_simple=true
+)
+    # Unpack parameters
     R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
 
-    # Phase 1: simulate from tspan[1] to t_perturb.
-    tspan1 = (tspan[1], t_perturb)
-    prob1 = ODEProblem(trophic_ode!, u0, tspan1, p)
-    if show_warnings
-        sol1 = solve(prob1, solver; reltol=1e-8, abstol=1e-8)
-    else
-        sol1 = with_logger(logger) do
-            solve(prob1, solver; reltol=1e-8, abstol=1e-8)
-        end
-    end
+    # --- Phase 1: run up to t_perturb ---
+    prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], t_perturb), p)
+    sol1 = show_warnings ? solve(prob1, solver; reltol=1e-8, abstol=1e-8) :
+                           with_logger(logger) do
+                               solve(prob1, solver; reltol=1e-8, abstol=1e-8)
+                           end
     pre_state = sol1.u[end]
-    before_persistence = sum(x -> x > EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
-    # Phase 2: apply the press perturbation (increase thresholds by delta)
-    xi_press = copy(xi_cons)
-    xi_press .= xi_press .* (1 - delta)
-    # Build updated parameter tuple.
-    p_press = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
+    before_persistence = count(x-> x>EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
 
-    tspan2 = (t_perturb, tspan[2])
-    prob2 = ODEProblem(trophic_ode!, pre_state, tspan2, p_press)
-    sol2 = solve(prob2, solver, reltol=1e-8, abstol=1e-8)
+    # --- Phase 2: apply press (reduce thresholds by delta) ---
+    xi_press = xi_cons .* (1 .- delta)
+    p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
+    prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
+    sol2     = solve(prob2, solver; reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
     n = length(new_equil)
 
-    # Compute return times: time for each species to come within 10% of new equilibrium.
-    return_times = zeros(n)
+    # --- Return Times ---
+    return_times = fill(NaN, n)
     for i in 1:n
         target = new_equil[i]
-        recovered = false
         for (t, state) in zip(sol2.t, sol2.u)
-            if abs(state[i] - target) / (abs(target) + 1e-8) < 0.1
+            if abs(state[i] - target) / (abs(target) + 1e-8) < 0.10
                 return_times[i] = t - t_perturb
-                recovered = true
                 break
             end
         end
-        if !recovered
-            return_times[i] = NaN
-        end
     end
-    
-    if plot && sol1.t[end] == t_perturb && all(!isnan, sol1.u[end]) && all(!isinf, sol1.u[end])
-        fig = Figure(; size =(1600,800))
-        ax1 = Axis(
-            fig[1,1], xlabel="Time", ylabel="Abundance",
-            title= full_or_simple ? "Community Response Before Press Perturbation (Full Model)" : "Community Response Before Press Perturbation (Simplified Model)"
-        )
-        ax2 = Axis(
-            fig[1,2], xlabel="Time", ylabel="Abundance",
-            title= full_or_simple ? "Community Response After Press Perturbation (Full Model)" : "Community Response After Press Perturbation (Simplified Model)"
-        )
+
+    # --- Maximum Overshoot & Integrated Recovery Error ---
+    overshoot = zeros(n)
+    ire       = zeros(n)
+    for i in 1:n
+        # compute relative errors at each timepoint
+        rel_errors = [abs(state[i] - new_equil[i]) / (abs(new_equil[i]) + 1e-8)
+                      for state in sol2.u]
+        overshoot[i] = maximum(rel_errors)
+        ire[i]       = mean(rel_errors)
+    end
+
+    # --- Optional plotting ---
+    if plot && sol1.t[end] == t_perturb && all(isfinite, pre_state)
+        fig = Figure(resolution=(1600,800))
+        ax1 = Axis(fig[1,1];
+                   xlabel="Time", ylabel="Biomass",
+                   title= full_or_simple ? "Before Press (Full Model)" :
+                                           "Before Press (Simplified)")
+        ax2 = Axis(fig[1,2];
+                   xlabel="Time", ylabel="Biomass",
+                   title= full_or_simple ? "After Press (Full Model)" :
+                                           "After Press (Simplified)")
         for i in 1:R
-            MK.lines!(ax1, sol1.t, sol1[i, :], label="Resource $i", color=:blue)
-            MK.lines!(ax2, sol2.t, sol2[i, :], label="Resource $i", color=:blue)
+            lines!(ax1, sol1.t, sol1[i, :], color=:blue)
+            lines!(ax2, sol2.t, sol2[i, :], color=:blue)
         end
-        for i in (R+1):(R+C)
-            MK.lines!(ax1, sol1.t, sol1[i, :], label="Consumer $(i-R)", color=:red)
-            MK.lines!(ax2, sol2.t, sol2[i, :], label="Consumer $(i-R)", color=:red)
+        for i in R+1:R+C
+            lines!(ax1, sol1.t, sol1[i, :], color=:red)
+            lines!(ax2, sol2.t, sol2[i, :], color=:red)
         end
-        # axislegend(ax, position=:rb)
         display(fig)
     end
 
-    return return_times, before_persistence, new_equil
+    return return_times, overshoot, ire, before_persistence, new_equil
 end
 
 # -------------------------------
@@ -326,3 +330,162 @@ if false
         display(fig)
     end
 end
+#############################################################################
+#############################################################################
+################## Build Jacobian & Analytical V ############################
+#############################################################################
+#############################################################################
+"""
+    build_jacobian(B_eq, p)
+
+Analytically constructs the (R+C)×(R+C) Jacobian at equilibrium B_eq,
+given p = (R,C,m_cons,xi_cons,r_res,d_res,epsilon,A).
+"""
+function build_jacobian(B_eq, p)
+    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
+    total = R + C
+    J = zeros(total, total)
+
+    # Resource block
+    for i in 1:R
+        # ∂(du_i)/∂B_i = - d_res[i] * B_eq[i]
+        J[i,i] = -d_res[i]*B_eq[i]
+        # ∂(du_i)/∂B_j (j a consumer)
+        for j in (R+1):total
+            J[i,j] =  d_res[i]*B_eq[i]*A[i,j]
+        end
+    end
+
+    # Consumer block
+    for k in 1:C
+        i = R + k
+        psi = B_eq[i] / xi_cons[k]
+        prefactor = m_cons[k] * psi
+        for j in 1:total
+            # -delta_{ij} + epsilon[i,j]*A[i,j]  - A[j,i]
+            J[i,j] = prefactor * ( (i==j ? -1 : 0) + epsilon[i,j]*A[i,j] - A[j,i] )
+        end
+    end
+
+    return J
+end
+
+"""
+    compute_analytical_V(J, R, C, m_cons, xi_cons)
+
+Return V = J^{-1} * D, with D_{ii}=m_i/xi_i for consumers (i>R), D_{ii}=0 for resources.
+"""
+function compute_analytical_V(J, R, C, m_cons, xi_cons)
+    total = size(J,1)
+    D = zeros(total, total)
+    for k in 1:C
+        D[R+k, R+k] = m_cons[k] / xi_cons[k]
+    end
+    # Solve J * V = D  ⇒  V = J \ D
+    return J \ D
+end
+##########################################################################
+##########################################################################
+################### Ladder‐of‐simplification transforms ##################
+##########################################################################
+##########################################################################
+function transform_for_ladder_step(step, A_adj, epsilon_full)
+    total = size(A_adj,1)
+
+    if step == 1 # Full
+        return A_adj, epsilon_full
+    elseif step == 2 # S2 epsilon mean per row
+        epsilon2 = similar(epsilon_full)
+        for i in 1:total
+            epsilon2[i,:] .= mean(epsilon_full[i,:])
+        end
+        return A_adj, epsilon2
+    elseif step == 3 # S3 epsilon global mean
+        return A_adj, fill(mean(epsilon_full), total, total)
+    elseif step == 4 # S4 epsilon re-randomised
+        epsilon4 = similar(epsilon_full)
+        for i in 1:total, j in 1:total
+            epsilon4[i, j] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+        end
+        return A_adj, epsilon4
+    elseif 5 <= step <= 8 
+        
+        pos, neg = mean(A_adj[A_adj.>0]), mean(A_adj[A_adj.<0])
+        
+        A5 = map(x-> x>0 ? pos : x<0 ? neg : 0, A_adj)
+        if step==5 # epsilon is full
+            return A5, epsilon_full
+        elseif step==6 # epsilon is mean per row
+            epsilon6 = similar(epsilon_full)
+            for i in 1:total 
+                epsilon6[i,:] .= mean(epsilon_full[i,:])
+            end
+            return A5, epsilon6
+        elseif step==7 # epsilon is global mean
+            epsilon7 = fill(mean(epsilon_full), total, total)
+            return A5, epsilon7
+        elseif step==8 # epsilon is re-randomised
+            epsilon8 = similar(epsilon_full)
+            for i in 1:total, j in 1:total
+                epsilon8[i, j] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+            end
+            return A5, epsilon8
+        end
+    elseif 9 <= step <= 12 # A is averaged across all non-zero values
+        
+        m = mean(abs.(A_adj[A_adj .!= 0]))
+        A6 = ifelse.(A_adj .!= 0, m*sign.(A_adj), 0.0)
+        
+        if step==9 # epsilon is full
+            return A6, epsilon_full
+        elseif step==10 # epsilon is mean per row
+            epsilon10 = similar(epsilon_full)
+            for i in 1:total
+                epsilon10[i,:] .= mean(epsilon_full[i,:])
+            end
+            return A6, epsilon10
+        elseif step==11 # epsilon is global mean
+            return A6, fill(mean(epsilon_full), total, total)
+        elseif step==12 # epsilon is re-randomised
+            epsilon12 = similar(epsilon_full)
+            for i in 1:total*total
+                epsilon12[i] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+            end
+            return A6, epsilon12
+        end
+    elseif 13 <= step <= 16 # A is fully randomised with same sparsity pattern as A_adj
+        # Fully randomized A matrix using Normal(mean, std) of abs non-zero A entries
+        A_vals = abs.(A_adj[A_adj .!= 0])
+        A_mean, A_std = mean(A_vals), std(A_vals)
+    
+        A_rand = similar(A_adj)
+        for i in 1:total, j in 1:total
+            if A_adj[i, j] != 0
+                A_rand[i, j] = rand(Normal(A_mean, A_std)) * sign(A_adj[i, j])
+            else
+                A_rand[i, j] = 0.0
+            end
+        end
+    
+        if step == 13 # epsilon is full
+            return A_rand, epsilon_full
+        elseif step == 14 # epsilon is mean per row
+            epsilon14 = similar(epsilon_full)
+            for i in 1:total
+                epsilon14[i, :] .= mean(epsilon_full[i, :])
+            end
+            return A_rand, epsilon14
+        elseif step == 15 # epsilon is global mean
+            return A_rand, fill(mean(epsilon_full), total, total)
+        elseif step == 16 # epsilon is re-randomised
+            epsilon16 = similar(epsilon_full)
+            for i in 1:total, j in 1:total
+                epsilon16[i, j] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+            end
+            return A_rand, epsilon16
+        end    
+    else
+        error("Unknown ladder step $step")
+    end
+end
+
