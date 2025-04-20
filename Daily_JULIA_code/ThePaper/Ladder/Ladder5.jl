@@ -1,22 +1,31 @@
+# new_results4 is 10,20,30,40 species, Normal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
+new_results4 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results4_total_species_fixed.jls")
+# new_results5 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
+new_results5 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results5.jls")
+# new_results6 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
+# and includes overshoot and ire
+new_results6 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.jls")
+
+df = new_results4
 # 1) Grab the column‐names (they are Strings)
-rt_cols = filter(n -> startswith(n, "return_time_"), names(new_results4))
-re_cols = filter(n -> startswith(n, "resilience_"),   names(new_results4))
+rt_cols = filter(n -> startswith(n, "return_time_"), names(df))
+re_cols = filter(n -> startswith(n, "resilience_"),   names(df))
 @assert length(rt_cols) == length(re_cols)
 
 # 2) Build the “long” DataFrame
-n    = nrow(new_results4)
+n    = nrow(df)
 long = DataFrame(step=String[], return_time=Float64[], resilience=Float64[])
 
 for rt_col in rt_cols
     # derive the matching resilience column
     s    = replace(rt_col, "return_time_" => "")          # e.g. "Full", "S1", …
     re_col = "resilience_$s"
-    @assert re_col in names(new_results4)
+    @assert re_col in names(df)
 
     df_temp = DataFrame(
       step        = fill(s, n),
-      return_time = new_results4[!, rt_col],
-      resilience  = new_results4[!, re_col],
+      return_time = df[!, rt_col],
+      resilience  = df[!, re_col],
     )
     append!(long, df_temp)
 end
@@ -77,10 +86,11 @@ end
 #############################################################################
 # for r_val in R_vals, c_val in C_vals
 #     # Filter the DataFrame for the specific combination of R and C
-#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, df)
+S_vals = [10, 20, 30, 40]
 for S_val in S_vals
     # Filter the DataFrame for the specific combination of S
-    df_subset = filter(row -> row.species_count == S_val, new_results4)
+    df_subset = filter(row -> row.species_count == S_val, df)
     begin
         step_keys = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -91,8 +101,9 @@ for S_val in S_vals
         ]
 
         full_rt = df_subset.return_time_Full
-        fig = Figure(; size = (1400, 700))
-        # Label(fig[0, :], "RETURN TIMES (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        consumer_counts = df_subset.consumer_count
+
+        fig = Figure(; size = (1400, 650))
         Label(fig[0, :], "RETURN TIMES (S = $S_val)", fontsize=24, tellwidth=false)
 
         for (i, s) in enumerate(step_keys)
@@ -106,7 +117,18 @@ for S_val in S_vals
 
             simp_rt = df_subset[!, Symbol("return_time_$s")]
 
-            scatter!(ax, full_rt, simp_rt; markersize=6, color=:steelblue)
+            # Create a colormap (e.g., viridis) based on number of consumers
+            cmap = cgrad(:viridis, length(unique(consumer_counts)))
+            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
+            color_vals = cmap[color_indices]
+            
+            scatter!(
+                ax, full_rt, simp_rt;
+                markersize = 6,
+                color = consumer_counts,
+                colormap = :viridis,
+                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
+            )
 
             allvals = vcat(full_rt, simp_rt)
             minv, maxv = minimum(allvals), maximum(allvals)
@@ -130,10 +152,10 @@ end
 #############################################################################
 # for r_val in R_vals, c_val in C_vals
 #     # Filter the DataFrame for the specific combination of R and C
-#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, df)
 for S_val in S_vals
     # Filter the DataFrame for the specific combination of S
-    df_subset = filter(row -> row.species_count == S_val, new_results4)
+    df_subset = filter(row -> row.species_count == S_val, df)
     begin
         step_keys = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -144,7 +166,9 @@ for S_val in S_vals
         ]
 
         full_res = df_subset.resilience_Full
-        fig = Figure(; size = (1400, 700))
+        consumer_counts = df_subset.consumer_count
+
+        fig = Figure(; size = (1400, 650))
         # Label(fig[0, :], "RESILIENCE (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "RESILIENCE (S = $S_val)", fontsize=24, tellwidth=false)
         for (i, s) in enumerate(step_keys)
@@ -158,7 +182,19 @@ for S_val in S_vals
 
             simp_res = df_subset[!, Symbol("resilience_$s")]
 
-            scatter!(ax, full_res, simp_res; markersize=6, color=:steelblue)
+            # Create a colormap (e.g., viridis) based on number of consumers
+            cmap = cgrad(:viridis, length(unique(consumer_counts)))
+            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
+            color_vals = cmap[color_indices]
+            
+            scatter!(
+                ax, full_res, simp_res;
+                markersize = 6,
+                color = consumer_counts,
+                colormap = :viridis,
+                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
+            )
+
             vmin, vmax = minimum(vcat(full_res, simp_res)), maximum(vcat(full_res, simp_res))
             lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
 
@@ -180,10 +216,10 @@ end
 #############################################################################
 # for r_val in R_vals, c_val in C_vals
 #     # Filter the DataFrame for the specific combination of R and C
-#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, df)
 for S_val in S_vals
     # Filter the DataFrame for the specific combination of S
-    df_subset = filter(row -> row.species_count == S_val, new_results4)
+    df_subset = filter(row -> row.species_count == S_val, df)
     begin
         step_keys = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -194,7 +230,9 @@ for S_val in S_vals
         ]
 
         full_rct = df_subset.reactivity_Full
-        fig = Figure(; size = (1400, 700))
+        consumer_counts = df_subset.consumer_count
+
+        fig = Figure(; size = (1400, 650))
         # Label(fig[0, :], "REACTIVITY (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "REACTIVITY (S = $S_val)", fontsize=24, tellwidth=false)
 
@@ -209,7 +247,18 @@ for S_val in S_vals
 
             simp_rct = df_subset[!, Symbol("reactivity_$s")]
 
-            scatter!(ax, full_rct, simp_rct; markersize=6, color=:darkorange)
+            # Create a colormap (e.g., viridis) based on number of consumers
+            cmap = cgrad(:viridis, length(unique(consumer_counts)))
+            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
+            color_vals = cmap[color_indices]
+            
+            scatter!(
+                ax, full_rct, simp_rct;
+                markersize = 6,
+                color = consumer_counts,
+                colormap = :viridis,
+                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
+            )
             vmin, vmax = minimum(vcat(full_rct, simp_rct)), maximum(vcat(full_rct, simp_rct))
             lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
 
@@ -231,10 +280,10 @@ end
 #############################################################################
 # for r_val in R_vals, c_val in C_vals
 #     # Filter the DataFrame for the specific combination of R and C
-#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, df)
 for S_val in S_vals
     # Filter the DataFrame for the specific combination of S
-    df_subset = filter(row -> row.species_count == S_val, new_results4)
+    df_subset = filter(row -> row.species_count == S_val, df)
     begin
         step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
@@ -256,7 +305,9 @@ for S_val in S_vals
         ]
 
         full_p = df_subset.after_persistence_Full
-        fig = Figure(; size = (1400, 700))
+        consumer_counts = df_subset.consumer_count
+
+        fig = Figure(; size = (1400, 650))
         # Label(fig[0, :], "PERSISTENCE (after perturbation) (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "PERSISTENCE (after perturbation) (S = $S_val)", fontsize=24, tellwidth=false)
 
@@ -271,7 +322,19 @@ for S_val in S_vals
 
             simp_p = df_subset[!, Symbol("after_persistence_$s")]
 
-            scatter!(ax, full_p, simp_p; markersize=6, color=:forestgreen)
+            # Create a colormap (e.g., viridis) based on number of consumers
+            cmap = cgrad(:viridis, length(unique(consumer_counts)))
+            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
+            color_vals = cmap[color_indices]
+            
+            scatter!(
+                ax, full_p, simp_p;
+                markersize = 6,
+                color = consumer_counts,
+                colormap = :viridis,
+                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
+            )
+
             vmin, vmax = minimum(vcat(full_p, simp_p)), maximum(vcat(full_p, simp_p))
             lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
 
@@ -293,10 +356,10 @@ end
 #############################################################################
 # for r_val in R_vals, c_val in C_vals
 #     # Filter the DataFrame for the specific combination of R and C
-#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, new_results4)
-for S_val in [10, 20, 30, 40]
+#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, df)
+for S_val in S_vals
     # Filter the DataFrame for the specific combination of R and C
-    df_subset = filter(row -> row.species_count == S_val, new_results4)
+    df_subset = filter(row -> row.species_count == S_val, df)
 
     begin
         step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
@@ -307,7 +370,9 @@ for S_val in [10, 20, 30, 40]
             "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
         ]
 
-        fig = Figure(; size = (1400, 700))
+        fig = Figure(; size = (1400, 650))
+        consumer_counts = df_subset.consumer_count
+
         # Label(fig[0, :], "SENSITIVITY CORRELATION (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "SENSITIVITY CORRELATION (S = $S_val)", fontsize=24, tellwidth=false)
         for (i, s) in enumerate(step_keys)
@@ -322,11 +387,141 @@ for S_val in [10, 20, 30, 40]
             full_s = df_subset.sensitivity_corr_Full
             simp_s = df_subset[!, Symbol("sensitivity_corr_$s")]
 
-            scatter!(ax, full_s, simp_s; markersize=6, color=:firebrick)
+            # Create a colormap (e.g., viridis) based on number of consumers
+            cmap = cgrad(:viridis, length(unique(consumer_counts)))
+            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
+            color_vals = cmap[color_indices]
+            
+            scatter!(
+                ax, full_s, simp_s;
+                markersize = 6,
+                color = consumer_counts,
+                colormap = :viridis,
+                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
+            )
+
             vmin, vmax = minimum(vcat(full_s, simp_s)), maximum(vcat(full_s, simp_s))
             lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
 
             r = round(cor(full_s, simp_s), digits=2)
+            text!(ax, "r = $r";
+                position = (vmax * 0.95, vmin + 0.05 * (vmax - vmin)),
+                align    = (:right, :bottom),
+                fontsize = 12
+            )
+        end
+
+        display(fig)
+    end
+end
+#############################################################################
+#############################################################################
+########################### MAXIMUM OVERSHOOT ###############################
+#############################################################################   
+#############################################################################
+for S_val in S_vals
+    # Filter the DataFrame for the specific combination of R and C
+    df_subset = filter(row -> row.species_count == S_val, df)
+
+    begin
+        step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
+        step_names = [
+            "Full A (Species-specific ϵ)", "Full A (Global ϵ)", "Full A (Re-randomised ϵ)",
+            "Global -Aij&Aij (ϵ_full)", "Global -Aij&Aij (Species-specific ϵ)", "Global -Aij&Aij (Global ϵ)", "Global -Aij&Aij (Re-randomised ϵ)",
+            "Global A (ϵ_full)", "Global A (Species-specific ϵ)", "Global A (Global ϵ)", "Global A (Re-randomised ϵ)",
+            "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
+        ]
+
+        fig = Figure(; size = (1400, 650))
+        # Label(fig[0, :], "MAXIMUM OVERSHOOT (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
+        Label(fig[0, :], "MAXIMUM OVERSHOOT (S = $S_val)", fontsize=24, tellwidth=false)
+        for (i, s) in enumerate(step_keys)
+            row, col = get_grid_position(i)
+
+            ax = Axis(fig[row, col];
+                xlabel = "Full Model Maximum Overshoot",
+                ylabel = "Step Maximum Overshoot",
+                title  = step_names[i]
+            )
+            full_mo = df_subset.max_overshoot_Full
+            simp_mo = df_subset[!, Symbol("max_overshoot_$s")]
+
+            # Create a colormap (e.g., viridis) based on number of consumers
+            cmap = cgrad(:viridis, length(unique(consumer_counts)))
+            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
+            color_vals = cmap[color_indices]
+            
+            scatter!(
+                ax, full_mo, simp_mo;
+                markersize = 6,
+                color = consumer_counts,
+                colormap = :viridis,
+                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
+            )
+
+            vmin, vmax = minimum(vcat(full_mo, simp_mo)), maximum(vcat(full_mo, simp_mo))
+            lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
+
+            r = round(cor(full_mo, simp_mo), digits=2)
+            text!(ax, "r = $r";
+                position = (vmax * 0.95, vmin + 0.05 * (vmax - vmin)),
+                align    = (:right, :bottom),
+                fontsize = 12
+            )
+        end
+
+        display(fig)
+    end
+end
+
+#############################################################################
+#############################################################################
+######################## INTEGRATED RECOVERY ERROR ##########################
+#############################################################################
+#############################################################################
+for S_val in S_vals
+    # Filter the DataFrame for the specific combination of R and C
+    df_subset = filter(row -> row.species_count == S_val, df)
+
+    begin
+        step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
+        step_names = [
+            "Full A (Species-specific ϵ)", "Full A (Global ϵ)", "Full A (Re-randomised ϵ)",
+            "Global -Aij&Aij (ϵ_full)", "Global -Aij&Aij (Species-specific ϵ)", "Global -Aij&Aij (Global ϵ)", "Global -Aij&Aij (Re-randomised ϵ)",
+            "Global A (ϵ_full)", "Global A (Species-specific ϵ)", "Global A (Global ϵ)", "Global A (Re-randomised ϵ)",
+            "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
+        ]
+
+        fig = Figure(; size = (1400, 650))
+        
+        Label(fig[0, :], "INTEGRATED RECOVERY ERROR (S = $S_val)", fontsize=24, tellwidth=false)
+        for (i, s) in enumerate(step_keys)
+            row, col = get_grid_position(i)
+
+            ax = Axis(fig[row, col];
+                xlabel = "Full Model Integrated Recovery Error",
+                ylabel = "Step Integrated Recovery Error",
+                title  = step_names[i]
+            )
+            full_ire = df_subset.integrated_recovery_error_Full
+            simp_ire = df_subset[!, Symbol("integrated_recovery_error_$s")]
+
+            # Create a colormap (e.g., viridis) based on number of consumers
+            cmap = cgrad(:viridis, length(unique(consumer_counts)))
+            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
+            color_vals = cmap[color_indices]
+            
+            scatter!(
+                ax, full_ire, simp_ire;
+                markersize = 6,
+                color = consumer_counts,
+                colormap = :viridis,
+                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
+            )
+
+            vmin, vmax = minimum(vcat(full_ire, simp_ire)), maximum(vcat(full_ire, simp_ire))
+            lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
+            r = round(cor(full_ire, simp_ire), digits=2)
             text!(ax, "r = $r";
                 position = (vmax * 0.95, vmin + 0.05 * (vmax - vmin)),
                 align    = (:right, :bottom),
