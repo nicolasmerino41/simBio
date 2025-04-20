@@ -33,6 +33,7 @@ function rpp(
                     C = S - R
                     total = S
                     for iter in 1:Niter
+                        println("Running iteration $iter for R=$R, C=$C, conn=$conn, delta=$delta")
                         # println("run")
                         try
                             A_adj = zeros(total,total)
@@ -44,7 +45,7 @@ function rpp(
                             end
                             
                             # 1) target equilibrium
-                            fixed = vcat(abs.(rand(Normal(abundance_mean, abundance_mean*2), R)), abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.2), C)))
+                            fixed = vcat(abs.(rand(LogNormal(abundance_mean, abundance_mean*2), R)), abs.(rand(LogNormal(abundance_mean*0.1, abundance_mean*0.2), C)))
                             R_eq, C_eq = fixed[1:R], fixed[R+1:end]
 
                             # 2) fixed params
@@ -53,11 +54,11 @@ function rpp(
 
                             # 3) full ε
                             # ε_full = fill(epsilon_mean, total, total)
-                            ε_full = clamp.(rand(Normal(epsilon_mean, epsilon_mean*0.1), total, total), 0, 1)
+                            ε_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), total, total), 0, 1)
 
                             # 4) calibrate ONCE with full A & ε
                             p_cal = (R, C, m_cons, d_res, ε_full, A_adj)
-                            xi_cons, r_res = cp(R_eq, C_eq, p_cal)
+                            xi_cons, r_res = calibrate_params(R_eq, C_eq, p_cal)
 
                             # maybe retry if NaN
                             tries=1
@@ -81,11 +82,11 @@ function rpp(
                                     end
                                 end
 
-                                fixed = vcat(abs.(rand(Normal(abundance_mean, abundance_mean*2), R)), abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.2), C)))
+                                fixed = vcat(abs.(rand(LogNormal(abundance_mean, abundance_mean*2), R)), abs.(rand(LogNormal(abundance_mean*0.1, abundance_mean*0.2), C)))
                                 p_cal = (R, C, m_cons, d_res, ε_full, A_adj)
                                 
                                 R_eq, C_eq = fixed[1:R], fixed[R+1:end]
-                                xi_cons, r_res = cp(R_eq, C_eq, p_cal)
+                                xi_cons, r_res = calibrate_params(R_eq, C_eq, p_cal)
 
                                 tries+=1
                             end
@@ -134,7 +135,7 @@ function rpp(
                             pers = mean(Beq .> EXTINCTION_THRESHOLD)
                             resi = compute_resilience(Beq, p_full)
                             reac = compute_reactivity(Beq, p_full)
-                            rt,_,B2 = simulate_press_perturbation(
+                            rt, overshoot, ire, _, B2 = simulate_press_perturbation(
                                 fixed, p_full, tspan, t_perturb, delta;
                                 solver=Tsit5(), plot=plot_full,
                                 show_warnings=true,
@@ -151,6 +152,8 @@ function rpp(
                             metrics["Full"] = (
                                 persistence=pers,
                                 return_time=mean(filter(!isnan, rt)),
+                                overshoot=mean(filter(!isnan, overshoot)),
+                                ire=mean(filter(!isnan, ire)),
                                 before_p=pers,
                                 after_p=mean(B2 .> EXTINCTION_THRESHOLD),
                                 resilience=resi,
@@ -179,6 +182,8 @@ function rpp(
                                     metrics[suf] = (
                                     persistence=NaN,
                                     return_time=NaN,
+                                    overshoot=NaN,
+                                    ire=NaN,
                                     before_p=NaN,
                                     after_p=NaN,
                                     resilience=NaN,
@@ -204,7 +209,7 @@ function rpp(
                                 res2  = compute_resilience(Beq2,p_simp)
                                 rea2  = compute_reactivity(Beq2,p_simp)
                                 # get the full per-species press matrix just like in the full model
-                                rt2, _, B2_simp = simulate_press_perturbation(
+                                rt2, overshoot, ire, _, B2_simp = simulate_press_perturbation(
                                         fixed, p_simp, tspan, t_perturb, delta;
                                         solver=Tsit5(), plot=plot_simple,
                                         show_warnings=true,
@@ -218,10 +223,11 @@ function rpp(
                                 obs_resp_simp  = (B2_simp .- fixed) ./ delta
                                 corr_simp      = cor(vec(pred_resp_simp), vec(obs_resp_simp))
 
-
                                 metrics[suf] = (
                                     persistence=pers2,
                                     return_time=mean(filter(!isnan, rt2)),
+                                    overshoot=mean(filter(!isnan, overshoot)),
+                                    ire=mean(filter(!isnan, ire)),
                                     before_p=pers2,
                                     after_p=mean(B2_simp .> EXTINCTION_THRESHOLD),
                                     resilience=res2,
@@ -253,6 +259,8 @@ function rpp(
                                     rec,
                                     (; Symbol("persistence_$suf")      => m.persistence,
                                     Symbol("return_time_$suf")      => m.return_time,
+                                    Symbol("overshoot_$suf")        => m.overshoot,
+                                    Symbol("ire_$suf")              => m.ire,
                                     Symbol("before_persistence_$suf")=> m.before_p,
                                     Symbol("after_persistence_$suf") => m.after_p,
                                     Symbol("resilience_$suf")        => m.resilience,
@@ -296,17 +304,17 @@ end
 
 begin
     # Specify parameter ranges:
-    S_val = [10, 20, 30, 40]
-    connectance_list = 0.1:0.1:1.0
-    delta_list = 0.1:0.1:0.1
+    S_val = [10]
+    connectance_list = 0.1:0.1:0.1
+    delta_list = 0.1:0.1:1.0
 
-    new_results4_total_species_fixed = rpp(
+    new_results6 = rpp(
         S_val, connectance_list, delta_list;
         ladder_steps=1:16,
-        Niter=100,
+        Niter=1,
         tspan=(0.0, 500.0),
         t_perturb=250.0,
-        max_calib=10,
+        max_calib=1,
         plot_full=false,
         plot_simple=false,
         atol = 10.0,
@@ -319,5 +327,11 @@ begin
         epsilon_mean = 0.2
     )
 end
-# serialize("Daily_JULIA_Code/ThePaper/Ladder/new_results4_total_species_fixed.jls", new_results4_total_species_fixed)
-new_results4 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/new_results4_total_species_fixed.jls")
+serialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.jls", new_results6)
+# new_results4 is 10,20,30,40 species, Normal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
+new_results4 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results4_total_species_fixed.jls")
+# new_results5 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
+new_results5 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results5.jls")
+#= new_results6 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
+and includes overshoot and ire=#
+new_results6 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.jls")
