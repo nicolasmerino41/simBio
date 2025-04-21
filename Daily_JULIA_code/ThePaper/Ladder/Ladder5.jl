@@ -1,12 +1,35 @@
 # new_results4 is 10,20,30,40 species, Normal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
 new_results4 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results4_total_species_fixed.jls")
+
 # new_results5 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
 new_results5 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results5.jls")
+
 # new_results6 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
 # and includes overshoot and ire
-new_results6 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.jls")
+# new_results6 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.jls")
 
-df = new_results4
+# new_results6.2 is AGAIN 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
+new_results6 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.2.jls")
+
+# new_results7 is 20,40,60,80 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
+new_results7 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results7.jls")
+
+# new_results8 is 25,50,75,100 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
+new_results8 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results8.jls")
+
+# new_results9 is 75 species, LogNormal Abundance Distribution & epsilon = 0.1 with sd = epsilon_mean, d_value = 2.0, pred_mortality = 0.05
+new_results9 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results9.jls")
+new_results10 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results10.jls")
+
+df = new_results8
+if df == new_results4 || df == new_results5 || df == new_results6 
+    S_vals = [10, 20, 30, 40]
+elseif df == new_results7
+    S_vals = [20, 40, 60, 80]
+elseif df == new_results8
+    S_vals = [25, 50, 75, 100]
+end
+
 # 1) Grab the column‐names (they are Strings)
 rt_cols = filter(n -> startswith(n, "return_time_"), names(df))
 re_cols = filter(n -> startswith(n, "resilience_"),   names(df))
@@ -32,7 +55,7 @@ end
 
 println("long has $(nrow(long)) rows, cols: ", names(long))
 
-begin
+if false
     # Prepare figure and axis
     fig = Figure(; size = (1000, 600))
     ax  = Axis(fig[1, 1];
@@ -87,7 +110,6 @@ end
 # for r_val in R_vals, c_val in C_vals
 #     # Filter the DataFrame for the specific combination of R and C
 #     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, df)
-S_vals = [10, 20, 30, 40]
 for S_val in S_vals
     # Filter the DataFrame for the specific combination of S
     df_subset = filter(row -> row.species_count == S_val, df)
@@ -103,7 +125,7 @@ for S_val in S_vals
         full_rt = df_subset.return_time_Full
         consumer_counts = df_subset.consumer_count
 
-        fig = Figure(; size = (1400, 650))
+        fig = Figure(; size = (1400, 900))
         Label(fig[0, :], "RETURN TIMES (S = $S_val)", fontsize=24, tellwidth=false)
 
         for (i, s) in enumerate(step_keys)
@@ -141,6 +163,7 @@ for S_val in S_vals
                 fontsize = 12
             )
         end
+        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
 
         display(fig)
     end
@@ -168,7 +191,7 @@ for S_val in S_vals
         full_res = df_subset.resilience_Full
         consumer_counts = df_subset.consumer_count
 
-        fig = Figure(; size = (1400, 650))
+        fig = Figure(; size = (1400, 900))
         # Label(fig[0, :], "RESILIENCE (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "RESILIENCE (S = $S_val)", fontsize=24, tellwidth=false)
         for (i, s) in enumerate(step_keys)
@@ -205,7 +228,7 @@ for S_val in S_vals
                 fontsize = 12
             )
         end
-
+        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
         display(fig)
     end
 end
@@ -232,7 +255,7 @@ for S_val in S_vals
         full_rct = df_subset.reactivity_Full
         consumer_counts = df_subset.consumer_count
 
-        fig = Figure(; size = (1400, 650))
+        fig = Figure(; size = (1400, 900))
         # Label(fig[0, :], "REACTIVITY (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "REACTIVITY (S = $S_val)", fontsize=24, tellwidth=false)
 
@@ -269,7 +292,7 @@ for S_val in S_vals
                 fontsize = 12
             )
         end
-
+        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
         display(fig)
     end
 end
@@ -307,7 +330,7 @@ for S_val in S_vals
         full_p = df_subset.after_persistence_Full
         consumer_counts = df_subset.consumer_count
 
-        fig = Figure(; size = (1400, 650))
+        fig = Figure(; size = (1400, 900))
         # Label(fig[0, :], "PERSISTENCE (after perturbation) (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "PERSISTENCE (after perturbation) (S = $S_val)", fontsize=24, tellwidth=false)
 
@@ -345,7 +368,7 @@ for S_val in S_vals
                 fontsize = 12
             )
         end
-
+        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
         display(fig)
     end
 end
@@ -370,7 +393,7 @@ for S_val in S_vals
             "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
         ]
 
-        fig = Figure(; size = (1400, 650))
+        fig = Figure(; size = (1400, 900))
         consumer_counts = df_subset.consumer_count
 
         # Label(fig[0, :], "SENSITIVITY CORRELATION (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
@@ -410,7 +433,7 @@ for S_val in S_vals
                 fontsize = 12
             )
         end
-
+        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
         display(fig)
     end
 end
@@ -432,9 +455,12 @@ for S_val in S_vals
             "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
         ]
 
-        fig = Figure(; size = (1400, 650))
+        fig = Figure(; size = (1400, 900))
+        consumer_counts = df_subset.consumer_count
+
         # Label(fig[0, :], "MAXIMUM OVERSHOOT (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
         Label(fig[0, :], "MAXIMUM OVERSHOOT (S = $S_val)", fontsize=24, tellwidth=false)
+        
         for (i, s) in enumerate(step_keys)
             row, col = get_grid_position(i)
 
@@ -443,8 +469,8 @@ for S_val in S_vals
                 ylabel = "Step Maximum Overshoot",
                 title  = step_names[i]
             )
-            full_mo = df_subset.max_overshoot_Full
-            simp_mo = df_subset[!, Symbol("max_overshoot_$s")]
+            full_mo = df_subset.overshoot_Full
+            simp_mo = df_subset[!, Symbol("overshoot_$s")]
 
             # Create a colormap (e.g., viridis) based on number of consumers
             cmap = cgrad(:viridis, length(unique(consumer_counts)))
@@ -469,7 +495,7 @@ for S_val in S_vals
                 fontsize = 12
             )
         end
-
+        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
         display(fig)
     end
 end
@@ -492,7 +518,8 @@ for S_val in S_vals
             "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
         ]
 
-        fig = Figure(; size = (1400, 650))
+        fig = Figure(; size = (1400, 900))
+        consumer_counts = df_subset.consumer_count
         
         Label(fig[0, :], "INTEGRATED RECOVERY ERROR (S = $S_val)", fontsize=24, tellwidth=false)
         for (i, s) in enumerate(step_keys)
@@ -503,8 +530,8 @@ for S_val in S_vals
                 ylabel = "Step Integrated Recovery Error",
                 title  = step_names[i]
             )
-            full_ire = df_subset.integrated_recovery_error_Full
-            simp_ire = df_subset[!, Symbol("integrated_recovery_error_$s")]
+            full_ire = df_subset.ire_Full
+            simp_ire = df_subset[!, Symbol("ire_$s")]
 
             # Create a colormap (e.g., viridis) based on number of consumers
             cmap = cgrad(:viridis, length(unique(consumer_counts)))
@@ -528,7 +555,7 @@ for S_val in S_vals
                 fontsize = 12
             )
         end
-
+        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
         display(fig)
     end
 end
