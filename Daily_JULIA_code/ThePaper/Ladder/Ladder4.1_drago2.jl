@@ -30,13 +30,13 @@ function rpp(
     
     S_conn_pairs = [(S, conn) for S in S_vals for conn in conn_vals]
     # Generate all combinations of S and conn
-    Threads.@threads for (S, conn) in S_conn_pairs
+    for (S, conn) in S_conn_pairs
         for delta in delta_vals
             # Generate all valid (R, C) combinations such that R + C = S_val
             for R in pick_steps(5, S-1, max_RC_steps)
                 C = S - R
                 total = S
-                for iter in 1:Niter
+                Threads.@threads for iter in 1:Niter
                     try
                         A_adj = zeros(total,total)
                         for i in (R+1):total, j in 1:total
@@ -302,11 +302,11 @@ end
 
 begin
     # Specify parameter ranges:
-    S_val = [10, 20, 30, 40]
+    S_val = [75]
     connectance_list = 0.1:0.1:1.0
     delta_list = 0.1:0.1:0.1
 
-    new_results6 = rpp(
+    new_results9 = rpp(
         S_val, connectance_list, delta_list;
         ladder_steps=1:16,
         Niter=50,
@@ -316,14 +316,14 @@ begin
         plot_full=false,
         plot_simple=false,
         atol = 10.0,
-        d_value = 1.0,
+        d_value = 2.0,
         IS_reduction = 1.0,
         homogenise = nothing,
         plot_steps = false,
-        abundance_mean = 1.0,
-        pred_mortality = 0.1,
-        epsilon_mean = 0.2
+        abundance_mean = 10.0,
+        pred_mortality = 0.05,
+        epsilon_mean = 0.1
     )
 end
-serialize("Results/new_results6.jls", new_results6)
-CSV.write("Results/new_results6.csv", new_results6)
+serialize("Results/new_results9.jls", new_results9)
+CSV.write("Results/new_results9.csv", new_results9)
