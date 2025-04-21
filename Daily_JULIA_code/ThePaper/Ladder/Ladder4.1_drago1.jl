@@ -7,7 +7,7 @@ using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Dates, Distributions, Serialization, StatsBase, Random
 using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
-using GLM
+using GLM, Graphs
 
 const DF = DataFrames
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
@@ -26,8 +26,8 @@ function trophic_ode!(du, u, p, t)
     R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
     
     # u is arranged as:
-    # u[1:R]          → resources
-    # u[R+1 : R+C]  → consumers
+    # u[1:R]          ? resources
+    # u[R+1 : R+C]  ? consumers
     
     # Resources dynamics (indices 1:R)
     for i in 1:R
@@ -363,13 +363,13 @@ function compute_analytical_V(J, R, C, m_cons, xi_cons)
     for k in 1:C
         D[R+k, R+k] = m_cons[k] / xi_cons[k]
     end
-    # Solve J * V = D  ⇒  V = J \ D
+    # Solve J * V = D  ?  V = J \ D
     return J \ D
 end
 
 ##########################################################################
 ##########################################################################
-################### Ladder‐of‐simplification transforms ##################
+################### Ladder-of-simplification transforms ##################
 ##########################################################################
 ##########################################################################
 function transform_for_ladder_step(step, A_adj, epsilon_full)
