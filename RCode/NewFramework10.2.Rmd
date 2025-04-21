@@ -1,0 +1,159 @@
+---
+title: "NewFramework10.2"
+author: "Nico"
+date: "2025-04-21"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 5
+    number_sections: true
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Local Stability Analysis via the Jacobian
+
+We consider the general ODE system
+$$
+\frac{dB}{dt} = f(B)
+$$
+where \(B = (B_1,\dots,B_{R+C})\) is the vector of resource and consumer biomasses.  At an equilibrium \(B^*\), we examine local stability by linearizing the dynamics.
+
+## Jacobian Matrix
+
+The Jacobian at \(B^*\) is defined as
+$$
+J_{ij} \;=\; \left.\frac{\partial f_i}{\partial B_j}\right|_{B = B^*}
+$$
+For our trophic consumer–resource model, one obtains
+$$
+J_{ij}
+= m_i\,\psi_i\bigl(-\delta_{ij} + \varepsilon\,A_{ij} - A_{ji}\bigr),
+\qquad
+\psi_i = \frac{B_i^*}{\xi_i}
+$$
+where
+
+- \(m_i\) is consumer \(i\)'s mortality,
+
+- \(\xi_i\) its overpopulation threshold,
+
+- \(\varepsilon\) the conversion efficiency,
+
+- \(A_{ij}\) the scaled interaction matrix,
+
+- \(\delta_{ij}\) the Kronecker delta.
+
+## Eigenvalues and Stability Metrics
+
+Let \(\{\lambda_k\}\) be the eigenvalues of \(J\).  
+
+- **Local stability** requires
+  $$
+    \max_k \Re(\lambda_k) < 0.
+  $$
+
+- **Resilience** is defined as
+  $$
+    r \;=\; -\max_k \Re(\lambda_k),
+  $$
+  capturing the rate of return to equilibrium.
+  
+- **Reactivity** measures the maximal short‑term growth, via the symmetric part:
+  $$
+    \rho \;=\; \max\bigl(\mathrm{eig}\bigl({J + J^\top\over 2}\bigr)\bigr)
+  $$
+
+## Sensitivity to Press Perturbations
+
+For small, sustained shifts \(\delta\xi\) in thresholds, the linear response of abundances is
+$$
+\delta B \;=\; V \, \delta\boldsymbol\xi,
+\qquad
+V = -J^{-1}
+$$
+where \(V_{ij}\) quantifies how a change in species \(j\)'s threshold alters species \(i\)'s equilibrium.
+
+This theoretical framework sets the stage for comparing analytical predictions (via \(J\) and \(V\)) with simulation‐based metrics across our ladder of model simplifications.
+
+# Structural Effects
+
+If each Jacobian entry is
+$$
+J_{ij} \;=\; m_i\,\psi_i
+\Bigl[-\delta_{ij}
+  \;+\;\varepsilon\,A_{ij}
+  \;-\;A_{ji}\Bigr]
+$$
+where \(m_i\) is mortality, \(\psi_i = B_i^*/\xi_i\) is relative yield, and the bracketed term captures gains from prey (\(\varepsilon A_{ij}\)) minus losses to predators (\(A_{ji}\)).
+
+**How do network structures reshape that bracket?**
+
+## Degree Heterogeneity
+
+- **Out‑degree** \(k_i^{\mathrm{out}} = \sum_j A_{ij}\) measures total prey intake.  
+
+- **In‑degree** \(k_i^{\mathrm{in}} = \sum_j A_{ji}\) measures total predation pressure.  
+
+- On average, prey‐gains contribute \(\varepsilon\,k_i^{\mathrm{out}}\), predator‐losses contribute \(k_i^{\mathrm{in}}\), so define the net interaction strength  
+
+  $$
+    S_i \;=\;\varepsilon\,k_i^{\mathrm{out}} \;-\; k_i^{\mathrm{in}}
+  $$
+- Thus the off‑diagona row‑sum in the bracket is approximately \(S_i\), and the self‑term becomes  
+  $$
+    J_{ii} \approx m_i\,\psi_i\,\bigl(-1 + S_i\bigr)
+  $$
+
+## Trophic Pyramid Skew
+
+- Biomass distributions often follow a pyramid: resources much more abundant than consumers.  
+
+- If basal species have large \( B^*_i \) (high \( \psi_i \)) and top predators small \( B^*_i \), then rows of \(J\) scale with \(\psi_i\).  
+
+- Steeper pyramids (high variance in resource vs. consumer biomass) stretch the Jacobian rows for basal species and compress those for predators, reducing their dynamical coupling.
+
+## Modularity and Community Structure
+
+- A strongly modular network has interaction blocks with few cross‐links.  
+- In that case \(A_{ij}\approx0\) when \(i\) and \(j\) lie in different modules, so \(J\) is nearly block‐diagonal:  
+$$
+    J \approx
+    \begin{pmatrix}
+      J^{(1)} & 0 & \cdots \
+      0       & J^{(2)} &   \
+      \vdots  &        & \ddots
+    \end{pmatrix}
+$$
+
+- Each block \(J^{(k)}\) can be analyzed independently; tight internal coupling shifts eigenvalues within that block, altering local stability without immediately affecting other modules.
+
+## Connectance
+
+- Global connectance \(C = E/[S(S-1)]\) sets the density of nonzero \(A_{ij}\).  
+- Higher \(C\) raises both \(k_i^{\mathrm{out}}\) and \(k_i^{\mathrm{in}}\), scaling prey and predator terms together.  
+- This uniformly shifts the spectrum of \(J\), often reducing resilience (slower recovery) but increasing reactivity (stronger initial response).
+
+### Schematic Row‑Sum Approximation
+
+Combining these effects, the sum over \(j\) of row \(i\) of \(J\) is
+$$
+\sum_j J_{ij}
+\;\approx\;
+m_i\,\psi_i\Bigl(-1 + \varepsilon\,k_i^{\mathrm{out}} - k_i^{\mathrm{in}}\Bigr)
+\;=\;
+m_i\,\psi_i\bigl(-1 + S_i\bigr)
+$$
