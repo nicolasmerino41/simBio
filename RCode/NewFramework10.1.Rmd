@@ -4,8 +4,9 @@ author: "Nico, Núria & Jeff"
 date: "2025-04-19"
 output:
   pdf_document:
-    toc: false
+    toc: true
     toc_depth: 5
+    number_sections: true
   html_document:
     theme: flatly
     toc: true
@@ -23,11 +24,11 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Model Framework and Analysis Pipeline
+# Model Framework and Analysis Pipeline
 
 We combine a fully‐detailed ODE trophic model, an extended ladder of simplifications, explicit structural heterogeneity, and an analytical sensitivity‐based validation.
 
-### 1. Fully Detailed Consumer–Resource Dynamics
+## Fully Detailed Consumer–Resource Dynamics
 
 **Resources** (\(i=1,\dots,R\)):
 $$
@@ -57,18 +58,18 @@ Here
 
 - \(\varepsilon_{ij}\): conversion efficiencies.
 
-### 2. Equilibrium Calibration
+## Equilibrium Calibration
 
-Prescribe equilibrium biomasses \(B_i^* \) by sampling separate basal vs. consumer distributions (allowing **trophic pyramids**).  Solve
+We define equilibrium biomasses \(B_i^* \) by sampling resources vs. consumer distributions (allowing **trophic pyramids**)
 $$
 0 = d_i\Bigl(\tfrac{r_i}{d_i} - B_i^* - \sum_j A_{ij}B_j^*\Bigr),\quad
 0 = \frac{m_i}{\xi_i}\Bigl(-\xi_i - B_i^* + \sum_j\varepsilon_{ij}A_{ij}B_j^* - \sum_jA_{ji}B_j^*\Bigr)
 $$
-for \(\{r_i^* ,\xi_i^* \}\), yielding closed‐form thresholds and resource rates.
+for \(\{r_i^* ,\xi_i^* \}\).
 
-### 3. Linearization and Sensitivity Matrix
+## Linearization and Sensitivity Matrix
 
-Linearize about \(B^*\) to obtain Jacobian
+We can linearize around \(B^*\) to obtain the Jacobian
 $$
 J_{ij} = \frac{\partial}{\partial B_j}\Bigl(\dot B_i\Bigr)\Big|_{B^*}
 = m_i\psi_i\bigl[-\delta_{ij} + \varepsilon_{ij}A_{ij} - A_{ji}\bigr],
@@ -88,35 +89,58 @@ $$
 V = J^{-1}D,\qquad
 V_{ij} = \frac{\partial B_i}{\partial \xi_j}\Big|_{B^*}.
 $$
-A uniform small press \(\delta\xi\) on all thresholds predicts
-\(\delta B_{\rm ana}=V\,\mathbf1\,\delta\xi,\)
-to be compared with simulated
-\(\delta B_{\rm sim}=(B_{\rm post}-B^*)/\delta\xi.\)
+A uniform small press \(\delta\xi\) on all thresholds can be predicted by \(\delta B_{\rm ana}=V\,\mathbf1\,\delta\xi,\)
+and compared with the simulated \(\delta B_{\rm sim}=(B_{\rm post}-B^*)/\delta\xi.\)
 
-### 4. Extended Ladder of Simplifications (16 Steps)
+## Ladder of Simplifications
 
-1. **Full** \((A,\varepsilon)\)  
+**Full** \(A_{ij}\)
 
-2. **Species‑homog** \(\varepsilon\) 
+1. **Full** \(\varepsilon_{ij}\)  
+
+2. **Species‑homog** \(\varepsilon_{i}\) 
 
 3. **Global** \(\varepsilon\)  
 
-4. **Random** \(\varepsilon\)  
+4. **Random** \(\varepsilon_{ij}\)  
 
-5–8. **Mean‑A** × \{full, species, global, random \(\varepsilon\)\}  
+**Mean** \(A_{ij} \) & **Mean** \(-A_{ji}\)
 
-9–12. **Global \(\lvert A\rvert\)** × same \(\varepsilon\) variants  
+5. **Full** \(\varepsilon_{ij}\)
 
-13–16. **Topology‑filtered** (degree‐CV, modularity, trophic‐variance, niche‐model)
+6. **Species‑homog** \(\varepsilon_{i}\)  
+
+7. **Global** \(\varepsilon\) 
+
+8. **Random** \(\varepsilon_{ij}\)    
+
+**Global** \(\lvert A \rvert\)
+
+9. **Full** \(\varepsilon_{ij}\)
+
+10. **Species‑homog** \(\varepsilon_{i}\)  
+
+11. **Global** \(\varepsilon\) 
+
+12. **Random** \(\varepsilon_{ij}\)   
+
+**Re-randomised** \( A_{ij} \sim \mathcal{N}\bigl(\mu_{A_{ij}}, \sigma_{A_{ij}}\bigr) \)
+
+13. **Full** \(\varepsilon_{ij}\) 
+
+14. **Species‑homog** \(\varepsilon_{i}\) 
+
+15. **Global** \(\varepsilon\) 
+
+16. **Random** \(\varepsilon_{ij}\) 
 
 At each step \(s\):
-- Re‐calibrate \(\{B^*,r^*,\xi^*\}\),
 
-- Integrate ODE to extract **return time** \(T_R\), **overshoot**, **integrated recovery error**, **resilience**, **reactivity**,
+- We extract **return time** \(T_R\), **overshoot**, **integrated recovery error**, **resilience**, **reactivity**,
 
-- Compute \(V_s\) and correlate its uniform‐press prediction with simulation.
+- We compute \(V_s\) and correlate its analytical prediction with simulation.
 
-### 5. Structural Heterogeneity Metrics
+## Structural Heterogeneity Metrics
 
 For each network \(A\) we record:
 
@@ -124,13 +148,11 @@ For each network \(A\) we record:
 
 - **Trophic variance**: \(\mathrm{Var}(\{\text{shortest‐path lengths from basals}\})\),
 
-- **Modularity**: community‐structure score,
+- **Modularity**
 
 - **Pyramid skew**: ratio of log‐normal \( \sigma  \) for resource vs consumer equilibrium draws.
 
-These metrics become predictors in post‑processing.
-
-### 6. Simulation‑Oriented Stability Metrics
+## Simulation‑driven Stability Metrics
 
 - **Return Time** \(T_R\),
 
@@ -142,25 +164,10 @@ These metrics become predictors in post‑processing.
 
 - **Sensitivity correlation** \(\mathrm{corr}(\delta B_{\rm ana},\,\delta B_{\rm sim})\).
 
-### 7. Post‑Processing Pipeline
+## Next Steps
 
-1. **Combine** results into a long table with columns  
-   \(\{\text{step},T_R,\dots,\delta T_R,\dots,\mathrm{resilience},\mathrm{reactivity},\mathrm{sens\_corr},\mathrm{degree\_CV},\dots\}.\)
-   
-2. **Summarize** mean and distribution of \(\delta T_R,\delta\mathrm{Res},\delta\mathrm{Reac}\) by step.
+- Sweep over ecological realism: pyramid slopes, degree heterogeneity, and modularity.
 
-3. **Fit** regression models  
-   \(\delta T_R\sim1+\mathrm{step}+\mathrm{degree\_CV}+\dots\)  
-   and linear/quadratic trends in step index.
-   
-4. **Visualize**: line plots of mean relative error vs step, boxplots by step, coefficient tables.
+- We can use \(V\) to rank keystone species by \(\sum_i\lvert V_{ij}\rvert\).
 
-### 8. Outlook
-
-- **Sweep** over ecological realism: pyramid slopes, degree heterogeneity (niche vs ER), modularity.
-
-- **Mixed‐effects** to account for replication.
-
-- **Use** \(V\) to rank keystone species by \(\sum_i\lvert V_{ij}\rvert\).
-
-- **Assess** whether simplification accuracy generalizes across realistic network structures.
+- Assess whether simplification accuracy generalizes across realistic network structures.
