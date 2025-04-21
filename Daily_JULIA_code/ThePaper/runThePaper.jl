@@ -10,10 +10,11 @@ begin
     using NamedArrays, StaticArrays, OrderedCollections
     # using Rasters, RasterDataSources #, DimensionalData
     # using DynamicGrids, Dispersal
-    using Dates, Distributions, Serialization, StatsBase, Random #JLD2
+    using Dates, Distributions, Serialization, StatsBase, Random, GLM #JLD2
     using ColorSchemes, Colors #Crayons, 
     using CairoMakie # ImageMagick
     using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
+    using Graphs, CategoricalArrays
     # if end_true
     #     using DifferentialEquations # EcologicalNetworksDynamics, 
     # end

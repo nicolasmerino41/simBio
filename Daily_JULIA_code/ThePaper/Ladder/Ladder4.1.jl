@@ -305,8 +305,8 @@ end
 begin
     # Specify parameter ranges:
     S_val = [10]
-    connectance_list = 0.1:0.1:0.1
-    delta_list = 0.1:0.1:1.0
+    connectance_list = 0.1:0.1:1.0
+    delta_list = 0.1:0.1:0.1
 
     new_results6 = rpp(
         S_val, connectance_list, delta_list;
