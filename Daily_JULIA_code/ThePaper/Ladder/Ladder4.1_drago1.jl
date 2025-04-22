@@ -69,9 +69,12 @@ end
 ################## CALIBRATE PARAMETRISATION ################################
 #############################################################################
 #############################################################################
-function calibrate_params(R_eq::Vector{Float64},
-            C_eq::Vector{Float64},
-            p_calib)
+function calibrate_params(
+    R_eq::Vector{Float64},
+    C_eq::Vector{Float64},
+    p_calib;
+    xi_threshold = 0.3
+)
     R, C, m_cons, d_res, epsilon, A_used = p_calib
     total = R + C
     B_eq = vcat(R_eq, C_eq)
@@ -98,10 +101,9 @@ function calibrate_params(R_eq::Vector{Float64},
         xi = -C_eq[k] + prey_sum - pred_sum
         new_xi_cons[k] = xi > 0 ? xi : NaN
 
-        if prey_sum - pred_sum > new_xi_cons[k]
-            if C_eq[k]/xi > 0.3
-                new_xi_cons[k] = NaN
-            end
+        xi = prey_sum - pred_sum - C_eq[k]
+        if xi > 0 && (C_eq[k]/xi) < xi_threshold
+            new_xi_cons[k] = xi
         else
             new_xi_cons[k] = NaN
         end
@@ -121,7 +123,6 @@ function calibrate_params(R_eq::Vector{Float64},
 
     return new_xi_cons, new_r_res
 end
-
 #############################################################################
 #############################################################################
 ################## JACOBIAN, RESILIENCE AND RESISTANCE ######################
