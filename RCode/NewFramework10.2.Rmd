@@ -87,7 +87,7 @@ V = -J^{-1}
 $$
 where \(V_{ij}\) quantifies how a change in species \(j\)'s threshold alters species \(i\)'s equilibrium.
 
-This theoretical framework sets the stage for comparing analytical predictions (via \(J\) and \(V\)) with simulation‐based metrics across our ladder of model simplifications.
+This theoretical framework allows us to make analytical predictions (via \(J\) and \(V\)) and compare them with simulation‐based metrics across our ladder of model simplifications.
 
 # Structural Effects
 
@@ -113,10 +113,10 @@ where \(m_i\) is mortality, \(\psi_i = B_i^*/\xi_i\) is relative yield, and the 
   $$
     S_i \;=\;\varepsilon\,k_i^{\mathrm{out}} \;-\; k_i^{\mathrm{in}}
   $$
-- Thus the off‑diagona row‑sum in the bracket is approximately \(S_i\), and the self‑term becomes  
-  $$
+- Thus the off‑diagonal row‑sum in the bracket is approximately \(S_i\), and the self‑term becomes
+$$
     J_{ii} \approx m_i\,\psi_i\,\bigl(-1 + S_i\bigr)
-  $$
+$$
 
 ## Trophic Pyramid Skew
 
