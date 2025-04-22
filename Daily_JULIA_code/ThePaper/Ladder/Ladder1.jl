@@ -72,9 +72,12 @@ where
 
 Returns `(new_xi_cons, new_r_res)` of lengths C and R respectively.
 """
-function calibrate_params(R_eq::Vector{Float64},
-            C_eq::Vector{Float64},
-            p_calib)
+function calibrate_params(
+    R_eq::Vector{Float64},
+    C_eq::Vector{Float64},
+    p_calib;
+    xi_threshold = 0.3
+)
     R, C, m_cons, d_res, epsilon, A_used = p_calib
     total = R + C
     B_eq = vcat(R_eq, C_eq)
@@ -86,30 +89,25 @@ function calibrate_params(R_eq::Vector{Float64},
     for k in 1:C
         i = R + k
 
-        # Gains from prey (only A_used[i,j]>0)
         prey_sum = sum(
             epsilon[i,j] * A_used[i,j] * B_eq[j]
             for j in 1:total if A_used[i,j] > 0.0;
             init = 0.0
         )
 
-        # Losses to predators (only A_used[i,j]<0)
         pred_sum = sum(
             A_used[i,j] * B_eq[j]
             for j in 1:total if A_used[i,j] < 0.0;
             init = 0.0
         )
 
-        ξ = -C_eq[k] + prey_sum - pred_sum
-        new_xi_cons[k] = ξ > 0 ? ξ : NaN
+        xi = -C_eq[k] + prey_sum - pred_sum
+        new_xi_cons[k] = xi > 0 ? xi : NaN
 
-        if prey_sum - pred_sum > new_xi_cons[k]
-            # println("Hey, worked and RY is $(C_eq[k]/ξ) because C is $(C_eq[k]) and ξ is $(ξ)")
-            if C_eq[k]/ξ > 0.5
-                new_xi_cons[k] = NaN
-            end
+        xi = prey_sum - pred_sum - C_eq[k]
+        if xi > 0 && (C_eq[k]/xi) < xi_threshold
+            new_xi_cons[k] = xi
         else
-            # println("Nope and RY is $(C_eq[k]/ξ) because C is $(C_eq[k]) and ξ is $(ξ)")
             new_xi_cons[k] = NaN
         end
     end
@@ -124,12 +122,6 @@ function calibrate_params(R_eq::Vector{Float64},
         )
         r = d_res[i] * (R_eq[i] + pred_sum)
         new_r_res[i] = r > 0 ? r : NaN
-
-        # if new_r_res[i]  >=  d_res[i]*(B_eq[i] + pred_sum)
-        #     println("Resources are fine and r/d is $(new_r_res[i]/d_res[i])")
-        # else
-        #     println("Resources are not fine and r/d is $(new_r_res[i]/d_res[i])")
-        # end
     end
 
     return new_xi_cons, new_r_res
@@ -489,3 +481,68 @@ function transform_for_ladder_step(step, A_adj, epsilon_full)
     end
 end
 
+# -----------------------------------------------------------
+# Type II Trophic ODE
+# -----------------------------------------------------------
+function trophic_two!(du, u, p, t)
+    R, C, m_cons, xi_cons, r_res, d_res, ε, A, h = p
+    total = R + C
+
+    # resources (same as before)
+    for i in 1:R
+      pred_sum = sum(A[i,j]*u[j] for j in R+1:total)
+      du[i] = u[i]*d_res[i]*((r_res[i]/d_res[i]) - u[i] + pred_sum)
+    end
+
+    # consumers with Type II
+    for k in 1:C
+      i = R + k
+
+      # handling‐denominator D_i = 1 + ∑ₖ h_{i,k}·A_{i,k}·u[k]  (only positive A links)
+      D = 1 + sum(h[i,j]*A[i,j]*u[j] for j in 1:total if A[i,j] > 0; init = 0.0)
+
+      # saturated prey‐gain
+      gain = sum(ε[i,j]*A[i,j]*u[j] for j in 1:total if A[i,j] > 0; init = 0.0) / D
+
+      # linear predation‐loss
+      loss = sum(A[i,j]*u[j] for j in 1:total if A[i,j] < 0; init = 0.0)
+
+      du[i] = u[i] * (m_cons[k]/xi_cons[k]) * (-xi_cons[k] - u[i] + gain + loss)
+    end
+end
+
+# -----------------------------------------------------------
+# Calibration for Type II
+# -----------------------------------------------------------
+function calibrate_two(
+    R_eq::Vector{Float64},
+    C_eq::Vector{Float64},
+    p_calib;
+    xi_threshold = 0.3
+)
+    R, C, m_cons, d_res, ε, A, h = p_calib
+    total = R + C
+    B_eq = vcat(R_eq, C_eq)
+
+    new_xi = similar(C_eq)
+    new_r  = similar(R_eq)
+
+    # 1) consumers: xi solves
+    #    0 = -xi - B_eq[i] + ∑ ε A B / (1+∑ h A B)  - ∑ (loss)   ⇒ xi = -B_eq + gain - loss
+    for k in 1:C
+      i = R + k
+      D = 1 + sum(h[i,j]*A[i,j]*B_eq[j] for j in 1:total if A[i,j]>0; init=0.0)
+      gain = sum(ε[i,j]*A[i,j]*B_eq[j] for j in 1:total if A[i,j]>0; init=0.0) / D
+      loss = sum(A[i,j]*B_eq[j] for j in 1:total if A[i,j]<0; init=0.0)
+      xi  = -C_eq[k] + gain - loss
+      new_xi[k] = (xi>0 && C_eq[k]/xi < xi_threshold) ? xi : NaN
+    end
+
+    # 2) resources: same as before
+    for i in 1:R
+      loss = sum(A[i,j]*B_eq[j] for j in R+1:R+C if A[i,j]<0; init=0.0)
+      new_r[i] = max( d_res[i] * (R_eq[i] + loss), 0 )
+    end
+
+    return new_xi, new_r
+end
