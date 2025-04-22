@@ -39,8 +39,8 @@ function rppp(
                         A_adj = zeros(total,total)
                         for i in (R+1):total, j in 1:total
                             if i !=j && rand() < conn && iszero(A_adj[i,j])
-                                A_adj[i,j]= rand() * IS_reduction
-                                A_adj[j,i]= -rand() * IS_reduction
+                                A_adj[i,j]= abs(rand(Normal(0, IS_reduction)))
+                                A_adj[j,i]= -abs(rand(Normal(0, IS_reduction)))
                             end
                         end
                         
@@ -68,8 +68,8 @@ function rppp(
                             A_adj = zeros(total,total)
                             for i in (R+1):total, j in 1:total
                                 if i !=j && rand() < conn && iszero(A_adj[i,j])
-                                    A_adj[i,j]= rand() * IS_reduction
-                                    A_adj[j,i]= -rand() * IS_reduction # -A_adj[i,j]
+                                    A_adj[i,j]= abs(rand(Normal(0, IS_reduction)))
+                                    A_adj[j,i]= -abs(rand(Normal(0, IS_reduction)))
                                 end
                             end
 
@@ -83,7 +83,7 @@ function rppp(
                         end
 
                         if any(isnan,xi_cons)||any(isnan,r_res)
-                            # @warn "Calibration failed; skipping iteration"
+                            @warn "Calibration failed; skipping iteration"
                             continue
                         end
                         RY_vector = C_eq./xi_cons
@@ -110,7 +110,7 @@ function rppp(
                         #     println("The final abundances match the target equilibrium at conn = $conn")
                         # end
                         if sol.t[end] < t_perturb || any(isnan, sol.u[end]) || any(isinf, sol.u[end]) || any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:total])
-                            # @warn "Error: solution did not finish properly"
+                            @warn "Error: solution did not finish properly"
                             continue
                         end
                         # begin
@@ -307,12 +307,12 @@ end
 begin
     # Specify parameter ranges:
     S_val = [50]
-    connectance_list = 0.1:0.2:1.0
+    connectance_list = 0.6:0.2:1.0
     delta_list = 0.1:0.1:0.1
 
-    new_results10 = rppp(
+    new_results101 = rppp(
         S_val, connectance_list, delta_list;
-        max_RC_steps = 5,
+        max_RC_steps = 10,
         ladder_steps=1:16,
         Niter=1,
         tspan=(0.0, 500.0),
@@ -322,7 +322,7 @@ begin
         plot_simple=false,
         atol = 10.0,
         d_value = 1.0,
-        IS_reduction = 1.0,
+        IS_reduction = 0.02,
         abundance_mean = 1.0,
         pred_mortality = 0.1,
         epsilon_mean = 0.1
