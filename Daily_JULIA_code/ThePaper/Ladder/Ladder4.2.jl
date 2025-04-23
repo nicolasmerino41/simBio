@@ -6,7 +6,7 @@ include("Ladder4.1_drago1.jl")
 function rppp(
     S_vals, conn_vals, delta_vals;
     max_RC_steps = 10,
-    ladder_steps = 1:12,
+    ladder_steps = 1:16,
     Niter        = 10,
     tspan        = (0.0,50.0),
     t_perturb    = 25.0,
@@ -16,10 +16,11 @@ function rppp(
     plot_steps   = false,
     atol         = 10.0,
     d_value      = 1.0,
-    IS_reduction = 1.0,
+    average_IS = 1.0,
     abundance_mean = 1.0,
     pred_mortality = 0.1,
-    epsilon_mean   = 0.2
+    epsilon_mean   = 0.2,
+    xi_threshold   = 0.7
 )
     results = Vector{NamedTuple}()
     results_lock = ReentrantLock()
@@ -29,7 +30,7 @@ function rppp(
 
     Threads.@threads for (S, conn) in S_conn_pairs
         for delta in delta_vals
-            for R in pick_steps(5, S-1, max_RC_steps)
+            for R in pick_steps(25, 33, max_RC_steps)
                 C = S - R
                 total = S
 
@@ -39,13 +40,16 @@ function rppp(
                         A_adj = zeros(total,total)
                         for i in (R+1):total, j in 1:total
                             if i !=j && rand() < conn && iszero(A_adj[i,j])
-                                A_adj[i,j]= abs(rand(Normal(0, IS_reduction)))
-                                A_adj[j,i]= -abs(rand(Normal(0, IS_reduction)))
+                                A_adj[i,j]= abs(rand(Normal(0, average_IS)))
+                                A_adj[j,i]= -abs(rand(Normal(0, average_IS)))
                             end
                         end
                         
                         # 1) target equilibrium
-                        fixed = vcat(abs.(rand(LogNormal(abundance_mean, abundance_mean*2), R)), abs.(rand(LogNormal(abundance_mean*0.1, abundance_mean*0.2), C)))
+                        fixed = vcat(
+                                abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R)), 
+                                abs.(rand(LogNormal(log(abundance_mean*0.1) - ( (abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
+                        )
                         R_eq, C_eq = fixed[1:R], fixed[R+1:end]
 
                         # 2) fixed params
@@ -54,11 +58,11 @@ function rppp(
 
                         # 3) full ε
                         # ε_full = fill(epsilon_mean, total, total)
-                        ε_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), total, total), 0, 1)
+                        ε_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean*0.1), total, total), 0, 1)
 
                         # 4) calibrate ONCE with full A & ε
                         p_cal = (R, C, m_cons, d_res, ε_full, A_adj)
-                        xi_cons, r_res = calibrate_params(R_eq, C_eq, p_cal)
+                        xi_cons, r_res = calibrate_params(R_eq, C_eq, p_cal; xi_threshold=xi_threshold)
 
                         # maybe retry if NaN
                         tries=1
@@ -68,12 +72,15 @@ function rppp(
                             A_adj = zeros(total,total)
                             for i in (R+1):total, j in 1:total
                                 if i !=j && rand() < conn && iszero(A_adj[i,j])
-                                    A_adj[i,j]= abs(rand(Normal(0, IS_reduction)))
-                                    A_adj[j,i]= -abs(rand(Normal(0, IS_reduction)))
+                                    A_adj[i,j]= abs(rand(Normal(0, average_IS)))
+                                    A_adj[j,i]= -abs(rand(Normal(0, average_IS)))
                                 end
                             end
 
-                            fixed = vcat(abs.(rand(LogNormal(abundance_mean, abundance_mean*2), R)), abs.(rand(LogNormal(abundance_mean*0.1, abundance_mean*0.2), C)))
+                            fixed = vcat(
+                                abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R)), 
+                                abs.(rand(LogNormal(log(abundance_mean*0.1) - ( (abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
+                            )
                             p_cal = (R, C, m_cons, d_res, ε_full, A_adj)
                             
                             R_eq, C_eq = fixed[1:R], fixed[R+1:end]
@@ -86,6 +93,7 @@ function rppp(
                             @warn "Calibration failed; skipping iteration"
                             continue
                         end
+                        
                         RY_vector = C_eq./xi_cons
                         # dict to hold all step‐metrics
                         metrics = Dict{String,NamedTuple}()
@@ -284,7 +292,7 @@ function rppp(
             end
         end
     end
-
+    println("$(nrow(results)) / $(Niter*length(connectance_list)*length(delta_list)*(8)), simulations succesful")
     return DataFrame(results)
 end
 
@@ -307,22 +315,22 @@ end
 begin
     # Specify parameter ranges:
     S_val = [50]
-    connectance_list = 0.6:0.2:1.0
+    connectance_list = 0.01:0.01:0.1
     delta_list = 0.1:0.1:0.1
 
     new_results101 = rppp(
         S_val, connectance_list, delta_list;
         max_RC_steps = 10,
         ladder_steps=1:16,
-        Niter=1,
+        Niter=5,
         tspan=(0.0, 500.0),
         t_perturb=250.0,
-        max_calib=5,
+        max_calib=2,
         plot_full=false,
         plot_simple=false,
         atol = 10.0,
         d_value = 1.0,
-        IS_reduction = 0.02,
+        average_IS = 1.0,
         abundance_mean = 1.0,
         pred_mortality = 0.1,
         epsilon_mean = 0.1
