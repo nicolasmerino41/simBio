@@ -191,16 +191,17 @@ function simulate_press_perturbation(
     solver=Tsit5(),
     plot=false,
     show_warnings=true,
-    full_or_simple=true
+    full_or_simple=true,
+    cb = cb
 )
     # Unpack parameters
     R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
 
     # --- Phase 1: run up to t_perturb ---
     prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], t_perturb), p)
-    sol1 = show_warnings ? solve(prob1, solver; callback = cb_no_trigger, reltol=1e-8, abstol=1e-8) :
+    sol1 = show_warnings ? solve(prob1, solver; callback = cb, reltol=1e-8, abstol=1e-8) :
                            with_logger(logger) do
-                               solve(prob1, solver; callback = cb_no_trigger, reltol=1e-8, abstol=1e-8)
+                               solve(prob1, solver; callback = cb, reltol=1e-8, abstol=1e-8)
                            end
     pre_state = sol1.u[end]
     before_persistence = count(x -> x > EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
@@ -209,7 +210,7 @@ function simulate_press_perturbation(
     xi_press = xi_cons .* (1 .- delta)
     p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
-    sol2     = solve(prob2, solver; callback = cb_no_trigger, reltol=1e-8, abstol=1e-8)
+    sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
     n = length(new_equil)
 
