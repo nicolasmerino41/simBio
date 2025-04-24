@@ -12,8 +12,8 @@ function trophic_ode!(du, u, p, t)
     R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
     
     # u is arranged as:
-    # u[1:R]          → resources
-    # u[R+1 : R+C]  → consumers
+    # u[1:R]          ? resources
+    # u[R+1 : R+C]  ? consumers
     
     # Resources dynamics (indices 1:R)
     for i in 1:R
@@ -55,23 +55,6 @@ end
 ################## CALIBRATE PARAMETRISATION ################################
 #############################################################################
 #############################################################################
-"""
-    cp(R_eq, C_eq, p_calib)
-
-Given:
-  - R_eq::Vector{Float64}: target resource biomasses (length R)
-  - C_eq::Vector{Float64}: target consumer biomasses (length C)
-  - p_calib = (R, C, m_cons, d_res, epsilon, A_used)
-
-where
-  * R, C        are numbers of resources/consumers,
-  * m_cons      is a length‑C vector of mortalities,
-  * d_res       is a length‑R vector of resource self‑damping,
-  * epsilon     is a (R+C)x(R+C) efficiency matrix,
-  * A_used      is the already‑weighted interaction matrix (positive for “i eats j”, negative for “j eats i”).
-
-Returns `(new_xi_cons, new_r_res)` of lengths C and R respectively.
-"""
 function calibrate_params(
     R_eq::Vector{Float64},
     C_eq::Vector{Float64},
@@ -141,7 +124,7 @@ function compute_jacobian(B, p)
     J = zeros(total, total)
     # Resources: indices 1:R
     for i in 1:R
-        # Diagonal: ∂R_i/∂R_i
+        # Diagonal: diffR_i/diffR_i
         J[i, i] = - B[i] * d_res[i]
         # For consumers (indices R+1 to R+C)
         for j in (R+1):total
@@ -152,17 +135,17 @@ function compute_jacobian(B, p)
     # Consumers: indices R+1 to total.
     for k in 1:C
         i = R + k  # global index for consumer k
-        α = m_cons[k] / xi_cons[k]
-        # Diagonal (∂C_k/∂C_k)
-        J[i, i] = - α * B[i]
+        alpha = m_cons[k] / xi_cons[k]
+        # Diagonal (diffC_k/diffC_k)
+        J[i, i] = - alpha * B[i]
         # Derivatives with respect to resources (indices 1:R)
         for j in 1:R
-            J[i, j] = B[i] * α * epsilon[i, j] * A[i, j]
+            J[i, j] = B[i] * alpha * epsilon[i, j] * A[i, j]
         end
         # Derivatives with respect to other consumers (indices R+1 to total)
         for j in (R+1):total
             if j != i
-                J[i, j] = - B[i] * α * A[j, i]
+                J[i, j] = - B[i] * alpha * A[j, i]
             end
         end
     end
@@ -194,16 +177,17 @@ function simulate_press_perturbation(
     solver=Tsit5(),
     plot=false,
     show_warnings=true,
-    full_or_simple=true
+    full_or_simple=true,
+    cb = cb
 )
     # Unpack parameters
     R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
 
     # --- Phase 1: run up to t_perturb ---
     prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], t_perturb), p)
-    sol1 = show_warnings ? solve(prob1, solver; callback = cb_no_trigger, reltol=1e-8, abstol=1e-8) :
+    sol1 = show_warnings ? solve(prob1, solver; callback = cb, reltol=1e-8, abstol=1e-8) :
                            with_logger(logger) do
-                               solve(prob1, solver; callback = cb_no_trigger, reltol=1e-8, abstol=1e-8)
+                               solve(prob1, solver; callback = cb, reltol=1e-8, abstol=1e-8)
                            end
     pre_state = sol1.u[end]
     before_persistence = count(x -> x > EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
@@ -212,7 +196,7 @@ function simulate_press_perturbation(
     xi_press = xi_cons .* (1 .- delta)
     p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
-    sol2     = solve(prob2, solver; callback = cb_no_trigger, reltol=1e-8, abstol=1e-8)
+    sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
     n = length(new_equil)
 
@@ -327,12 +311,6 @@ end
 ################## Build Jacobian & Analytical V ############################
 #############################################################################
 #############################################################################
-"""
-    build_jacobian(B_eq, p)
-
-Analytically constructs the (R+C)×(R+C) Jacobian at equilibrium B_eq,
-given p = (R,C,m_cons,xi_cons,r_res,d_res,epsilon,A).
-"""
 function build_jacobian(B_eq, p)
     R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
     total = R + C
@@ -340,9 +318,9 @@ function build_jacobian(B_eq, p)
 
     # Resource block
     for i in 1:R
-        # ∂(du_i)/∂B_i = - d_res[i] * B_eq[i]
+        # diff(du_i)/diffB_i = - d_res[i] * B_eq[i]
         J[i,i] = -d_res[i]*B_eq[i]
-        # ∂(du_i)/∂B_j (j a consumer)
+        # diff(du_i)/diffB_j (j a consumer)
         for j in (R+1):total
             J[i,j] =  d_res[i]*B_eq[i]*A[i,j]
         end
@@ -373,12 +351,13 @@ function compute_analytical_V(J, R, C, m_cons, xi_cons)
     for k in 1:C
         D[R+k, R+k] = m_cons[k] / xi_cons[k]
     end
-    # Solve J * V = D  ⇒  V = J \ D
+    # Solve J * V = D  ?  V = J \ D
     return J \ D
 end
+
 ##########################################################################
 ##########################################################################
-################### Ladder‐of‐simplification transforms ##################
+################### Ladder-of-simplification transforms ##################
 ##########################################################################
 ##########################################################################
 function transform_for_ladder_step(step, A_adj, epsilon_full)
