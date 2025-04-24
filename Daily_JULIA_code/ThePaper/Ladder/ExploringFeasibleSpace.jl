@@ -1,7 +1,3 @@
-include("Ladder4.1_drago1.jl")
-using DifferentialEquations, Random, Statistics, DataFrames, CSV
-import Base.Threads: @threads, nthreads, threadid
-
 """
     feasibility_search(
         S_vals, conn_vals, C_ratios, IS_vals,
@@ -12,7 +8,7 @@ import Base.Threads: @threads, nthreads, threadid
     )
 
 Same as before but fully threaded:
-- builds all (S,conn,C_ratio,IS,d,m,ε) combos
+- builds all (S,conn,C_ratio,IS,d,m,epsilon) combos
 - splits them across Julia threads
 - each thread collects its results in a local Vector{NamedTuple}
 - at the end, we vcat them and build a DataFrame
@@ -41,11 +37,19 @@ function feasibility_search(
     
     @threads for idx in sample(1:length(combos), min(number_of_combos, length(combos)), replace=false)
         tid = threadid()
-        (S, conn, C_ratio, IS, d_value, pred_mortality, ε_mean , delta) = combos[idx]
+        (S, conn, C_ratio, IS, d_value, pred_mortality, epsilon_mean , delta) = combos[idx]
         # resource / consumer split
         C = clamp(round(Int, S*C_ratio), 1, S-1)
         R = S - C
-
+        if S == 25
+            cb = cb_no_trigger25
+        elseif S == 50
+            cb = cb_no_trigger50
+        elseif S == 75
+            cb = cb_no_trigger75
+        elseif S == 100
+            cb = cb_no_trigger100
+        end
         for iter in 1:Niter
             # --- build interaction matrix ---
             A = zeros(S,S)
@@ -65,10 +69,10 @@ function feasibility_search(
             # --- rates ---
             m_cons = fill(pred_mortality, C)
             d_res   = fill(d_value, R)
-            ε_mat   = clamp.(rand(LogNormal(ε_mean, ε_mean*0.1), S, S), 0, 1)
+            epsilon_mat   = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean*0.1), S, S), 0, 1)
 
             # --- calibrate with up to max_calib retries ---
-            pcal = (R, C, m_cons, d_res, ε_mat, A)
+            pcal = (R, C, m_cons, d_res, epsilon_mat, A)
             xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold)
             
             tries = 1
@@ -83,7 +87,7 @@ function feasibility_search(
                 R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
                 C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ((abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
                 fixed = vcat(R_eq, C_eq)
-                pcal = (R, C, m_cons, d_res, ε_mat, A)
+                pcal = (R, C, m_cons, d_res, epsilon_mat, A)
                 xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold)
                 tries += 1
             end
@@ -93,16 +97,16 @@ function feasibility_search(
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
                     IS=IS, d=d_value, m=pred_mortality,
-                    ε=ε_mean, delta=delta, iter=iter, R=R, C=C,
+                    epsilon=epsilon_mean, delta=delta, iter=iter, R=R, C=C,
                     feasible=false, before_p = 0.0, after_p = 0.0
                 ))
                 continue
             end
 
             # --- simulate the unperturbed dynamics ---
-            pfull = (R, C, m_cons, xi_cons, r_res, d_res, ε_mat, A)
+            pfull = (R, C, m_cons, xi_cons, r_res, d_res, epsilon_mat, A)
             prob   = ODEProblem(trophic_ode!, fixed, tspan, pfull)
-            sol    = solve(prob, Tsit5(); callback=cb_no_trigger, reltol=1e-8, abstol=1e-8)
+            sol    = solve(prob, Tsit5(); callback=cb, reltol=1e-8, abstol=1e-8)
 
             # --- feasibility check ---
             if sol.t[end] < t_perturb || any(isnan, sol.u[end]) || any(isinf, sol.u[end]) || any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:S])
@@ -110,7 +114,7 @@ function feasibility_search(
                 push!(local_recs[tid], (
                 S=S, conn=conn, C_ratio=C_ratio,
                 IS=IS, d=d_value, m=pred_mortality,
-                ε=ε_mean, delta=delta, iter=iter, R=R, C=C,
+                epsilon=epsilon_mean, delta=delta, iter=iter, R=R, C=C,
                 feasible=ok, before_p = 0.0, after_p = 0.0
             ))
             else
@@ -123,14 +127,14 @@ function feasibility_search(
                             fixed, pfull, (0.0, 500.0), 250.0, delta;
                             solver=Tsit5(), plot=false,
                             show_warnings=true,
-                            full_or_simple = true
+                            full_or_simple = true,
+                            cb = cb
                         )
-                after_pers = 
 
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
                     IS=IS, d=d_value, m=pred_mortality,
-                    ε=ε_mean, delta=delta, iter=iter, R=R, C=C,
+                    epsilon=epsilon_mean, delta=delta, iter=iter, R=R, C=C,
                     feasible=ok, before_p = before_pers, after_p = mean(B2 .> EXTINCTION_THRESHOLD)
                 ))
             end
