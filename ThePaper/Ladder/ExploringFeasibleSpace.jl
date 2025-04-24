@@ -69,7 +69,7 @@ function feasibility_search(
             # --- rates ---
             m_cons = fill(pred_mortality, C)
             d_res   = fill(d_value, R)
-            epsilon_mat   = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean*0.1), S, S), 0, 1)
+            epsilon_mat   = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
 
             # --- calibrate with up to max_calib retries ---
             pcal = (R, C, m_cons, d_res, epsilon_mat, A)

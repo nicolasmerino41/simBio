@@ -7,7 +7,7 @@ include("ExploringFeasibleSpace.jl")
 # 3) rppp_guided: only over pre-screened param tuples
 # -----------------------------------------------------------
 function rppp_guided(df_params::DataFrame, delta_vals;
-                     ladder_steps=1:12,
+                     ladder_steps=1:16,
                      Niter=10, tspan=(0.0,50.0), t_perturb=25.0,
                      max_calib=10, plot_full=false, plot_simple=false,
                      atol=10.0,
@@ -49,7 +49,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                             A[j,i]=-abs(rand(Normal(0,IS_red)))
                         end
                     end
-                    epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean*0.1), S, S), 0, 1)
+                    epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
 
                     # target eq
                     R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
@@ -89,7 +89,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         @warn "Error: solution did not finish properly"
                         continue
                     end
-                    Beq = sol.u[end]
+                    B_eq = sol.u[end]
 
                     g = SimpleGraph(A .!= 0)
                     degs = degree(g)
@@ -99,8 +99,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     varB = var(B_eq)
                     RelVar = varB / (meanB^2 + 1e-8)
                     
-                    resi = compute_resilience(Beq, p_full)
-                    reac = compute_reactivity(Beq, p_full)
+                    resi = compute_resilience(B_eq, p_full)
+                    reac = compute_reactivity(B_eq, p_full)
                     # pressâ€perturb
                     rt_full, os_full, ire_full, _, B2 = simulate_press_perturbation(
                         fixed, p_full, tspan, t_perturb, delta;
@@ -151,10 +151,10 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                             continue
                         end
 
-                        Beq2 = sol2.u[end]
+                        B_eq2 = sol2.u[end]
                         before_p = mean(sol2.u[end] .> EXTINCTION_THRESHOLD)
-                        res2  = compute_resilience(Beq2,p_simp)
-                        rea2  = compute_reactivity(Beq2,p_simp)
+                        res2  = compute_resilience(B_eq2,p_simp)
+                        rea2  = compute_reactivity(B_eq2,p_simp)
                         # get the full per-species press matrix just like in the full model
                         rt2, os2, ire2, _, B2_simp = simulate_press_perturbation(
                                 fixed, p_simp, tspan, t_perturb, delta;
@@ -198,7 +198,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     base = (
                         S=S, conn=conn, C_ratio=C_ratio,
                         IS=IS_red, d=d_val, m=m_val, epsilon=epsilon_mean,
-                        delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, rel_var=rel_var
+                        delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, RelVar=RelVar
                     )
                     rec = base
                     for step in ladder_steps
