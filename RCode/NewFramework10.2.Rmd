@@ -157,3 +157,6 @@ m_i\,\psi_i\Bigl(-1 + \varepsilon\,k_i^{\mathrm{out}} - k_i^{\mathrm{in}}\Bigr)
 \;=\;
 m_i\,\psi_i\bigl(-1 + S_i\bigr)
 $$
+$$
+X \approx \Bigl[\,1 + \frac{1}{d - S E_1}\sqrt{E_1^2 + E_2\,^2}\Bigr]^{\,S},
+$$
