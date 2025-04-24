@@ -1,27 +1,27 @@
 # new_results4 is 10,20,30,40 species, Normal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
-new_results4 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results4_total_species_fixed.jls")
+new_results4 = deserialize("ThePaper/Ladder/Outputs/new_results4_total_species_fixed.jls")
 
 # new_results5 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
-new_results5 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results5.jls")
+new_results5 = deserialize("ThePaper/Ladder/Outputs/new_results5.jls")
 
 # new_results6 is 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean*0.1
 # and includes overshoot and ire
-# new_results6 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.jls")
+# new_results6 = deserialize("ThePaper/Ladder/Outputs/new_results6.jls")
 
 # new_results6.2 is AGAIN 10,20,30,40 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
-new_results6 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results6.2.jls")
+new_results6 = deserialize("ThePaper/Ladder/Outputs/new_results6.2.jls")
 
 # new_results7 is 20,40,60,80 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
-new_results7 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results7.jls")
+new_results7 = deserialize("ThePaper/Ladder/Outputs/new_results7.jls")
 
 # new_results8 is 25,50,75,100 species, LogNormal Abundance Distribution & epsilon = 0.2 with sd = epsilon_mean
-new_results8 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results8.jls")
+new_results8 = deserialize("ThePaper/Ladder/Outputs/new_results8.jls")
 
 # new_results9 is 75 species, LogNormal Abundance Distribution & epsilon = 0.1 with sd = epsilon_mean, d_value = 2.0, pred_mortality = 0.05
-new_results9 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results9.jls")
-new_results10 = deserialize("Daily_JULIA_Code/ThePaper/Ladder/Outputs/new_results10.jls")
+new_results9 = deserialize("ThePaper/Ladder/Outputs/new_results9.jls")
+new_results10 = deserialize("ThePaper/Ladder/Outputs/new_results10.jls")
 
-df = new_results7
+df = new_results4
 if df == new_results4 || df == new_results5 || df == new_results6 
     S_vals = [10, 20, 30, 40]
 elseif df == new_results7
