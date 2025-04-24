@@ -1,6 +1,7 @@
 include("Ladder4.1_drago1.jl")
 using DifferentialEquations, Random, Statistics, DataFrames, CSV
 import Base.Threads: @threads, nthreads, threadid
+include("ExploringFeasibleSpace.jl")
 
 # -----------------------------------------------------------
 # 3) rppp_guided: only over pre-screened param tuples
@@ -15,25 +16,32 @@ function rppp_guided(df_params::DataFrame, delta_vals;
 )
 
     results = Vector{NamedTuple}()
-    lock = ReentrantLock()
-
+    results_lock = ReentrantLock()
     suffix(step) = step==1 ? "Full" : "S$(step-1)"
 
-    for row in eachrow(df_params)[sample(1:nrow(df_params), min(combinations, nrow(df_params)), replace=false)]
+    @threads for row in eachrow(df_params)[sample(1:nrow(df_params), min(combinations, nrow(df_params)), replace=false)]
         S        = row.S
         conn     = row.conn
         C_ratio  = row.C_ratio
         IS_red   = row.IS
         d_val    = row.d
         m_val    = row.m
-        ε_mean   = row.ε
+        epsilon_mean   = row.epsilon
         C        = row.C
         R        = row.R
-
+        if S == 25
+            cb = cb_no_trigger25
+        elseif S == 50
+            cb = cb_no_trigger50
+        elseif S == 75
+            cb = cb_no_trigger75
+        elseif S == 100
+            cb = cb_no_trigger100
+        end
         for delta in delta_vals
             for iter in 1:Niter
-                # try
-                    # build A & ε_full
+                try
+                    # build A & epsilon_full
                     A = zeros(S,S)
                     for i in (R+1):S, j in 1:S
                         if i!=j && rand()<conn
@@ -41,7 +49,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                             A[j,i]=-abs(rand(Normal(0,IS_red)))
                         end
                     end
-                    ε_full = clamp.(rand(LogNormal(ε_mean, ε_mean*0.1), S, S), 0, 1)
+                    epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean*0.1), S, S), 0, 1)
 
                     # target eq
                     R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
@@ -52,7 +60,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     d_res   = fill(d_val, R)
 
                     # calibrate
-                    xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,ε_full,A))
+                    xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,epsilon_full,A))
                     tries=1
                     while (any(isnan, xi_cons)||any(isnan, r_res)) && tries<max_calib
                         A .= 0
@@ -65,30 +73,40 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
                         C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1)-(abundance_mean*0.2)^2/2, abundance_mean*0.2), C))
                         fixed = vcat(R_eq, C_eq)
-                        xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,ε_full,A))
+                        xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,epsilon_full,A))
                         tries+=1
                     end
                     if any(isnan, xi_cons)||any(isnan, r_res)
                         continue
                     end
 
-                    # full‐model solve & metrics
-                    p_full = (R,C,m_cons,xi_cons,r_res,d_res,ε_full,A)
+                    # fullâ€model solve & metrics
+                    p_full = (R,C,m_cons,xi_cons,r_res,d_res,epsilon_full,A)
+
                     prob   = ODEProblem(trophic_ode!, fixed, tspan, p_full)
-                    sol    = solve(prob,Tsit5(); callback=cb_no_trigger, reltol=1e-8, abstol=1e-8)
+                    sol    = solve(prob,Tsit5(); callback=cb, reltol=1e-8, abstol=1e-8)
                     if sol.t[end] < t_perturb || any(isnan, sol.u[end]) || any(isinf, sol.u[end]) || any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:S])
                         @warn "Error: solution did not finish properly"
                         continue
                     end
                     Beq = sol.u[end]
+
+                    g = SimpleGraph(A .!= 0)
+                    degs = degree(g)
+                    degree_cv = std(degs) / mean(degs)
+
+                    meanB = mean(B_eq)
+                    varB = var(B_eq)
+                    RelVar = varB / (meanB^2 + 1e-8)
                     
                     resi = compute_resilience(Beq, p_full)
                     reac = compute_reactivity(Beq, p_full)
-                    # press‐perturb
+                    # pressâ€perturb
                     rt_full, os_full, ire_full, _, B2 = simulate_press_perturbation(
                         fixed, p_full, tspan, t_perturb, delta;
                         solver=Tsit5(), plot=plot_full,
-                        show_warnings=true, full_or_simple=true
+                        show_warnings=true, full_or_simple=true,
+                        cb = cb
                     )
                     # sensitivity corr
                     J_full   = build_jacobian(fixed, p_full)
@@ -97,7 +115,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     obs      = (B2 .- fixed)/delta
                     sens_corr_full = cor(vec(pred), vec(obs))
 
-                    # record metrics for “Full” step
+                    # record metrics for â€œFullâ€ step
                     metrics = Dict("Full" => (
                         return_time=mean(filter(!isnan, rt_full)),
                         overshoot  =mean(filter(!isnan, os_full)),
@@ -111,8 +129,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     # ladder steps 
                     for step in ladder_steps[2:end]
                         suf = suffix(step)
-                        A_s, ε_s = transform_for_ladder_step(step, A, ε_full)
-                        p_simp   = (R,C,m_cons,xi_cons,r_res,d_res,ε_s,A_s)
+                        A_s, epsilon_s = transform_for_ladder_step(step, A, epsilon_full)
+                        p_simp   = (R,C,m_cons,xi_cons,r_res,d_res,epsilon_s,A_s)
 
                         J_simp         = build_jacobian(fixed, p_simp)
                         V_ana_simp     = compute_analytical_V(J_simp, R, C, m_cons, xi_cons)
@@ -122,7 +140,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                                 trophic_ode!, fixed, tspan, p_simp
                             ),
                             Tsit5(); 
-                            callback=cb_no_trigger, reltol=1e-8, abstol=1e-8
+                            callback=cb, reltol=1e-8, abstol=1e-8
                         )
                         if sol2.t[end] < t_perturb || any(isnan, sol2.u[end]) || any(isinf, sol2.u[end])
                             metrics[suf] = (
@@ -142,7 +160,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                                 fixed, p_simp, tspan, t_perturb, delta;
                                 solver=Tsit5(), plot=plot_simple,
                                 show_warnings=true,
-                                full_or_simple=true
+                                full_or_simple=true,
+                                cb = cb
                             )
         
                         # in each step, after computing V_ana_simp and B2_simp
@@ -178,8 +197,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     # assemble record
                     base = (
                         S=S, conn=conn, C_ratio=C_ratio,
-                        IS=IS_red, d=d_val, m=m_val, ε=ε_mean,
-                        delta=delta, iteration=iter, R=R, C=C
+                        IS=IS_red, d=d_val, m=m_val, epsilon=epsilon_mean,
+                        delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, rel_var=rel_var
                     )
                     rec = base
                     for step in ladder_steps
@@ -197,13 +216,13 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         )
                     end
 
-                    lock(lock) do
-                    push!(results, rec)
+                    lock(results_lock) do
+                        push!(results, rec)
                     end
 
-                # catch e
-                #     @warn "Error in rppp_guided" row delta iter e
-                # end
+                catch e
+                    @warn "Error in rppp_guided" row delta iter e
+                end
             end  # iter
         end  # delta
     end  # threads
@@ -214,9 +233,12 @@ end
 # -----------------------------------------------------------
 # 4) Example invocation
 # -----------------------------------------------------------
-cb_no_trigger = build_callbacks(50, EXTINCTION_THRESHOLD)
+cb_no_trigger25 = build_callbacks(25, EXTINCTION_THRESHOLD)
+cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
+cb_no_trigger75 = build_callbacks(75, EXTINCTION_THRESHOLD)
+cb_no_trigger100 = build_callbacks(100, EXTINCTION_THRESHOLD)
 begin
-    S_vals      = [50]
+    S_vals      = [25, 50, 75, 100]
     conn_vals   = 0.1:0.2:1.0
     C_ratios    = 0.1:0.2:0.9
     IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
@@ -235,27 +257,29 @@ begin
         abundance_mean=1.0,
         atol=1.0,
         xi_threshold=0.7,
-        number_of_combos=100
+        number_of_combos=1000 # 10000 is good 
     )
 end
 
 # (b) Extract good combos
 df_good = unique(
     df_feas[df_feas.feasible .== true,
-            [:S, :conn, :C_ratio, :IS, :d, :m, :ε, :R, :C]]
+            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C]]
 )
 
 # (c) Guided rppp
-delta_vals = [0.1]
-df_results = rppp_guided(
-    df_good, delta_vals;
-    ladder_steps=1:12,
-    Niter=1, max_calib=50,
-    tspan=(0.0,500.0), t_perturb=250.0,
-    atol=1.0,
-    abundance_mean=1.0,
-    combinations=1000
-)
+begin
+    delta_vals = [0.1]
+    df_results = rppp_guided(
+        df_good, delta_vals;
+        ladder_steps=1:16,
+        Niter=1, max_calib=3, # 10 is good
+        tspan=(0.0,500.0), t_perturb=250.0,
+        atol=1.0,
+        abundance_mean=1.0,
+        combinations=1000 # You want 10000
+    )
+end
 
 # (d) Save or inspect
 CSV.write("rppp_guided_results.csv", df_results)
