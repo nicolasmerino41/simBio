@@ -1,27 +1,26 @@
-df = new_results10
+df = new_results11
 # define the steps in order
 step_keys = ["Full"; ["S$(i)" for i in 1:15]...]  # adjust the 15 if you have more/less steps
 
 # the metrics you want to plot
 metrics = [
-    :return_time, 
-    :overshoot, 
+    :rt, 
+    :os, 
     :ire, 
-    :compound_error,
-    :after_persistence
+    :aft
 ]
 
 # for each metric, build a figure
 for metric in metrics
     n = length(step_keys[1:end])
-    fig = Figure(; size = (1000, 1000), fontsize=12)
+    fig = Figure(; size = (1000, 700), fontsize=12)
     for i in 1:div(n, 4)
         
         for j in 1:4
             s = step_keys[j + (i-1)*4]
             # Create a colormap (e.g., viridis) based on number of consumers
-            cmap = cgrad(:viridis, length(unique(df.connectance)))
-            color_indices = [findfirst(==(val), sort(unique(df.connectance))) for val in df.connectance]
+            cmap = cgrad(:viridis, length(unique(df.conn)))
+            color_indices = [findfirst(==(val), sort(unique(df.conn))) for val in df.conn]
             color_vals = cmap[color_indices]
             ax = Axis(
                 fig[i, j]; title = s,
@@ -35,9 +34,9 @@ for metric in metrics
                 df.degree_cv, 
                 df[!, Symbol("$(metric)_$s")],
                 markersize = 6,
-                color = df.connectance,
+                color = df.conn,
                 colormap = :viridis,
-                colorrange = (minimum(df.connectance), maximum(df.connectance))
+                colorrange = (minimum(df.conn), maximum(df.conn))
             )
             # add a little 1:1 reference line?
             # you could also compute & annotate a correlation here
