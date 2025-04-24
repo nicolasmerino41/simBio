@@ -2,7 +2,7 @@ begin
     PC = "MM-1"
     const EXTINCTION_THRESHOLD = 1e-6
     using Pkg
-    Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\Daily_JULIA_code\\ThePaper"))
+    Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\ThePaper"))
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
     meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
     # using ArchGDAL #, Shapefile, NCDatasets
