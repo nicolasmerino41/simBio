@@ -16,6 +16,7 @@ Same as before but fully threaded:
 function feasibility_search(
     S_vals, conn_vals, C_ratios, IS_vals,
     d_vals, mortality_vals, epsilon_vals, delta_vals;
+    degree_distribution_types = [:ER, :PL],
     Niter=10,
     tspan=(0.0,50.0),
     t_perturb=25.0,
@@ -29,7 +30,8 @@ function feasibility_search(
     combos = collect(Iterators.product(
       S_vals, conn_vals, C_ratios,
       IS_vals, d_vals, mortality_vals,
-      epsilon_vals, delta_vals
+      epsilon_vals, delta_vals,
+      degree_distribution_types
     ))
     T = nthreads()
     # one local result buffer per thread
@@ -37,7 +39,7 @@ function feasibility_search(
     
     @threads for idx in sample(1:length(combos), min(number_of_combos, length(combos)), replace=false)
         tid = threadid()
-        (S, conn, C_ratio, IS, d_value, pred_mortality, epsilon_mean , delta) = combos[idx]
+        (S, conn, C_ratio, IS, d_value, pred_mortality, epsilon_mean , delta, scenario) = combos[idx]
         # resource / consumer split
         C = clamp(round(Int, S*C_ratio), 1, S-1)
         R = S - C
@@ -53,13 +55,13 @@ function feasibility_search(
         for iter in 1:Niter
             # --- build interaction matrix ---
             A = zeros(S,S)
-            for i in R+1:S, j in 1:S
-                if i!=j && rand() < conn
-
-                    A[i,j] =  abs(rand(Normal(0, IS)))
-                    A[j,i] = -abs(rand(Normal(0, IS)))
-                end
-            end
+            # for i in R+1:S, j in 1:S
+            #     if i!=j && rand() < conn
+            #         A[i,j] =  abs(rand(Normal(0, IS)))
+            #         A[j,i] = -abs(rand(Normal(0, IS)))
+            #     end
+            # end
+            A = make_A(A, R, conn, scenario)
 
             # --- target equilibrium ---
             R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
@@ -77,13 +79,14 @@ function feasibility_search(
             
             tries = 1
             while (any(isnan, xi_cons) || any(isnan, r_res)) && tries < max_calib
-                A .= 0
-                for i in R+1:S, j in 1:S
-                    if i!=j && rand() < conn && iszero(A[i,j])
-                        A[i,j] = abs(rand(Normal(0, IS)))
-                        A[j,i] = -abs(rand(Normal(0, IS)))
-                    end
-                end
+                A .= 0   
+                # for i in R+1:S, j in 1:S
+                #     if i!=j && rand() < conn
+                #         A[i,j] =  abs(rand(Normal(0, IS)))
+                #         A[j,i] = -abs(rand(Normal(0, IS)))
+                #     end
+                # end
+                A = make_A(A, R, conn, scenario)
                 R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
                 C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ((abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
                 fixed = vcat(R_eq, C_eq)
@@ -97,7 +100,7 @@ function feasibility_search(
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
                     IS=IS, d=d_value, m=pred_mortality,
-                    epsilon=epsilon_mean, delta=delta, iter=iter, R=R, C=C,
+                    epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=false, before_p = 0.0, after_p = 0.0
                 ))
                 continue
@@ -114,7 +117,7 @@ function feasibility_search(
                 push!(local_recs[tid], (
                 S=S, conn=conn, C_ratio=C_ratio,
                 IS=IS, d=d_value, m=pred_mortality,
-                epsilon=epsilon_mean, delta=delta, iter=iter, R=R, C=C,
+                epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                 feasible=ok, before_p = 0.0, after_p = 0.0
             ))
             else
@@ -134,7 +137,7 @@ function feasibility_search(
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
                     IS=IS, d=d_value, m=pred_mortality,
-                    epsilon=epsilon_mean, delta=delta, iter=iter, R=R, C=C,
+                    epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=ok, before_p = before_pers, after_p = mean(B2 .> EXTINCTION_THRESHOLD)
                 ))
             end
@@ -146,17 +149,17 @@ function feasibility_search(
     return DataFrame(allrecs)
 end
 
-begin
+if false
     S_vals      = [50]
     conn_vals   = 0.1:0.2:1.0
-    C_ratios    = 0.1:0.2:0.9
+    C_ratios    = 0.2:0.1:0.5
     IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
     d_vals      = [0.01, 0.1, 1.0, 2.0]
     mort_vals   = [0.05, 0.1, 0.2, 0.5]
     epsilon_vals= [0.01, 0.1, 0.2, 0.5]
     delta_vals  = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-    df1 = feasibility_search(
+    A_feas = feasibility_search(
         S_vals, conn_vals, C_ratios, IS_vals,
         d_vals, mort_vals, epsilon_vals, delta_vals;
         Niter=20,
