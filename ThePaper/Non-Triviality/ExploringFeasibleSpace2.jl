@@ -24,10 +24,9 @@ function make_A(
                 A[j,i] = -abs(rand(Normal()))
             end
         end
-
     elseif scenario == :PL
         # power‐law consumer out‐degree: only consumers get ks
-        α     = param
+        α     = 3.0
         k_max = S-1
         # sample desired out‐degrees
         raw   = rand(Pareto(1, α), C)
@@ -42,26 +41,6 @@ function make_A(
                 A[j,  ci] = -abs(rand(Normal()))
             end
         end
-
-    elseif scenario == :MOD
-        # two‐block modular consumers → any
-        γ     = param
-        halfC = fld(C, 2)
-        block1 = (R+1):(R+halfC)
-        # block2 = (R+halfC+1):S
-
-        for i in (R+1):S, j in 1:S
-            if i == j
-                continue
-            end
-            inblock = (i in block1 && j in block1) || (i ∉ block1 && j ∉ block1)
-            p = inblock ? conn*γ : conn/γ
-            if rand() < clamp(p,0,1)
-                A[i,j] = abs(rand(Normal()))
-                A[j,i] = -abs(rand(Normal()))
-            end
-        end
-
     else
         error("Unknown scenario $scenario")
     end
@@ -76,7 +55,7 @@ function feasibility_search2(
     # now pass scenarios as (Symbol,Float) tuples:
     network_scenarios = [(:ER, 0.0), (:PL, 2.5), (:MOD, 2.0)],
     pyramid_skews     = [0.5, 1.0, 2.0],
-    Niter=10, tspan=(0.,50.), t_perturb=25.,
+    Niter=10, tspan=(0.0,500.0), t_perturb=25.0,
     max_calib=10, abundance_mean=1.0,
     atol=1e-3, xi_threshold=0.7,
     number_of_combos=1000
