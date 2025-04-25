@@ -1,13 +1,14 @@
-df = new_results11
+df = new_results10
 # define the steps in order
 step_keys = ["Full"; ["S$(i)" for i in 1:15]...]  # adjust the 15 if you have more/less steps
 
 # the metrics you want to plot
 metrics = [
-    :rt, 
-    :os, 
-    :ire, 
-    :aft
+    # :return_time, 
+    # :os, 
+    # :ire, 
+    # :after_persistence
+    :reactivity
 ]
 
 # for each metric, build a figure
@@ -19,13 +20,14 @@ for metric in metrics
         for j in 1:4
             s = step_keys[j + (i-1)*4]
             # Create a colormap (e.g., viridis) based on number of consumers
-            cmap = cgrad(:viridis, length(unique(df.conn)))
-            color_indices = [findfirst(==(val), sort(unique(df.conn))) for val in df.conn]
+            cmap = cgrad(:viridis, length(unique(df.connectance)))
+            color_indices = [findfirst(==(val), sort(unique(df.connectance))) for val in df.connectance]
             color_vals = cmap[color_indices]
             ax = Axis(
                 fig[i, j]; title = s,
                 xlabel = "Degree CV",
                 ylabel = string(metric),
+                yscale = log10
                 # title  = "Step $s"
             )
             # scatter degree_cv vs metric_s
@@ -34,9 +36,9 @@ for metric in metrics
                 df.degree_cv, 
                 df[!, Symbol("$(metric)_$s")],
                 markersize = 6,
-                color = df.conn,
+                color = df.connectance,
                 colormap = :viridis,
-                colorrange = (minimum(df.conn), maximum(df.conn))
+                colorrange = (minimum(df.connectance), maximum(df.connectance))
             )
             # add a little 1:1 reference line?
             # you could also compute & annotate a correlation here
@@ -45,7 +47,6 @@ for metric in metrics
     # fig.layoutgap = (10,10)
     display(fig)
 end
-
 
 begin
     using Statistics, DataFrames, CairoMakie
