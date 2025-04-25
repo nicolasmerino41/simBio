@@ -3,6 +3,51 @@ using DifferentialEquations, Random, Statistics, DataFrames, CSV
 import Base.Threads: @threads, nthreads, threadid
 include("ExploringFeasibleSpace.jl")
 
+function make_A(
+    A::AbstractMatrix{<:Real},
+    R::Int,
+    conn::Float64,
+    scenario::Symbol
+)
+    S = size(A,1)
+    @assert 1 <= R < S "Must have at least one resource and one consumer"
+    C = S - R
+
+    # zero-out
+    fill!(A, 0.0)
+
+    if scenario == :ER
+        # each possible consumer?any link with prob=conn
+        for i in (R+1):S, j in 1:S
+            if i != j && rand() < conn && iszero(A[i,j])
+                A[i,j] = abs(rand(Normal()))
+                A[j,i] = -abs(rand(Normal()))
+            end
+        end
+    elseif scenario == :PL
+        # power-law consumer out-degree: only consumers get ks
+        a     = 3.0
+        k_max = S-1
+        # sample desired out-degrees
+        raw   = rand(Pareto(1, a), C)
+        ks    = clamp.(round.(Int, raw), 1, k_max)
+
+        for (idx, k) in enumerate(ks)
+            ci = R + idx  # consumer index
+            # pick k distinct prey-nodes from 1:S except ci
+            js = sample(filter(x->x!=ci, 1:S), k; replace=false)
+            for j in js
+                A[ci, j] = abs(rand(Normal()))
+                A[j,  ci] = -abs(rand(Normal()))
+            end
+        end
+    else
+        error("Unknown scenario $scenario")
+    end
+
+    return A
+end
+
 # -----------------------------------------------------------
 # 3) rppp_guided: only over pre-screened param tuples
 # -----------------------------------------------------------
@@ -29,6 +74,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
         epsilon_mean   = row.epsilon
         C        = row.C
         R        = row.R
+        scenario = row.scenario
+
         if S == 25
             cb = cb_no_trigger25
         elseif S == 50
@@ -43,12 +90,15 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                 try
                     # build A & epsilon_full
                     A = zeros(S,S)
-                    for i in (R+1):S, j in 1:S
-                        if i!=j && rand()<conn
-                            A[i,j]=abs(rand(Normal(0,IS_red)))
-                            A[j,i]=-abs(rand(Normal(0,IS_red)))
-                        end
-                    end
+                    # for i in (R+1):S, j in 1:S
+                    #     if i!=j && rand()<conn
+                    #         A[i,j]=abs(rand(Normal(0,IS_red)))
+                    #         A[j,i]=-abs(rand(Normal(0,IS_red)))
+                    #     end
+                    # end
+
+                    A = make_A(A, R, conn, scenario)
+
                     epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
 
                     # target eq
@@ -64,12 +114,14 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     tries=1
                     while (any(isnan, xi_cons)||any(isnan, r_res)) && tries<max_calib
                         A .= 0
-                        for i in (R+1):S, j in 1:S
-                            if i!=j && rand()<conn
-                                A[i,j]=abs(rand(Normal(0,IS_red)))
-                                A[j,i]=-abs(rand(Normal(0, IS_red)))
-                            end
-                        end
+                        # for i in (R+1):S, j in 1:S
+                        #     if i!=j && rand()<conn
+                        #         A[i,j]=abs(rand(Normal(0,IS_red)))
+                        #         A[j,i]=-abs(rand(Normal(0, IS_red)))
+                        #     end
+                        # end
+                        A = make_A(A, R, conn, scenario)
+
                         R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
                         C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1)-(abundance_mean*0.2)^2/2, abundance_mean*0.2), C))
                         fixed = vcat(R_eq, C_eq)
@@ -198,7 +250,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     base = (
                         S=S, conn=conn, C_ratio=C_ratio,
                         IS=IS_red, d=d_val, m=m_val, epsilon=epsilon_mean,
-                        delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, RelVar=RelVar
+                        delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, RelVar=RelVar, 
+                        scenario=scenario
                     )
                     rec = base
                     for step in ladder_steps
@@ -229,18 +282,18 @@ function rppp_guided(df_params::DataFrame, delta_vals;
 
     return DataFrame(results)
 end
-
 # -----------------------------------------------------------
 # 4) Example invocation
 # -----------------------------------------------------------
-cb_no_trigger25 = build_callbacks(25, EXTINCTION_THRESHOLD)
+# cb_no_trigger25 = build_callbacks(25, EXTINCTION_THRESHOLD)
 cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
-cb_no_trigger75 = build_callbacks(75, EXTINCTION_THRESHOLD)
-cb_no_trigger100 = build_callbacks(100, EXTINCTION_THRESHOLD)
+# cb_no_trigger75 = build_callbacks(75, EXTINCTION_THRESHOLD)
+# cb_no_trigger100 = build_callbacks(100, EXTINCTION_THRESHOLD)
+
 begin
-    S_vals      = [25, 50, 75, 100]
-    conn_vals   = 0.1:0.2:1.0
-    C_ratios    = 0.1:0.2:0.9
+    S_vals      = [50]
+    conn_vals   = 0.05:0.05:0.4
+    C_ratios    = 0.1:0.1:0.5
     IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
     d_vals      = [0.01, 0.1, 1.0, 2.0]
     mort_vals   = [0.05, 0.1, 0.2, 0.5]
@@ -250,6 +303,7 @@ begin
     df_feas = feasibility_search(
         S_vals, conn_vals, C_ratios, IS_vals,
         d_vals, mort_vals, epsilon_vals, delta_vals;
+	degree_distribution_types=[:ER, :PL],
         Niter=1,
         tspan=(0.0,100.0),
         t_perturb=50.0,
@@ -257,14 +311,14 @@ begin
         abundance_mean=1.0,
         atol=1.0,
         xi_threshold=0.7,
-        number_of_combos=1000 # 10000 is good 
+        number_of_combos=100000 # 10000 is good 
     )
 end
 
 # (b) Extract good combos
 df_good = unique(
     df_feas[df_feas.feasible .== true,
-            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C]]
+            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario]]
 )
 
 # (c) Guided rppp
@@ -273,13 +327,13 @@ begin
     df_results = rppp_guided(
         df_good, delta_vals;
         ladder_steps=1:16,
-        Niter=1, max_calib=3, # 10 is good
+        Niter=1, max_calib=15, # 10 is good
         tspan=(0.0,500.0), t_perturb=250.0,
         atol=1.0,
         abundance_mean=1.0,
-        combinations=1000 # You want 10000
+        combinations=35000 # You want 10000
     )
 end
 
 # (d) Save or inspect
-CSV.write("rppp_guided_results.csv", df_results)
+CSV.write("guided_results_ERplusPL.csv", df_results)
