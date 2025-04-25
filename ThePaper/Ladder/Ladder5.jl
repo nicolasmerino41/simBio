@@ -20,7 +20,7 @@ new_results8 = deserialize("ThePaper/Ladder/Outputs/new_results8.jls")
 # new_results9 is 75 species, LogNormal Abundance Distribution & epsilon = 0.1 with sd = epsilon_mean, d_value = 2.0, pred_mortality = 0.05
 new_results9 = deserialize("ThePaper/Ladder/Outputs/new_results9.jls")
 new_results10 = deserialize("ThePaper/Ladder/Outputs/new_results10.jls")
-
+new_results11 = deserialize("ThePaper/Ladder/Outputs/new_results11.jls")
 df = new_results4
 if df == new_results4 || df == new_results5 || df == new_results6 
     S_vals = [10, 20, 30, 40]
