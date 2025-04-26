@@ -1,4 +1,4 @@
-function plot_x_vs_yy(
+function plot_x_vs_y(
     df::DataFrame, x_value, y_value;
     color_by = :conn,
     variable_to_subset = nothing, subset = nothing
@@ -22,13 +22,13 @@ function plot_x_vs_yy(
     is_numeric_color = eltype(Cs) <: Real
     color_vals = is_numeric_color ? Cs : map(x -> findfirst(==(x), unique(Cs)), Cs)
 
-    fig = Figure(; size = (1600, 900))
+    fig = Figure(; size = (1600, 700))
     ncols = 4
     nrows = ceil(Int, length(step_keys) / ncols)
 
     label_text = isnothing(subset) ?
-        "$x_value vs $y_value (colored by $color_by)" :
-        "$x_value vs $y_value when $variable_to_subset = $subset (colored by $color_by)"
+        "$y_value vs $x_value (colored by $color_by)" :
+        "$y_value vs $x_value when $variable_to_subset = $subset (colored by $color_by)"
     Label(fig[0, :], label_text, fontsize = 24, tellwidth = false)
 
     for (i, step) in enumerate(step_keys)
@@ -45,6 +45,10 @@ function plot_x_vs_yy(
 
         x_raw = df[:, x_key]
         y_raw = df[:, y_key]
+
+        if y_value == :aft
+            limits!(ax, (minimum(x_raw), maximum(x_raw)), (0.0, 1.05))
+        end
 
         valid = [isa(x, Real) && isa(y, Real) && !ismissing(x) && !ismissing(y)
                  for (x, y) in zip(x_raw, y_raw)]
@@ -81,15 +85,26 @@ function plot_x_vs_yy(
 end
 
 # Example usage:
-plot_x_vs_yy(df_results, :degree_cv, :per; color_by=:conn)
-
-
-plot_x_vs_yy(df_results, :res, :scorr; color_by=:scenario, variable_to_subset=:S, subset=50)
-# fig = plot_x_vs_yy(df_results, :res, :rt; color_by=:conn)
+plot_x_vs_y(df_results, :degree_cv, :per; color_by=:conn)
+plot_x_vs_y(df_results, :res, :scorr; color_by=:scenario, variable_to_subset=:S, subset=50)
+# fig = plot_x_vs_y(df_results, :res, :rt; color_by=:conn)
 for i in 0.1:0.1:0.5
-    fig = plot_x_vs_yy(df_results, :degree_cv, :res; color_by=:conn, variable_to_subset = :C_ratio, subset = i)
+    fig = plot_x_vs_y(df_results, :degree_cv, :res; color_by=:conn, variable_to_subset = :C_ratio, subset = i)
 end
 
 ############## FOR WHEN MAC SPITS OUT THE RESULTS ##############
 mac_results = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL.csv") |> DataFrame
-plot_x_vs_yy(mac_results, :degree_cv, :rt; color_by=:scenario)
+mac_results1 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL1_75.csv") |> DataFrame
+mac_results2 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL1_75_noconstraint.csv") |> DataFrame
+df_to_plot = mac_results2
+name_of_the_x = [:conn, :C_ratio, :degree_cv, :RelVar, :IS, :d, :m]
+name_of_the_y = [:aft, :res, :scorr, :rt, :rea]
+name_of_the_col = [:conn, :C_ratio, :IS, :degree_cv, :RelVar, :scenario, :d, :m]
+
+for i in name_of_the_x, j in name_of_the_y, k in name_of_the_col
+    if i != j && i != k && j != k
+        plot_x_vs_y(df_to_plot, i, j; color_by=k)
+    end
+end
+plot_x_vs_y(df_to_plot, :degree_cv, :aft; color_by=:conn)
+subs = filter(row -> row.scenario == "PL", df_to_plot)
