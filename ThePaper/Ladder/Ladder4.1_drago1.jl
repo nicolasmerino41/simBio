@@ -73,7 +73,8 @@ function calibrate_params(
     R_eq::Vector{Float64},
     C_eq::Vector{Float64},
     p_calib;
-    xi_threshold = 0.3
+    xi_threshold = 0.3,
+    constraints = true
 )
     R, C, m_cons, d_res, epsilon, A_used = p_calib
     total = R + C
@@ -102,10 +103,14 @@ function calibrate_params(
         new_xi_cons[k] = xi > 0 ? xi : NaN
 
         xi = prey_sum - pred_sum - C_eq[k]
-        if xi > 0 && (C_eq[k]/xi) < xi_threshold
-            new_xi_cons[k] = xi
+        if constraints
+            if xi > 0 && (C_eq[k]/xi) < xi_threshold
+                new_xi_cons[k] = xi
+            else
+                new_xi_cons[k] = NaN
+            end
         else
-            new_xi_cons[k] = NaN
+            new_xi_cons[k] = xi
         end
     end
 
@@ -192,7 +197,8 @@ function simulate_press_perturbation(
     plot=false,
     show_warnings=true,
     full_or_simple=true,
-    cb = cb
+    cb = cb,
+    species_specific_perturbation=false
 )
     # Unpack parameters
     R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
@@ -206,6 +212,8 @@ function simulate_press_perturbation(
     pre_state = sol1.u[end]
     before_persistence = count(x -> x > EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
     # pre_state[pre_state .> EXTINCTION_THRESHOLD] .= 0.0
+
+    ########## FIRST PART: WHOLE COMMUNITY PERTURBATION ##########
     # --- Phase 2: apply press (reduce thresholds by delta) ---
     xi_press = xi_cons .* (1 .- delta)
     p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
@@ -237,6 +245,31 @@ function simulate_press_perturbation(
         ire[i]       = mean(rel_errors)
     end
 
+    ########## SECOND PART: SPECIES SENSITIVITY TO PERTURBATION ##########
+    species_specific_return_times = fill(NaN, C)
+
+    if species_specific_perturbation
+        for i in 1:C
+            xi_press = copy(xi_cons)          # <-- copy, not alias
+            xi_press[i] *= (1 - delta)         # perturb only species i
+    
+            p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
+            prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
+            sol2     = solve(prob2, solver; callback=cb, reltol=1e-8, abstol=1e-8)
+    
+            new_equil = sol2.u[end]
+    
+            # --- Return Times ---
+            target = new_equil[R+i]
+            for (t, state) in zip(sol2.t, sol2.u)
+                if abs(state[i] - target) / (abs(target) + 1e-8) < 0.10
+                    species_specific_return_times[i] = t - t_perturb
+                    break
+                end
+            end
+        end
+    end
+
     # --- Optional plotting ---
     if plot && sol1.t[end] == t_perturb && all(isfinite, pre_state)
         fig = Figure(; size=(1600,800))
@@ -259,7 +292,7 @@ function simulate_press_perturbation(
         display(fig)
     end
 
-    return return_times, overshoot, ire, before_persistence, new_equil
+    return return_times, overshoot, ire, before_persistence, new_equil, species_specific_return_times
 end
 
 # -------------------------------
