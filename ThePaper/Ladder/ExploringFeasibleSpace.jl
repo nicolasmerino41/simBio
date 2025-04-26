@@ -22,9 +22,11 @@ function feasibility_search(
     t_perturb=25.0,
     max_calib=10,
     abundance_mean=1.0,
-    atol=1e-3,
+    atol=1.0,
     xi_threshold=0.7,
-    number_of_combos=1000
+    number_of_combos=1000,
+    calibrate_params_constraints = true,
+    species_specific_perturbation = false
 )
     # 1) build the full list of parameter combinations
     combos = collect(Iterators.product(
@@ -75,7 +77,7 @@ function feasibility_search(
 
             # --- calibrate with up to max_calib retries ---
             pcal = (R, C, m_cons, d_res, epsilon_mat, A)
-            xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold)
+            xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold, constraints=calibrate_params_constraints)
             
             tries = 1
             while (any(isnan, xi_cons) || any(isnan, r_res)) && tries < max_calib
@@ -91,17 +93,27 @@ function feasibility_search(
                 C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ((abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
                 fixed = vcat(R_eq, C_eq)
                 pcal = (R, C, m_cons, d_res, epsilon_mat, A)
-                xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold)
+                xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold, constraints=calibrate_params_constraints)
                 tries += 1
             end
 
             # if calibration failed, record infeasible
-            if any(isnan, xi_cons) || any(isnan, r_res)
+            if calibrate_params_constraints && any(isnan, xi_cons) || any(isnan, r_res)
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
                     IS=IS, d=d_value, m=pred_mortality,
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
-                    feasible=false, before_p = 0.0, after_p = 0.0
+                    feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
+                    ssp = species_specific_perturbation
+                ))
+                continue
+            elseif !calibrate_params_constraints && any(isnan, r_res)
+                push!(local_recs[tid], (
+                    S=S, conn=conn, C_ratio=C_ratio,
+                    IS=IS, d=d_value, m=pred_mortality,
+                    epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
+                    feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
+                    ssp =species_specific_perturbation
                 ))
                 continue
             end
@@ -118,27 +130,39 @@ function feasibility_search(
                 S=S, conn=conn, C_ratio=C_ratio,
                 IS=IS, d=d_value, m=pred_mortality,
                 epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
-                feasible=ok, before_p = 0.0, after_p = 0.0
-            ))
+                feasible=ok, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
+                ssp = species_specific_perturbation
+                ))
             else
                 ok = true
 
                 Beq = sol.u[end]
                 before_pers = mean(Beq .> EXTINCTION_THRESHOLD)
-
-                rt_full, os_full, ire_full, _, B2 = simulate_press_perturbation(
+                
+                if species_specific_perturbation
+                    rt_full, os_full, ire_full, _, B2, sp_rt_full = simulate_press_perturbation(
                             fixed, pfull, (0.0, 500.0), 250.0, delta;
                             solver=Tsit5(), plot=false,
                             show_warnings=true,
                             full_or_simple = true,
                             cb = cb
                         )
+                else
+                    rt_full, os_full, ire_full, _, B2 = simulate_press_perturbation(
+                            fixed, pfull, (0.0, 500.0), 250.0, delta;
+                            solver=Tsit5(), plot=false,
+                            show_warnings=true,
+                            full_or_simple = true,
+                            cb = cb
+                        )
+                end
 
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
                     IS=IS, d=d_value, m=pred_mortality,
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
-                    feasible=ok, before_p = before_pers, after_p = mean(B2 .> EXTINCTION_THRESHOLD)
+                    feasible=ok, before_p = before_pers, after_p = mean(B2 .> EXTINCTION_THRESHOLD),
+                    constraints=calibrate_params_constraints, ssp = species_specific_perturbation,
                 ))
             end
         end
