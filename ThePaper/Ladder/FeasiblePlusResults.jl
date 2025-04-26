@@ -26,7 +26,7 @@ function make_A(
         end
     elseif scenario == :PL
         # power-law consumer out-degree: only consumers get ks
-        a     = 3.0
+        a     = 1.75
         k_max = S-1
         # sample desired out-degrees
         raw   = rand(Pareto(1, a), C)
@@ -66,7 +66,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
 
     @threads for row in eachrow(df_params)[sample(1:nrow(df_params), min(combinations, nrow(df_params)), replace=false)]
         S        = row.S
-        conn     = row.conn
+        conn     = round(row.conn, digits=3)
         C_ratio  = row.C_ratio
         IS_red   = row.IS
         d_val    = row.d
@@ -75,6 +75,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
         C        = row.C
         R        = row.R
         scenario = row.scenario
+        constraints = row.constraints
+        ssp = row.ssp
 
         if S == 25
             cb = cb_no_trigger25
@@ -110,7 +112,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     d_res   = fill(d_val, R)
 
                     # calibrate
-                    xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,epsilon_full,A))
+                    xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,epsilon_full,A); xi_threshold=0.7, constraints=constraints)
                     tries=1
                     while (any(isnan, xi_cons)||any(isnan, r_res)) && tries<max_calib
                         A .= 0
@@ -125,7 +127,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
                         C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1)-(abundance_mean*0.2)^2/2, abundance_mean*0.2), C))
                         fixed = vcat(R_eq, C_eq)
-                        xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,epsilon_full,A))
+                        xi_cons, r_res = calibrate_params(R_eq, C_eq, (R,C,m_cons,d_res,epsilon_full,A); xi_threshold=0.7, constraints=constraints)
                         tries+=1
                     end
                     if any(isnan, xi_cons)||any(isnan, r_res)
@@ -153,12 +155,13 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     
                     resi = compute_resilience(B_eq, p_full)
                     reac = compute_reactivity(B_eq, p_full)
-                    # pressâ€perturb
-                    rt_full, os_full, ire_full, _, B2 = simulate_press_perturbation(
+                    # press perturb
+                    rt_full, os_full, ire_full, _, B2, sp_rt_full = simulate_press_perturbation(
                         fixed, p_full, tspan, t_perturb, delta;
                         solver=Tsit5(), plot=plot_full,
                         show_warnings=true, full_or_simple=true,
-                        cb = cb
+                        cb = cb,
+                        species_specific_perturbation=ssp
                     )
                     # sensitivity corr
                     J_full   = build_jacobian(fixed, p_full)
@@ -167,7 +170,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     obs      = (B2 .- fixed)/delta
                     sens_corr_full = cor(vec(pred), vec(obs))
 
-                    # record metrics for â€œFullâ€ step
+                    # record metrics for each step
                     metrics = Dict("Full" => (
                         return_time=mean(filter(!isnan, rt_full)),
                         overshoot  =mean(filter(!isnan, os_full)),
@@ -176,7 +179,10 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         reactivity =reac,
                         sens_corr  =sens_corr_full,
                         before_p   =mean(sol.u[end] .> 1e-6),
-                        after_p    =mean(B2 .> 1e-6),))
+                        after_p    =mean(B2 .> 1e-6),
+                        sp_rt_mean     =mean(filter(!isnan, sp_rt_full)),
+                        sp_rt_cv       =std(filter(!isnan, sp_rt_full)) / mean(filter(!isnan, sp_rt_full))
+                        ))
 
                     # ladder steps 
                     for step in ladder_steps[2:end]
@@ -208,12 +214,13 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         res2  = compute_resilience(B_eq2,p_simp)
                         rea2  = compute_reactivity(B_eq2,p_simp)
                         # get the full per-species press matrix just like in the full model
-                        rt2, os2, ire2, _, B2_simp = simulate_press_perturbation(
+                        rt2, os2, ire2, _, B2_simp, sp_rt_simp = simulate_press_perturbation(
                                 fixed, p_simp, tspan, t_perturb, delta;
                                 solver=Tsit5(), plot=plot_simple,
                                 show_warnings=true,
                                 full_or_simple=true,
-                                cb = cb
+                                cb = cb,
+                                species_specific_perturbation=ssp
                             )
         
                         # in each step, after computing V_ana_simp and B2_simp
@@ -243,6 +250,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                             sens_corr      = corr_simp,
                             before_p       = before_p,
                             after_p        = mean(B2_simp .> EXTINCTION_THRESHOLD),
+                            sp_rt_mean         = mean(filter(!isnan, sp_rt_simp)),
+                            sp_rt_cv           = std(filter(!isnan, sp_rt_simp)) / mean(filter(!isnan, sp_rt_simp))ºº
                         )
                     end
 
@@ -251,7 +260,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         S=S, conn=conn, C_ratio=C_ratio,
                         IS=IS_red, d=d_val, m=m_val, epsilon=epsilon_mean,
                         delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, RelVar=RelVar, 
-                        scenario=scenario
+                        scenario=scenario, constraints=constraints, ssp=ssp
                     )
                     rec = base
                     for step in ladder_steps
@@ -265,7 +274,9 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                             Symbol("rea_$suf")     => m.reactivity,
                             Symbol("scorr_$suf")   => m.sens_corr,
                             Symbol("bef_$suf")     => m.before_p,
-                            Symbol("aft_$suf")     => m.after_p)
+                            Symbol("aft_$suf")     => m.after_p,
+                            Symbol("sp_rt_$suf")   => m.sp_rt_mean,
+                            Symbol("sp_rt_cv_$suf")   => m.sp_rt_cv)
                         )
                     end
 
@@ -286,13 +297,13 @@ end
 # 4) Example invocation
 # -----------------------------------------------------------
 # cb_no_trigger25 = build_callbacks(25, EXTINCTION_THRESHOLD)
-cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
-# cb_no_trigger75 = build_callbacks(75, EXTINCTION_THRESHOLD)
+# cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
+cb_no_trigger75 = build_callbacks(75, EXTINCTION_THRESHOLD)
 # cb_no_trigger100 = build_callbacks(100, EXTINCTION_THRESHOLD)
 
 begin
-    S_vals      = [50]
-    conn_vals   = 0.05:0.05:0.4
+    S_vals      = [75]
+    conn_vals   = range(0.01, 0.4, length=10)
     C_ratios    = 0.1:0.1:0.5
     IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
     d_vals      = [0.01, 0.1, 1.0, 2.0]
@@ -303,22 +314,24 @@ begin
     df_feas = feasibility_search(
         S_vals, conn_vals, C_ratios, IS_vals,
         d_vals, mort_vals, epsilon_vals, delta_vals;
-	degree_distribution_types=[:ER, :PL],
+	    degree_distribution_types=[:ER, :PL],
         Niter=1,
         tspan=(0.0,100.0),
         t_perturb=50.0,
         max_calib=50,
         abundance_mean=1.0,
-        atol=1.0,
-        xi_threshold=0.7,
-        number_of_combos=100000 # 10000 is good 
+        atol=10.0,
+        xi_threshold=2.0,
+        number_of_combos=100000, # 10000 is good 
+        calibrate_params_constraints=false,
+        species_specific_perturbation=true
     )
 end
 
 # (b) Extract good combos
 df_good = unique(
     df_feas[df_feas.feasible .== true,
-            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario]]
+            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints]]
 )
 
 # (c) Guided rppp
@@ -329,11 +342,11 @@ begin
         ladder_steps=1:16,
         Niter=1, max_calib=15, # 10 is good
         tspan=(0.0,500.0), t_perturb=250.0,
-        atol=1.0,
+        atol=10.0,
         abundance_mean=1.0,
-        combinations=35000 # You want 10000
+        combinations=40000 # You want 10000
     )
 end
 
 # (d) Save or inspect
-CSV.write("guided_results_ERplusPL.csv", df_results)
+CSV.write("guided_results_ERplusPL1_75_noconstraint_speciesSpecificRTs.csv", df_results)
