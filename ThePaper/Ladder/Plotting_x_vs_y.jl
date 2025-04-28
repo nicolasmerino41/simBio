@@ -1,4 +1,4 @@
-function plot_x_vs_y(
+function plot_x_vs_yy(
     df::DataFrame, x_value, y_value;
     color_by = :conn,
     variable_to_subset = nothing, subset = nothing
@@ -7,9 +7,11 @@ function plot_x_vs_y(
                  "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15"]
 
     titles = [
-        "Full Model", "Step 1", "Step 2", "Step 3", "Step 4",
-        "Step 5", "Step 6", "Step 7", "Step 8", "Step 9",
-        "Step 10", "Step 11", "Step 12", "Step 13", "Step 14", "Step 15"
+        "Full Model",
+        "Full A (Species‑specific ϵ)", "Full A (Global ϵ)", "Full A (Re‑randomised ϵ)",
+        "Global -Aij & Aij (ϵ_full)", "Global -Aij & Aij (Species‑specific ϵ)", "Global -Aij & Aij (Global ϵ)", "Global -Aij & Aij (Re‑randomised ϵ)",
+        "Global A (ϵ_full)", "Global A (Species‑specific ϵ)", "Global A (Global ϵ)", "Global A (Re‑randomised ϵ)",
+        "Re-randomised A (ϵ_full)", "Re-randomised A (Species‑specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
     ]
 
     if !isnothing(variable_to_subset) && !isnothing(subset)
@@ -85,11 +87,11 @@ function plot_x_vs_y(
 end
 
 # Example usage:
-plot_x_vs_y(df_results, :degree_cv, :per; color_by=:conn)
-plot_x_vs_y(df_results, :res, :scorr; color_by=:scenario, variable_to_subset=:S, subset=50)
-# fig = plot_x_vs_y(df_results, :res, :rt; color_by=:conn)
+plot_x_vs_yy(df_results, :degree_cv, :per; color_by=:conn)
+plot_x_vs_yy(df_results, :res, :scorr; color_by=:scenario, variable_to_subset=:S, subset=50)
+# fig = plot_x_vs_yy(df_results, :res, :rt; color_by=:conn)
 for i in 0.1:0.1:0.5
-    fig = plot_x_vs_y(df_results, :degree_cv, :res; color_by=:conn, variable_to_subset = :C_ratio, subset = i)
+    fig = plot_x_vs_yy(df_results, :degree_cv, :res; color_by=:conn, variable_to_subset = :C_ratio, subset = i)
 end
 
 ############## FOR WHEN MAC SPITS OUT THE RESULTS ##############
@@ -103,8 +105,8 @@ name_of_the_col = [:conn, :C_ratio, :IS, :degree_cv, :RelVar, :scenario, :d, :m]
 
 for i in name_of_the_x, j in name_of_the_y, k in name_of_the_col
     if i != j && i != k && j != k
-        plot_x_vs_y(df_to_plot, i, j; color_by=k)
+        plot_x_vs_yy(df_to_plot, i, j; color_by=k)
     end
 end
-plot_x_vs_y(df_to_plot, :degree_cv, :aft; color_by=:conn)
+plot_x_vs_yy(df_to_plot, :degree_cv, :rea; color_by=:d)
 subs = filter(row -> row.scenario == "PL", df_to_plot)
