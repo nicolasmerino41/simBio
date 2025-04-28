@@ -251,7 +251,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                             before_p       = before_p,
                             after_p        = mean(B2_simp .> EXTINCTION_THRESHOLD),
                             sp_rt_mean         = mean(filter(!isnan, sp_rt_simp)),
-                            sp_rt_cv           = std(filter(!isnan, sp_rt_simp)) / mean(filter(!isnan, sp_rt_simp))ºº
+                            sp_rt_cv           = std(filter(!isnan, sp_rt_simp)) / mean(filter(!isnan, sp_rt_simp))
                         )
                     end
 
@@ -296,13 +296,13 @@ end
 # -----------------------------------------------------------
 # 4) Example invocation
 # -----------------------------------------------------------
-# cb_no_trigger25 = build_callbacks(25, EXTINCTION_THRESHOLD)
-# cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
-cb_no_trigger75 = build_callbacks(75, EXTINCTION_THRESHOLD)
-# cb_no_trigger100 = build_callbacks(100, EXTINCTION_THRESHOLD)
+cb_no_trigger40 = build_callbacks(40, EXTINCTION_THRESHOLD)
+cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
+cb_no_trigger60 = build_callbacks(60, EXTINCTION_THRESHOLD)
+cb_no_trigger70 = build_callbacks(70, EXTINCTION_THRESHOLD)
 
 begin
-    S_vals      = [75]
+    S_vals      = [40, 50, 60, 70]
     conn_vals   = range(0.01, 0.4, length=10)
     C_ratios    = 0.1:0.1:0.5
     IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
@@ -331,7 +331,7 @@ end
 # (b) Extract good combos
 df_good = unique(
     df_feas[df_feas.feasible .== true,
-            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints]]
+            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp]]
 )
 
 # (c) Guided rppp
@@ -349,4 +349,4 @@ begin
 end
 
 # (d) Save or inspect
-CSV.write("guided_results_ERplusPL1_75_noconstraint_speciesSpecificRTs.csv", df_results)
+CSV.write("guided_results_ERplusPL1_75_noconstraint_speciesSpecificRTs_multipleSpecies.csv", df_results)
