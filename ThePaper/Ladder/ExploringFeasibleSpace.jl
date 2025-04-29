@@ -139,23 +139,14 @@ function feasibility_search(
                 Beq = sol.u[end]
                 before_pers = mean(Beq .> EXTINCTION_THRESHOLD)
                 
-                if species_specific_perturbation
-                    rt_full, os_full, ire_full, _, B2, sp_rt_full = simulate_press_perturbation(
-                            fixed, pfull, (0.0, 500.0), 250.0, delta;
-                            solver=Tsit5(), plot=false,
-                            show_warnings=true,
-                            full_or_simple = true,
-                            cb = cb
-                        )
-                else
-                    rt_full, os_full, ire_full, _, B2 = simulate_press_perturbation(
-                            fixed, pfull, (0.0, 500.0), 250.0, delta;
-                            solver=Tsit5(), plot=false,
-                            show_warnings=true,
-                            full_or_simple = true,
-                            cb = cb
-                        )
-                end
+                rt_full, os_full, ire_full, _, B2, sp_rt_full = simulate_press_perturbation(
+                    fixed, pfull, (0.0, 500.0), 250.0, delta;
+                    solver=Tsit5(), plot=false,
+                    show_warnings=true,
+                    full_or_simple = true,
+                    cb = cb, 
+                    species_specific_perturbation=false
+                )
 
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
