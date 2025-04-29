@@ -24,17 +24,15 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Model Framework and Analysis Pipeline
+# Model Framework
 
-We combine a fully‐detailed ODE trophic model, an extended ladder of simplifications, explicit structural heterogeneity, and an analytical sensitivity‐based validation.
-
-## Fully Detailed Consumer–Resource Dynamics
+## Consumer–Resource Dynamics
 
 **Resources** (\(i=1,\dots,R\)):
 $$
 \frac{1}{B_i}\frac{dB_i}{dt}
 = d_i\Bigl[-\tfrac{r_i}{d_i} - B_i
-  + \sum_{j=R+1}^{R+C}A_{ij}\,B_j\Bigr].
+  - \sum_{j=R+1}^{R+C}A_{ij}\,B_j\Bigr].
 $$
 
 **Consumers** (\(i=R+1,\dots,R+C\)):
@@ -42,7 +40,7 @@ $$
 \frac{1}{B_i}\frac{dB_i}{dt}
 = \frac{m_i}{\xi_i}\Bigl[-\xi_i - B_i
   + \sum_{j=1}^{R+C}\varepsilon_{ij}\,A_{ij}\,B_j
-  - \sum_{j=1}^{R+C}A_{ji}\,B_j\Bigr].
+  - \sum_{j=R+1}^{R+C}A_{ij}\,B_j\Bigr].
 $$
 Here
 
@@ -54,18 +52,17 @@ Here
 
 - \(\xi_i=m_i/d_i\): overpopulation thresholds,
 
-- \(A_{ij}\): scaled interaction (\(>0\) if \(i\) eats \(j\)),
+- \(A_{ij}\): scaled trophic interactions,
 
 - \(\varepsilon_{ij}\): conversion efficiencies.
 
 ## Equilibrium Calibration
 
-We define equilibrium biomasses \(B_i^* \) by sampling resources vs. consumer distributions (allowing **trophic pyramids**)
+We define equilibrium biomasses \(B_i^* \) by sampling resources and consumer abundancess from different logNormal distributions with different means (allowing trophic pyramids). And then we solve for the  \(\{r_i^* ,\xi_i^* \}\) that yield those equilibrium abundances.
 $$
 0 = d_i\Bigl(\tfrac{r_i}{d_i} - B_i^* - \sum_j A_{ij}B_j^*\Bigr),\quad
 0 = \frac{m_i}{\xi_i}\Bigl(-\xi_i - B_i^* + \sum_j\varepsilon_{ij}A_{ij}B_j^* - \sum_jA_{ji}B_j^*\Bigr)
 $$
-for \(\{r_i^* ,\xi_i^* \}\).
 
 ## Linearization and Sensitivity Matrix
 
@@ -84,7 +81,7 @@ D_{ii} =
 0, & i\le R,
 \end{cases}
 $$
-then the **press‐perturbation sensitivity matrix** is
+then the press‐perturbation sensitivity matrix is
 $$
 V = J^{-1}D,\qquad
 V_{ij} = \frac{\partial B_i}{\partial \xi_j}\Big|_{B^*}.
@@ -94,80 +91,52 @@ and compared with the simulated \(\delta B_{\rm sim}=(B_{\rm post}-B^*)/\delta\x
 
 ## Ladder of Simplifications
 
-**Full** \(A_{ij}\)
+1. **Full** \(A_{ij}\)
+    - **Full** \(\varepsilon_{ij}\)
+    - **Species‑homog** \(\varepsilon_{i}\)
+    - **Global** \(\varepsilon\)
+    - **Random** \(\varepsilon_{ij}\)
 
-1. **Full** \(\varepsilon_{ij}\)  
+2. **Mean** \(A_{ij}\) and **Mean** \(-A_{ji}\)
+    - **Full** \(\varepsilon_{ij}\)
+    - **Species‑homog** \(\varepsilon_{i}\)
+    - **Global** \(\varepsilon\)
+    - **Random** \(\varepsilon_{ij}\)
 
-2. **Species‑homog** \(\varepsilon_{i}\) 
+3. **Global** \(\lvert A \rvert\)
+    - **Full** \(\varepsilon_{ij}\)
+    - **Species‑homog** \(\varepsilon_{i}\)
+    - **Global** \(\varepsilon\)
+    - **Random** \(\varepsilon_{ij}\)
 
-3. **Global** \(\varepsilon\)  
+4. **Re-randomized** \(A_{ij} \sim \mathcal{N}(\mu_{A_{ij}}, \sigma_{A_{ij}})\)
+    - **Full** \(\varepsilon_{ij}\)
+    - **Species‑homog** \(\varepsilon_{i}\)
+    - **Global** \(\varepsilon\)
+    - **Random** \(\varepsilon_{ij}\)
 
-4. **Random** \(\varepsilon_{ij}\)  
-
-**Mean** \(A_{ij} \) & **Mean** \(-A_{ji}\)
-
-5. **Full** \(\varepsilon_{ij}\)
-
-6. **Species‑homog** \(\varepsilon_{i}\)  
-
-7. **Global** \(\varepsilon\) 
-
-8. **Random** \(\varepsilon_{ij}\)    
-
-**Global** \(\lvert A \rvert\)
-
-9. **Full** \(\varepsilon_{ij}\)
-
-10. **Species‑homog** \(\varepsilon_{i}\)  
-
-11. **Global** \(\varepsilon\) 
-
-12. **Random** \(\varepsilon_{ij}\)   
-
-**Re-randomised** \( A_{ij} \sim \mathcal{N}\bigl(\mu_{A_{ij}}, \sigma_{A_{ij}}\bigr) \)
-
-13. **Full** \(\varepsilon_{ij}\) 
-
-14. **Species‑homog** \(\varepsilon_{i}\) 
-
-15. **Global** \(\varepsilon\) 
-
-16. **Random** \(\varepsilon_{ij}\) 
-
-At each step \(s\):
-
-- We extract **return time** \(T_R\), **overshoot**, **integrated recovery error**, **resilience**, **reactivity**,
-
-- We compute \(V_s\) and correlate its analytical prediction with simulation.
-
-## Structural Heterogeneity Metrics
+## Structural Metrics
 
 For each network \(A\) we record:
 
-- **Degree CV**: \(\mathrm{CV}(\{\text{prey‐counts per consumer}\})\),
+  - **Degree CV**: \(\mathrm{CV}(\text{prey‐counts per consumer})\)
+  - **Trophic variance**: \(\mathrm{Var}(\text{shortest‐path lengths from basals})\)
+  - **Modularity**
+  - **Pyramid skew**: ratio of log‐normal \(\sigma\) for resource vs consumer equilibrium draws
 
-- **Trophic variance**: \(\mathrm{Var}(\{\text{shortest‐path lengths from basals}\})\),
+## Community-level Stability Metrics
 
-- **Modularity**
+  - **Mean Return Time**
+  - **Mean Maximum Overshoot**
+  - **Mean Integrated Recovery Error**
+  - **Resilience** and **Reactivity**
+  - **Persistence after a perturbation**
+  - **Sensitivity correlation** \(\mathrm{corr}(\delta B_{\rm ana},\,\delta B_{\rm sim})\)
 
-- **Pyramid skew**: ratio of log‐normal \( \sigma  \) for resource vs consumer equilibrium draws.
+## Pipeline
 
-## Simulation‑driven Stability Metrics
+- Assess whether some structural properties can be consistently related to some stability metrics, and if those relationships are robust to network simplification.  
 
-- **Return Time** \(T_R\),
-
-- **Maximum Overshoot** \(M_{OS}\),
-
-- **Integrated Recovery Error** \(I_{RE}\),
-
-- **Resilience** and **Reactivity**,
-
-- **Sensitivity correlation** \(\mathrm{corr}(\delta B_{\rm ana},\,\delta B_{\rm sim})\).
-
-## Next Steps
-
-- Sweep over ecological realism: pyramid slopes, degree heterogeneity, and modularity.
+- Sweep over ecological realism: degree heterogeneity, pyramid slopes, modularity, etc. 
 
 - We can use \(V\) to rank keystone species by \(\sum_i\lvert V_{ij}\rvert\).
-
-- Assess whether simplification accuracy generalizes across realistic network structures.
