@@ -26,14 +26,16 @@ function feasibility_search(
     xi_threshold=0.7,
     number_of_combos=1000,
     calibrate_params_constraints = true,
-    species_specific_perturbation = false
+    species_specific_perturbation = false, 
+    pareto_exponents = [1.0]
 )
     # 1) build the full list of parameter combinations
     combos = collect(Iterators.product(
       S_vals, conn_vals, C_ratios,
       IS_vals, d_vals, mortality_vals,
       epsilon_vals, delta_vals,
-      degree_distribution_types
+      degree_distribution_types,
+      pareto_exponents
     ))
     T = nthreads()
     # one local result buffer per thread
@@ -41,19 +43,30 @@ function feasibility_search(
     
     @threads for idx in sample(1:length(combos), min(number_of_combos, length(combos)), replace=false)
         tid = threadid()
-        (S, conn, C_ratio, IS, d_value, pred_mortality, epsilon_mean , delta, scenario) = combos[idx]
+        (S, conn, C_ratio, IS, d_value, pred_mortality, epsilon_mean , delta, scenario, pexs) = combos[idx]
         # resource / consumer split
         C = clamp(round(Int, S*C_ratio), 1, S-1)
         R = S - C
-        if S == 25
-            cb = cb_no_trigger25
+        if S == 30
+            cb = cb_no_trigger30
+        elseif S == 40
+            cb = cb_no_trigger40
         elseif S == 50
             cb = cb_no_trigger50
-        elseif S == 75
-            cb = cb_no_trigger75
+        elseif S == 60
+            cb = cb_no_trigger60
+        elseif S == 70
+            cb = cb_no_trigger70
+        elseif S == 80
+            cb = cb_no_trigger80
+        elseif S == 90
+            cb = cb_no_trigger90
         elseif S == 100
             cb = cb_no_trigger100
+        elseif S == 200
+            cb = cb_no_trigger200
         end
+
         for iter in 1:Niter
             # --- build interaction matrix ---
             A = zeros(S,S)
@@ -63,7 +76,7 @@ function feasibility_search(
             #         A[j,i] = -abs(rand(Normal(0, IS)))
             #     end
             # end
-            A = make_A(A, R, conn, scenario)
+            A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
 
             # --- target equilibrium ---
             R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
@@ -88,7 +101,7 @@ function feasibility_search(
                 #         A[j,i] = -abs(rand(Normal(0, IS)))
                 #     end
                 # end
-                A = make_A(A, R, conn, scenario)
+                A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
                 R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
                 C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ((abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
                 fixed = vcat(R_eq, C_eq)
@@ -104,7 +117,7 @@ function feasibility_search(
                     IS=IS, d=d_value, m=pred_mortality,
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                    ssp = species_specific_perturbation
+                    ssp = species_specific_perturbation, pexs = pexs
                 ))
                 continue
             elseif !calibrate_params_constraints && any(isnan, r_res)
@@ -113,7 +126,7 @@ function feasibility_search(
                     IS=IS, d=d_value, m=pred_mortality,
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                    ssp =species_specific_perturbation
+                    ssp =species_specific_perturbation, pexs = pexs
                 ))
                 continue
             end
@@ -131,7 +144,7 @@ function feasibility_search(
                 IS=IS, d=d_value, m=pred_mortality,
                 epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                 feasible=ok, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                ssp = species_specific_perturbation
+                ssp = species_specific_perturbation, pexs = pexs
                 ))
             else
                 ok = true
@@ -154,6 +167,7 @@ function feasibility_search(
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=ok, before_p = before_pers, after_p = mean(B2 .> EXTINCTION_THRESHOLD),
                     constraints=calibrate_params_constraints, ssp = species_specific_perturbation,
+                    pexs = pexs
                 ))
             end
         end
@@ -164,29 +178,29 @@ function feasibility_search(
     return DataFrame(allrecs)
 end
 
-if false
-    S_vals      = [50]
-    conn_vals   = 0.1:0.2:1.0
-    C_ratios    = 0.2:0.1:0.5
-    IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
-    d_vals      = [0.01, 0.1, 1.0, 2.0]
-    mort_vals   = [0.05, 0.1, 0.2, 0.5]
-    epsilon_vals= [0.01, 0.1, 0.2, 0.5]
-    delta_vals  = [0.1, 0.2, 0.3, 0.4, 0.5]
+# if false
+#     S_vals      = [50]
+#     conn_vals   = 0.1:0.2:1.0
+#     C_ratios    = 0.2:0.1:0.5
+#     IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
+#     d_vals      = [0.01, 0.1, 1.0, 2.0]
+#     mort_vals   = [0.05, 0.1, 0.2, 0.5]
+#     epsilon_vals= [0.01, 0.1, 0.2, 0.5]
+#     delta_vals  = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-    A_feas = feasibility_search(
-        S_vals, conn_vals, C_ratios, IS_vals,
-        d_vals, mort_vals, epsilon_vals, delta_vals;
-        Niter=20,
-        tspan=(0.0,100.0),
-        t_perturb=50.0,
-        max_calib=5,
-        abundance_mean=1.0,
-        atol=1.0,
-        xi_threshold=0.7,
-        number_of_combos=100
-    )
-end
+#     A_feas = feasibility_search(
+#         S_vals, conn_vals, C_ratios, IS_vals,
+#         d_vals, mort_vals, epsilon_vals, delta_vals;
+#         Niter=20,
+#         tspan=(0.0,100.0),
+#         t_perturb=50.0,
+#         max_calib=5,
+#         abundance_mean=1.0,
+#         atol=1.0,
+#         xi_threshold=0.7,
+#         number_of_combos=100
+#     )
+# end
 
-percent_feasible = nrow(filter(r -> r.feasible, df1))/nrow(df1)
-subset_df = filter(r -> r.feasible, df1)
+# percent_feasible = nrow(filter(r -> r.feasible, df1))/nrow(df1)
+# subset_df = filter(r -> r.feasible, df1)
