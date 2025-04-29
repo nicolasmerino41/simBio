@@ -7,7 +7,8 @@ function make_A(
     A::AbstractMatrix{<:Real},
     R::Int,
     conn::Float64,
-    scenario::Symbol
+    scenario::Symbol;
+    pareto_exponent = 1.75
 )
     S = size(A,1)
     @assert 1 <= R < S "Must have at least one resource and one consumer"
@@ -25,20 +26,43 @@ function make_A(
             end
         end
     elseif scenario == :PL
-        # power-law consumer out-degree: only consumers get ks
-        a     = 1.75
-        k_max = S-1
-        # sample desired out-degrees
-        raw   = rand(Pareto(1, a), C)
-        ks    = clamp.(round.(Int, raw), 1, k_max)
+        # Power-law consumer out-degree
+        pareto_shape = pareto_exponent   # you can change this (a > 1)
+        x_m = 1.0            # minimum degree
+
+        raw_ks = rand(Pareto(x_m, pareto_shape), C)
+
+        # Instead of rounding immediately: allow better integers
+        ks = clamp.(floor.(Int, raw_ks), 1, S-1)
+
+        # Re-sample if a node gets 0 links (optional but better)
+        ks = map(k -> max(k, 1), ks)
 
         for (idx, k) in enumerate(ks)
             ci = R + idx  # consumer index
             # pick k distinct prey-nodes from 1:S except ci
-            js = sample(filter(x->x!=ci, 1:S), k; replace=false)
-            for j in js
+            prey_pool = filter(x -> x != ci, 1:S)
+            selected_js = sample(prey_pool, min(k, length(prey_pool)); replace=false)
+            for j in selected_js
                 A[ci, j] = abs(rand(Normal()))
-                A[j,  ci] = -abs(rand(Normal()))
+                A[j, ci] = -abs(rand(Normal()))
+            end
+        end
+    elseif scenario == :MOD
+        gamma = 5.0
+        halfC = fld(C, 2)
+        block1 = (R+1):(R+halfC)
+
+        for i in (R+1):S, j in 1:S
+            if i == j
+                continue
+            end
+            inblock = (i in block1 && j in block1) || (!(i in block1) && !(j in block1))
+            p = inblock ? conn * gamma : conn / gamma
+            p = clamp(p, 0.0, 1.0)
+            if rand() < p
+                A[i,j] = abs(rand(Normal()))
+                A[j,i] = -abs(rand(Normal()))
             end
         end
     else
@@ -77,16 +101,28 @@ function rppp_guided(df_params::DataFrame, delta_vals;
         scenario = row.scenario
         constraints = row.constraints
         ssp = row.ssp
+        pexs = row.pexs
 
-        if S == 25
-            cb = cb_no_trigger25
+        if S == 30
+            cb = cb_no_trigger30
+        elseif S == 40
+            cb = cb_no_trigger40
         elseif S == 50
             cb = cb_no_trigger50
-        elseif S == 75
-            cb = cb_no_trigger75
+        elseif S == 60
+            cb = cb_no_trigger60
+        elseif S == 70
+            cb = cb_no_trigger70
+        elseif S == 80
+            cb = cb_no_trigger80
+        elseif S == 90
+            cb = cb_no_trigger90
         elseif S == 100
             cb = cb_no_trigger100
+        elseif S == 200
+            cb = cb_no_trigger200
         end
+
         for delta in delta_vals
             for iter in 1:Niter
                 try
@@ -99,7 +135,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     #     end
                     # end
 
-                    A = make_A(A, R, conn, scenario)
+                    A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
 
                     epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
 
@@ -122,7 +158,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         #         A[j,i]=-abs(rand(Normal(0, IS_red)))
                         #     end
                         # end
-                        A = make_A(A, R, conn, scenario)
+                        A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
 
                         R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
                         C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1)-(abundance_mean*0.2)^2/2, abundance_mean*0.2), C))
@@ -204,7 +240,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                             metrics[suf] = (
                                 return_time=NaN, overshoot=NaN, ire=NaN,
                                 resilience=NaN, reactivity=NaN,
-                                sens_corr=NaN, before_p=NaN, after_p=NaN
+                                sens_corr=NaN, before_p=NaN, after_p=NaN,
+                                sp_rt_mean = NaN, sp_rt_cv = NaN
                             )
                             continue
                         end
@@ -260,7 +297,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         S=S, conn=conn, C_ratio=C_ratio,
                         IS=IS_red, d=d_val, m=m_val, epsilon=epsilon_mean,
                         delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, RelVar=RelVar, 
-                        scenario=scenario, constraints=constraints, ssp=ssp
+                        scenario=scenario, constraints=constraints, ssp=ssp, pexs = pexs
                     )
                     rec = base
                     for step in ladder_steps
@@ -296,42 +333,47 @@ end
 # -----------------------------------------------------------
 # 4) Example invocation
 # -----------------------------------------------------------
-cb_no_trigger40 = build_callbacks(40, EXTINCTION_THRESHOLD)
-cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
-cb_no_trigger60 = build_callbacks(60, EXTINCTION_THRESHOLD)
-cb_no_trigger70 = build_callbacks(70, EXTINCTION_THRESHOLD)
+# cb_no_trigger30 = build_callbacks(30, EXTINCTION_THRESHOLD)
+# cb_no_trigger40 = build_callbacks(40, EXTINCTION_THRESHOLD)
+# cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
+# cb_no_trigger60 = build_callbacks(60, EXTINCTION_THRESHOLD)
+# cb_no_trigger70 = build_callbacks(70, EXTINCTION_THRESHOLD)
+# cb_no_trigger80 = build_callbacks(80, EXTINCTION_THRESHOLD)
+# cb_no_trigger90 = build_callbacks(90, EXTINCTION_THRESHOLD)
+cb_no_trigger200 = build_callbacks(200, EXTINCTION_THRESHOLD)
 
 begin
-    S_vals      = [40, 50, 60, 70]
+    S_vals      = [200]
     conn_vals   = range(0.01, 0.4, length=10)
-    C_ratios    = 0.1:0.1:0.5
-    IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
-    d_vals      = [0.01, 0.1, 1.0, 2.0]
-    mort_vals   = [0.05, 0.1, 0.2, 0.5]
+    C_ratios    = 0.1
+    IS_vals     = [0.01, 0.1, 1.0]
+    d_vals      = [0.1, 1.0, 2.0]
+    mort_vals   = [0.1, 0.01, 0.25]
     epsilon_vals= [0.01, 0.1, 0.2, 0.5]
     delta_vals  = [0.1]
 
     df_feas = feasibility_search(
         S_vals, conn_vals, C_ratios, IS_vals,
         d_vals, mort_vals, epsilon_vals, delta_vals;
-	    degree_distribution_types=[:ER, :PL],
+	    degree_distribution_types=[:PL],
         Niter=1,
         tspan=(0.0,100.0),
         t_perturb=50.0,
         max_calib=50,
         abundance_mean=1.0,
         atol=10.0,
-        xi_threshold=2.0,
+        xi_threshold=1.0,
         number_of_combos=100000, # 10000 is good 
-        calibrate_params_constraints=false,
-        species_specific_perturbation=true
+        calibrate_params_constraints=true,
+        species_specific_perturbation=false,
+        pareto_exponents = [1.0, 2.0, 3.0, 5.0]
     )
 end
 
 # (b) Extract good combos
 df_good = unique(
     df_feas[df_feas.feasible .== true,
-            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp]]
+            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs]]
 )
 
 # (c) Guided rppp
@@ -344,9 +386,9 @@ begin
         tspan=(0.0,500.0), t_perturb=250.0,
         atol=10.0,
         abundance_mean=1.0,
-        combinations=40000 # You want 10000
+        combinations=20000 # You want 10000
     )
 end
 
 # (d) Save or inspect
-CSV.write("guided_results_ERplusPL1_75_noconstraint_speciesSpecificRTs_multipleSpecies.csv", df_results)
+CSV.write("guided_results_PL1_2_3_5_yesconstraint_NOsspRTs_s200c20.csv", df_results)
