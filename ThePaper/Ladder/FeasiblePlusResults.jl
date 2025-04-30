@@ -11,7 +11,7 @@ function make_A(
     pareto_exponent = 1.75
 )
     S = size(A,1)
-    @assert 1 <= R < S "Must have at least one resource and one consumer"
+    # @assert 1 <= R < S "Must have at least one resource and one consumer"
     C = S - R
 
     # zero-out
@@ -19,7 +19,7 @@ function make_A(
 
     if scenario == :ER
         # each possible consumer?any link with prob=conn
-        for i in (R+1):S, j in 1:S
+        for i in (R+1):S, j in 1:R
             if i != j && rand() < conn && iszero(A[i,j])
                 A[i,j] = abs(rand(Normal()))
                 A[j,i] = -abs(rand(Normal()))
