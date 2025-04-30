@@ -133,42 +133,42 @@ end
 ################## JACOBIAN, RESILIENCE AND RESISTANCE ######################
 #############################################################################
 #############################################################################
-# Revised Jacobian computation
 function compute_jacobian(B, p)
-    # Unpack parameters
-    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
-    # println("B is ", typeof(B))
-    # println("r_res is ", typeof(r_res))
-    total = R + C
-    J = zeros(total, total)
-    # Resources: indices 1:R
+    R, C, m_cons, xi_cons, r_res, d_res, ε, A = p
+    S = R + C
+
+    # 1) Build D
+    D = zeros(S,S)
     for i in 1:R
-        # Diagonal: diffR_i/diffR_i
-        J[i, i] = - B[i] * d_res[i]
-        # For consumers (indices R+1 to R+C)
-        for j in (R+1):total
-            J[i, j] = - B[i] * d_res[i] * A[j, i]
-        end
-        # Off-diagonals with other resources remain 0.
+        D[i,i] = d_res[i] * B[i]
     end
-    # Consumers: indices R+1 to total.
     for k in 1:C
-        i = R + k  # global index for consumer k
-        alpha = m_cons[k] / xi_cons[k]
-        # Diagonal (diffC_k/diffC_k)
-        J[i, i] = - alpha * B[i]
-        # Derivatives with respect to resources (indices 1:R)
-        for j in 1:R
-            J[i, j] = B[i] * alpha * epsilon[i, j] * A[i, j]
+        i = R + k
+        α = m_cons[k] / xi_cons[k]
+        D[i,i] = α * B[i]
+    end
+
+    # 2) Build Mstar = -I + A*
+    Mstar = Matrix{Float64}(-I(S))
+    # resources → anything
+    for i in 1:R, j in 1:S
+        if i != j && A[i,j] != 0.0
+            Mstar[i,j] += A[i,j]
         end
-        # Derivatives with respect to other consumers (indices R+1 to total)
-        for j in (R+1):total
-            if j != i
-                J[i, j] = - B[i] * alpha * A[j, i]
+    end
+    # consumers → anything
+    for k in 1:C
+        i = R + k
+        for j in 1:S
+            if A[i,j] > 0.0
+                Mstar[i,j] += ε[i,j] * A[i,j]
+            elseif A[j,i] < 0.0
+                Mstar[i,j] += -A[j,i]
             end
         end
     end
-    return J
+
+    return D, Mstar
 end
 
 # Resilience: negative of the largest real part of the Jacobian eigenvalues.
