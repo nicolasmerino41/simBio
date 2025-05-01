@@ -157,13 +157,12 @@ function compute_jacobian(B, p)
         end
     end
     # consumers → anything
-    for k in 1:C
-        i = R + k
+    for i in R+1:S
         for j in 1:S
             if A[i,j] > 0.0
                 Mstar[i,j] += ε[i,j] * A[i,j]
             elseif A[j,i] < 0.0
-                Mstar[i,j] += -A[j,i]
+                Mstar[i,j] += A[i,j]
             end
         end
     end
@@ -173,14 +172,16 @@ end
 
 # Resilience: negative of the largest real part of the Jacobian eigenvalues.
 function compute_resilience(B, p)
-    J = compute_jacobian(B, p)
+    D, Mstar = compute_jacobian(B, p)
+    J = D * Mstar
     ev = eigvals(J)
     return maximum(real.(ev))
 end
 
 # Reactivity: maximum eigenvalue of the symmetric part of the Jacobian.
 function compute_reactivity(B, p)
-    J = compute_jacobian(B, p)
+    D, Mstar = compute_jacobian(B, p)
+    J = D * Mstar
     J_sym = (J + J') / 2
     ev_sym = eigvals(J_sym)
     return maximum(real.(ev_sym))
@@ -215,7 +216,7 @@ function simulate_press_perturbation(
 
     ########## FIRST PART: WHOLE COMMUNITY PERTURBATION ##########
     # --- Phase 2: apply press (reduce thresholds by delta) ---
-    xi_press = xi_cons .* (1 .- delta)
+    xi_press = xi_cons .+ delta
     p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
