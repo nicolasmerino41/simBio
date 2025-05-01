@@ -18,7 +18,7 @@ function make_A(
     fill!(A, 0.0)
 
     if scenario == :ER
-        # each possible consumer?any link with prob=conn
+        # each possible consumer link with prob=conn
         for i in (R+1):S, j in 1:R
             if i != j && rand() < conn && iszero(A[i,j])
                 A[i,j] = abs(rand(Normal()))
@@ -137,11 +137,14 @@ function rppp_guided(df_params::DataFrame, delta_vals;
 
                     A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
 
-                    epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
-
+                    # epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
+                    epsilon_full   = clamp.(rand(Normal(epsilon_mean, epsilon_mean), S, S), 0, 1)
+                    
                     # target eq
-                    R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
-                    C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1)-(abundance_mean*0.2)^2/2, abundance_mean*0.2), C))
+                    # R_eq = abs.(rand(LogNormal(log(abundance_mean)-abundance_mean^2/2, abundance_mean), R))
+                    # C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1)-(abundance_mean*0.2)^2/2, abundance_mean*0.2), C))
+                    R_eq = abs.(rand(Normal(abundance_mean, abundance_mean), R))
+                    C_eq = abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.1), C))
                     fixed = vcat(R_eq, C_eq)
 
                     m_cons  = fill(m_val, C)
@@ -170,13 +173,18 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         continue
                     end
 
-                    # fullâ€model solve & metrics
+                    # full model solve & metrics
                     p_full = (R,C,m_cons,xi_cons,r_res,d_res,epsilon_full,A)
 
                     prob   = ODEProblem(trophic_ode!, fixed, tspan, p_full)
                     sol    = solve(prob,Tsit5(); callback=cb, reltol=1e-8, abstol=1e-8)
-                    if sol.t[end] < t_perturb || any(isnan, sol.u[end]) || any(isinf, sol.u[end]) || any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:S])
+                    if sol.t[end] < t_perturb || any(isnan, sol.u[end]) ||
+                        any(isinf, sol.u[end]) || any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:S])
                         @warn "Error: solution did not finish properly"
+                        continue
+                    end
+                    if any(sol.u[end] .< EXTINCTION_THRESHOLD)
+                        @warn "Error: some species went extinct before even starting the perturbation"
                         continue
                     end
                     B_eq = sol.u[end]
@@ -199,13 +207,58 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         cb = cb,
                         species_specific_perturbation=ssp
                     )
-                    # sensitivity corr
-                    J_full   = build_jacobian(fixed, p_full)
-                    V_ana    = compute_analytical_V(J_full, R, C, m_cons, xi_cons)
-                    pred     = sum(V_ana,dims=2)
-                    obs      = (B2 .- fixed)/delta
-                    sens_corr_full = cor(vec(pred), vec(obs))
+                    #############################################################
+                    # FIXING CORRELATION OF SENSITIVITIES
+                    # 1) get the Jacobian at the “true” equilibrium B_post0
+                    D, Mstar   = compute_jacobian(B_eq, p_full)
+                    J_full          = D * Mstar
 
+                    I_mat    = I(R+C)  # identity matrix (R+C)×(R+C)
+
+                    # 2) build the press‐vector properly: ∂f_C/∂ξ_i = –B_C* at equilibrium
+                    press_vec      = zeros(R+C)
+                    press_vec[R+1:R+C] .= 1.0
+
+                    # analytic per-unit sensitivity
+                    V            = -inv(I_mat .- A)    # (R+C)×(R+C)
+                    deltaB_ana  = V * press_vec          # length R+C
+
+                    # simulated per-unit response (length R+C)
+                    deltaB_sim = (B2 .- B_eq) ./ delta
+                    zero_idx = findall(iszero.(deltaB_sim))
+                    
+                    deltaB_sim[zero_idx] .= NaN
+                    deltaB_ana[zero_idx] .= NaN
+                    filter!(x -> !isnan(x), deltaB_sim)
+                    filter!(x -> !isnan(x), deltaB_ana)
+                    
+                    sens_corr_full = round(cor(deltaB_ana, deltaB_sim), digits=3)
+                    if sens_corr_full < 0.8
+                        continue
+                    end
+                    if false
+                        lo = min(minimum(deltaB_ana), minimum(deltaB_sim))
+                        hi = max(maximum(deltaB_ana), maximum(deltaB_sim))
+
+                        fig = Figure(; size = (600,400))
+                        ax  = Axis(fig[1,1];
+                                xlabel = "Analytic ΔB per unit ξ",
+                                ylabel = "Simulated ΔB per unit ξ",
+                                title  = "Per‐unit Sensitivity: Analytic vs Sim in FULL")
+
+                        for i in 1:R
+                            scatter!(ax, deltaB_ana[i], deltaB_sim[i]; color = :blue, markersize = 5)
+                        end
+                        for i in R+1:R+C
+                            scatter!(ax, deltaB_ana[i], deltaB_sim[i]; color = :red, markersize = 5)
+                        end
+
+                        lines!(ax, [lo,hi], [lo,hi];
+                            linestyle = :dash, linewidth = 1, color = :black)
+
+                        display(fig)
+                    end
+                    #############################################################
                     # record metrics for each step
                     metrics = Dict("Full" => (
                         return_time=mean(filter(!isnan, rt_full)),
@@ -214,8 +267,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         resilience =resi,
                         reactivity =reac,
                         sens_corr  =sens_corr_full,
-                        before_p   =mean(sol.u[end] .> 1e-6),
-                        after_p    =mean(B2 .> 1e-6),
+                        before_p   =mean(sol.u[end] .> EXTINCTION_THRESHOLD),
+                        after_p    =mean(B2 .> EXTINCTION_THRESHOLD),
                         sp_rt_mean     =mean(filter(!isnan, sp_rt_full)),
                         sp_rt_cv       =std(filter(!isnan, sp_rt_full)) / mean(filter(!isnan, sp_rt_full))
                         ))
@@ -225,9 +278,6 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         suf = suffix(step)
                         A_s, epsilon_s = transform_for_ladder_step(step, A, epsilon_full)
                         p_simp   = (R,C,m_cons,xi_cons,r_res,d_res,epsilon_s,A_s)
-
-                        J_simp         = build_jacobian(fixed, p_simp)
-                        V_ana_simp     = compute_analytical_V(J_simp, R, C, m_cons, xi_cons)
 
                         sol2  = solve(
                             ODEProblem(
@@ -242,6 +292,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                                 resilience=NaN, reactivity=NaN,
                                 sens_corr=NaN, before_p=NaN, after_p=NaN,
                                 sp_rt_mean = NaN, sp_rt_cv = NaN
+                                
                             )
                             continue
                         end
@@ -255,16 +306,60 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                                 fixed, p_simp, tspan, t_perturb, delta;
                                 solver=Tsit5(), plot=plot_simple,
                                 show_warnings=true,
-                                full_or_simple=true,
+                                full_or_simple=false,
                                 cb = cb,
                                 species_specific_perturbation=ssp
                             )
         
-                        # in each step, after computing V_ana_simp and B2_simp
-                        pred_resp_simp = sum(V_ana_simp, dims=2)
-                        obs_resp_simp  = (B2_simp .- fixed) ./ delta
-                        corr_simp      = cor(vec(pred_resp_simp), vec(obs_resp_simp))
+                        ##########################################################################
+                        # 1) get the Jacobian at the “true” equilibrium B_post0
+                        D, Mstar   = compute_jacobian(B_eq2, p_simp)
+                        J_simp          = D * Mstar
 
+                        I_mat    = I(R+C)  # identity matrix (R+C)×(R+C)
+
+                        # 2) build the press‐vector properly: ∂f_C/∂ξ_i = –B_C* at equilibrium
+                        press_vec      = zeros(R+C)
+                        press_vec[R+1:R+C] .= 1.0
+
+                        # analytic per-unit sensitivity
+                        V            = -inv(I_mat .- A_s)    # (R+C)×(R+C)
+                        deltaB_ana  = V * press_vec          # length R+C
+
+                        # simulated per-unit response (length R+C)
+                        deltaB_sim = (B2_simp .- B_eq2) ./ delta
+
+                        zero_idx = findall(iszero.(deltaB_sim))
+                    
+                        deltaB_sim[zero_idx] .= NaN
+                        deltaB_ana[zero_idx] .= NaN
+                        filter!(x -> !isnan(x), deltaB_sim)
+                        filter!(x -> !isnan(x), deltaB_ana)
+
+                        corr_simp = round(cor(deltaB_ana, deltaB_sim), digits=3)
+                        if false
+                            lo = min(minimum(deltaB_ana), minimum(deltaB_sim))
+                            hi = max(maximum(deltaB_ana), maximum(deltaB_sim))
+
+                            fig = Figure(; size = (600,400))
+                            ax  = Axis(fig[1,1];
+                                    xlabel = "Analytic ΔB per unit ξ",
+                                    ylabel = "Simulated ΔB per unit ξ",
+                                    title  = "Per‐unit Sensitivity: Analytic vs Sim in step $suf")
+
+                            for i in 1:R
+                                scatter!(ax, deltaB_ana[i], deltaB_sim[i]; color = :blue, markersize = 5)
+                            end
+                            for i in R+1:R+C
+                                scatter!(ax, deltaB_ana[i], deltaB_sim[i]; color = :red, markersize = 5)
+                            end
+
+                            lines!(ax, [lo,hi], [lo,hi];
+                                linestyle = :dash, linewidth = 1, color = :black)
+
+                            display(fig)
+                        end
+                        ##########################################################################
                         # compound error, step
                         # t_pred2 = mean(filter(!isnan, rt2))
                         # t_obs2  = mean(filter(!isnan, rt2))
@@ -299,6 +394,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         delta=delta, iteration=iter, R=R, C=C, degree_cv=degree_cv, RelVar=RelVar, 
                         scenario=scenario, constraints=constraints, ssp=ssp, pexs = pexs
                     )
+                    
                     rec = base
                     for step in ladder_steps
                         suf = suffix(step)
@@ -333,47 +429,50 @@ end
 # -----------------------------------------------------------
 # 4) Example invocation
 # -----------------------------------------------------------
-# cb_no_trigger30 = build_callbacks(30, EXTINCTION_THRESHOLD)
+cb_no_trigger30 = build_callbacks(30, EXTINCTION_THRESHOLD)
 # cb_no_trigger40 = build_callbacks(40, EXTINCTION_THRESHOLD)
 # cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
 # cb_no_trigger60 = build_callbacks(60, EXTINCTION_THRESHOLD)
 # cb_no_trigger70 = build_callbacks(70, EXTINCTION_THRESHOLD)
 # cb_no_trigger80 = build_callbacks(80, EXTINCTION_THRESHOLD)
 # cb_no_trigger90 = build_callbacks(90, EXTINCTION_THRESHOLD)
-cb_no_trigger200 = build_callbacks(200, EXTINCTION_THRESHOLD)
+# cb_no_trigger200 = build_callbacks(200, EXTINCTION_THRESHOLD)
 
 begin
-    S_vals      = [200]
+    S_vals      = [30]
     conn_vals   = range(0.01, 0.4, length=10)
-    C_ratios    = 0.1
+    C_ratios    = 0.033333333
     IS_vals     = [0.01, 0.1, 1.0]
     d_vals      = [0.1, 1.0, 2.0]
-    mort_vals   = [0.1, 0.01, 0.25]
+    mort_vals   = [0.25]
     epsilon_vals= [0.01, 0.1, 0.2, 0.5]
     delta_vals  = [0.1]
 
     df_feas = feasibility_search(
         S_vals, conn_vals, C_ratios, IS_vals,
         d_vals, mort_vals, epsilon_vals, delta_vals;
-	    degree_distribution_types=[:PL],
+	    degree_distribution_types=[:ER],
         Niter=1,
         tspan=(0.0,100.0),
         t_perturb=50.0,
         max_calib=50,
-        abundance_mean=1.0,
+        abundance_mean=100.0,
         atol=10.0,
         xi_threshold=1.0,
-        number_of_combos=100000, # 10000 is good 
+        number_of_combos=1000, # 10000 is good 
         calibrate_params_constraints=true,
         species_specific_perturbation=false,
-        pareto_exponents = [1.0, 2.0, 3.0, 5.0]
+        pareto_exponents = [1.0]
     )
 end
 
 # (b) Extract good combos
 df_good = unique(
     df_feas[df_feas.feasible .== true,
-            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs]]
+            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs, :scorr]]
+)
+df_good = unique(
+    df_good[df_good.scorr .> 0.8, [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs]]
 )
 
 # (c) Guided rppp
@@ -386,7 +485,9 @@ begin
         tspan=(0.0,500.0), t_perturb=250.0,
         atol=10.0,
         abundance_mean=1.0,
-        combinations=20000 # You want 10000
+        combinations=50, # You want 10000
+        plot_full=false,
+        plot_simple=false
     )
 end
 
