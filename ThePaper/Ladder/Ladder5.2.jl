@@ -1,8 +1,8 @@
 new_results11 = CSV.File("ThePaper/Ladder/Outputs/rppp_guided_results.csv") |> DataFrame
 new_results12 = CSV.File("ThePaper/Ladder/Outputs/rppp_guided_results_larger_sample.csv") |> DataFrame
-df = new_results12
+df = df_results
 
-S_vals = [25, 50, 75, 100]
+S_vals = [30]
 
 # 1) Grab the column‐names (they are Strings)
 rt_cols = filter(n -> startswith(n, "rt_"), names(df))
