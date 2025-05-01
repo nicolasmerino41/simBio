@@ -79,14 +79,16 @@ function feasibility_search(
             A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
 
             # --- target equilibrium ---
-            R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
-            C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ( (abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
+            # R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
+            # C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ( (abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
+            R_eq = abs.(rand(Normal(abundance_mean, abundance_mean), R))
+            C_eq = abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.1), C))
             fixed = vcat(R_eq, C_eq)
 
             # --- rates ---
             m_cons = fill(pred_mortality, C)
             d_res   = fill(d_value, R)
-            epsilon_mat   = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
+            epsilon_mat   = clamp.(rand(Normal(epsilon_mean, epsilon_mean), S, S), 0, 1)
 
             # --- calibrate with up to max_calib retries ---
             pcal = (R, C, m_cons, d_res, epsilon_mat, A)
@@ -117,7 +119,7 @@ function feasibility_search(
                     IS=IS, d=d_value, m=pred_mortality,
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                    ssp = species_specific_perturbation, pexs = pexs
+                    ssp = species_specific_perturbation, pexs = pexs, scorr = 0.0
                 ))
                 continue
             elseif !calibrate_params_constraints && any(isnan, r_res)
@@ -126,7 +128,7 @@ function feasibility_search(
                     IS=IS, d=d_value, m=pred_mortality,
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                    ssp =species_specific_perturbation, pexs = pexs
+                    ssp =species_specific_perturbation, pexs = pexs, scorr = 0.0
                 ))
                 continue
             end
@@ -135,7 +137,7 @@ function feasibility_search(
             pfull = (R, C, m_cons, xi_cons, r_res, d_res, epsilon_mat, A)
             prob   = ODEProblem(trophic_ode!, fixed, tspan, pfull)
             sol    = solve(prob, Tsit5(); callback=cb, reltol=1e-8, abstol=1e-8)
-
+            B_eq = sol.u[end]
             # --- feasibility check ---
             if sol.t[end] < t_perturb || any(isnan, sol.u[end]) || any(isinf, sol.u[end]) || any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:S])
                 ok = false
@@ -144,7 +146,7 @@ function feasibility_search(
                 IS=IS, d=d_value, m=pred_mortality,
                 epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                 feasible=ok, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                ssp = species_specific_perturbation, pexs = pexs
+                ssp = species_specific_perturbation, pexs = pexs, scorr = 0.0
                 ))
             else
                 ok = true
@@ -161,13 +163,39 @@ function feasibility_search(
                     species_specific_perturbation=false
                 )
 
+                # 1) get the Jacobian at the “true” equilibrium B_post0
+                D, Mstar   = compute_jacobian(B_eq, pfull)
+                J_simp          = D * Mstar
+
+                I_mat    = I(R+C)  # identity matrix (R+C)×(R+C)
+
+                # 2) build the press‐vector properly: ∂f_C/∂ξ_i = –B_C* at equilibrium
+                press_vec      = zeros(R+C)
+                press_vec[R+1:R+C] .= 1.0
+
+                # analytic per-unit sensitivity
+                V            = -inv(I_mat .- A)    # (R+C)×(R+C)
+                deltaB_ana  = V * press_vec          # length R+C
+
+                # simulated per-unit response (length R+C)
+                deltaB_sim = (B2 .- B_eq) ./ delta
+
+                zero_idx = findall(iszero.(deltaB_sim))
+                    
+                deltaB_sim[zero_idx] .= NaN
+                deltaB_ana[zero_idx] .= NaN
+                filter!(x -> !isnan(x), deltaB_sim)
+                filter!(x -> !isnan(x), deltaB_ana)
+
+                scorr = round(cor(deltaB_ana, deltaB_sim), digits=3)
+
                 push!(local_recs[tid], (
                     S=S, conn=conn, C_ratio=C_ratio,
                     IS=IS, d=d_value, m=pred_mortality,
                     epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
                     feasible=ok, before_p = before_pers, after_p = mean(B2 .> EXTINCTION_THRESHOLD),
                     constraints=calibrate_params_constraints, ssp = species_specific_perturbation,
-                    pexs = pexs
+                    pexs = pexs, scorr = scorr
                 ))
             end
         end
