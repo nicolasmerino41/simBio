@@ -21,7 +21,7 @@ new_results8 = deserialize("ThePaper/Ladder/Outputs/new_results8.jls")
 new_results9 = deserialize("ThePaper/Ladder/Outputs/new_results9.jls")
 new_results10 = deserialize("ThePaper/Ladder/Outputs/new_results10.jls")
 new_results11 = deserialize("ThePaper/Ladder/Outputs/new_results11.jls")
-df = new_results4
+df = df_results
 if df == new_results4 || df == new_results5 || df == new_results6 
     S_vals = [10, 20, 30, 40]
 elseif df == new_results7
@@ -90,18 +90,22 @@ if false
     display(fig)
 end
 
+# function get_grid_position(i::Int)
+#     if i <= 3
+#         return 1, i
+#     elseif i <= 7
+#         return 2, i - 3
+#     elseif i <= 11
+#         return 3, i - 7
+#     else
+#         return 4, i - 11
+#     end
+# end
 function get_grid_position(i::Int)
-    if i <= 3
-        return 1, i
-    elseif i <= 7
-        return 2, i - 3
-    elseif i <= 11
-        return 3, i - 7
-    else
-        return 4, i - 11
-    end
+    row = div(i-1, 4) + 1
+    col = (i-1) % 4 + 1
+    return row, col
 end
-
 #############################################################################
 #############################################################################
 ############################# RETURN TIMES ##################################
@@ -377,65 +381,52 @@ end
 ######################## SENSITIVITY CORRELATION ############################
 #############################################################################
 #############################################################################
-# for r_val in R_vals, c_val in C_vals
-#     # Filter the DataFrame for the specific combination of R and C
-#     df_subset = filter(row -> row.resource_count == r_val && row.consumer_count == c_val, df)
 for S_val in S_vals
-    # Filter the DataFrame for the specific combination of R and C
-    df_subset = filter(row -> row.species_count == S_val, df)
+    df_subset = filter(row -> row.S == S_val, df)
 
-    begin
-        step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
-        step_names = [
-            "Full A (Species-specific ϵ)", "Full A (Global ϵ)", "Full A (Re-randomised ϵ)",
-            "Global -Aij&Aij (ϵ_full)", "Global -Aij&Aij (Species-specific ϵ)", "Global -Aij&Aij (Global ϵ)", "Global -Aij&Aij (Re-randomised ϵ)",
-            "Global A (ϵ_full)", "Global A (Species-specific ϵ)", "Global A (Global ϵ)", "Global A (Re-randomised ϵ)",
-            "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
-        ]
+    # now 16 keys: first is the full-vs-full slot
+    step_keys  = ["Full",
+                  "S1","S2","S3","S4","S5","S6","S7",
+                  "S8","S9","S10","S11","S12","S13","S14","S15"]
+    step_names = ["Full model vs Full model",
+                  "Full A (Species-specific ϵ)", "Full A (Global ϵ)", "Full A (Re-randomised ϵ)",
+                  "Global -Aij&Aij (ϵ_full)", "Global -Aij&Aij (Species-specific ϵ)",
+                  "Global -Aij&Aij (Global ϵ)", "Global -Aij&Aij (Re-randomised ϵ)",
+                  "Global A (ϵ_full)", "Global A (Species-specific ϵ)", "Global A (Global ϵ)",
+                  "Global A (Re-randomised ϵ)", "Re-randomised A (ϵ_full)",
+                  "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)",
+                  "Re-randomised A (Re-randomised ϵ)"]
 
-        fig = Figure(; size = (1400, 900))
-        consumer_counts = df_subset.consumer_count
+    fig = Figure(; size = (1400, 900))
+    Label(fig[0, :], "SENSITIVITY CORRELATION (S = $S_val)", fontsize=24, tellwidth=false)
 
-        # Label(fig[0, :], "SENSITIVITY CORRELATION (R = $r_val, C = $c_val)", fontsize=24, tellwidth=false)
-        Label(fig[0, :], "SENSITIVITY CORRELATION (S = $S_val)", fontsize=24, tellwidth=false)
-        for (i, s) in enumerate(step_keys)
-            row, col = get_grid_position(i)
+    full_s = df_subset.scorr_Full
+    for (i, s) in enumerate(step_keys)
+        row, col = get_grid_position(i)
+        ax = Axis(fig[row, col];
+                  xlabel = "Full Model Sensitivity",
+                  ylabel = "Step Sensitivity",
+                  title  = step_names[i])
 
-            ax = Axis(fig[row, col];
-                xlabel = "Full Model Sensitivity",
-                ylabel = "Step Sensitivity",
-                title  = step_names[i]
-            )
-
-            full_s = df_subset.sensitivity_corr_Full
-            simp_s = df_subset[!, Symbol("sensitivity_corr_$s")]
-
-            # Create a colormap (e.g., viridis) based on number of consumers
-            cmap = cgrad(:viridis, length(unique(consumer_counts)))
-            color_indices = [findfirst(==(val), sort(unique(consumer_counts))) for val in consumer_counts]
-            color_vals = cmap[color_indices]
-            
-            scatter!(
-                ax, full_s, simp_s;
-                markersize = 6,
-                color = consumer_counts,
-                colormap = :viridis,
-                colorrange = (minimum(consumer_counts), maximum(consumer_counts))
-            )
-
-            vmin, vmax = minimum(vcat(full_s, simp_s)), maximum(vcat(full_s, simp_s))
-            lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
-
-            r = round(cor(full_s, simp_s), digits=2)
-            text!(ax, "r = $r";
-                position = (vmax * 0.95, vmin + 0.05 * (vmax - vmin)),
-                align    = (:right, :bottom),
-                fontsize = 12
-            )
+        if s == "Full"
+            simp_s = full_s   # full vs full
+        else
+            simp_s = df_subset[!, Symbol("scorr_$s")]
         end
-        Colorbar(fig[1, 5], limits = (minimum(consumer_counts), maximum(consumer_counts)), colormap = :viridis)
-        display(fig)
+
+        scatter!(ax, full_s, simp_s; markersize=6)
+
+        vmin, vmax = minimum(vcat(full_s, simp_s)), maximum(vcat(full_s, simp_s))
+        lines!(ax, [vmin, vmax], [vmin, vmax]; color=:black, linestyle=:dash, linewidth=1)
+
+        r = round(cor(full_s, simp_s), digits=2)
+        text!(ax, "r = $r";
+              position = (vmax * 0.95, vmin + 0.05*(vmax - vmin)),
+              align    = (:right, :bottom),
+              fontsize = 12)
     end
+
+    display(fig)
 end
 #############################################################################
 #############################################################################
