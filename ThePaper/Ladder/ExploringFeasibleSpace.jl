@@ -1,23 +1,11 @@
-"""
-    feasibility_search(
-        S_vals, conn_vals, C_ratios, IS_vals,
-        d_vals, mortality_vals, epsilon_vals;
-        Niter=10, tspan=(0.0,50.0), t_perturb=25.0,
-        max_calib=10, abundance_mean=1.0,
-        atol=1e-3, xi_threshold=0.7
-    )
-
-Same as before but fully threaded:
-- builds all (S,conn,C_ratio,IS,d,m,epsilon) combos
-- splits them across Julia threads
-- each thread collects its results in a local Vector{NamedTuple}
-- at the end, we vcat them and build a DataFrame
-"""
 function feasibility_search(
     S_vals, conn_vals, C_ratios, IS_vals,
     d_vals, mortality_vals, epsilon_vals, delta_vals;
-    degree_distribution_types = [:ER, :PL],
-    Niter=10,
+    degree_distribution_types = [:ER, :PL, :MOD],
+    pareto_exponents        = [1.1, 2.0, 5.0],   # only used for :PL
+    mod_gammas              = [1.0, 5.0, 10.0],  # only used for :MOD
+    pyramid_skewness = [1.0, 0.1, 0.01],
+    abundance_distribution = [:Log, :Normal],
     tspan=(0.0,50.0),
     t_perturb=25.0,
     max_calib=10,
@@ -26,209 +14,209 @@ function feasibility_search(
     xi_threshold=0.7,
     number_of_combos=1000,
     calibrate_params_constraints = true,
-    species_specific_perturbation = false, 
-    pareto_exponents = [1.0]
+    species_specific_perturbation = false
 )
-    # 1) build the full list of parameter combinations
-    combos = collect(Iterators.product(
-      S_vals, conn_vals, C_ratios,
-      IS_vals, d_vals, mortality_vals,
-      epsilon_vals, delta_vals,
-      degree_distribution_types,
-      pareto_exponents
-    ))
-    T = nthreads()
-    # one local result buffer per thread
-    local_recs = [Vector{NamedTuple}() for _ in 1:T]
-    
-    @threads for idx in sample(1:length(combos), min(number_of_combos, length(combos)), replace=false)
-        tid = threadid()
-        (S, conn, C_ratio, IS, d_value, pred_mortality, epsilon_mean , delta, scenario, pexs) = combos[idx]
-        # resource / consumer split
-        C = clamp(round(Int, S*C_ratio), 1, S-1)
-        R = S - C
-        if S == 30
-            cb = cb_no_trigger30
-        elseif S == 40
-            cb = cb_no_trigger40
-        elseif S == 50
-            cb = cb_no_trigger50
-        elseif S == 60
-            cb = cb_no_trigger60
-        elseif S == 70
-            cb = cb_no_trigger70
-        elseif S == 80
-            cb = cb_no_trigger80
-        elseif S == 90
-            cb = cb_no_trigger90
-        elseif S == 100
-            cb = cb_no_trigger100
-        elseif S == 200
-            cb = cb_no_trigger200
-        end
+    # build all combinations, but only pair pexs for :PL and mod_gamma for :MOD
+    combos = Tuple[]
+    for S in S_vals, conn in conn_vals, C_ratio in C_ratios,
+        IS in IS_vals, d in d_vals, m in mortality_vals,
+        eps in epsilon_vals, delta in delta_vals,
+        scenario in degree_distribution_types,
+        skew in pyramid_skewness,
+        abund in abundance_distribution 
 
-        for iter in 1:Niter
-            # --- build interaction matrix ---
-            A = zeros(S,S)
-            # for i in R+1:S, j in 1:S
-            #     if i!=j && rand() < conn
-            #         A[i,j] =  abs(rand(Normal(0, IS)))
-            #         A[j,i] = -abs(rand(Normal(0, IS)))
-            #     end
-            # end
-            A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
-
-            # --- target equilibrium ---
-            # R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
-            # C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ( (abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
-            R_eq = abs.(rand(Normal(abundance_mean, abundance_mean), R))
-            C_eq = abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.1), C))
-            fixed = vcat(R_eq, C_eq)
-
-            # --- rates ---
-            m_cons = fill(pred_mortality, C)
-            d_res   = fill(d_value, R)
-            epsilon_mat   = clamp.(rand(Normal(epsilon_mean, epsilon_mean), S, S), 0, 1)
-
-            # --- calibrate with up to max_calib retries ---
-            pcal = (R, C, m_cons, d_res, epsilon_mat, A)
-            xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold, constraints=calibrate_params_constraints)
-            
-            tries = 1
-            while (any(isnan, xi_cons) || any(isnan, r_res)) && tries < max_calib
-                A .= 0   
-                # for i in R+1:S, j in 1:S
-                #     if i!=j && rand() < conn
-                #         A[i,j] =  abs(rand(Normal(0, IS)))
-                #         A[j,i] = -abs(rand(Normal(0, IS)))
-                #     end
-                # end
-                A = make_A(A, R, conn, scenario; pareto_exponent = pexs)
-                R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
-                C_eq = abs.(rand(LogNormal(log(abundance_mean*0.1) - ((abundance_mean*0.2)^2)/2, abundance_mean*0.2), C))
-                fixed = vcat(R_eq, C_eq)
-                pcal = (R, C, m_cons, d_res, epsilon_mat, A)
-                xi_cons, r_res = calibrate_params(R_eq, C_eq, pcal; xi_threshold=xi_threshold, constraints=calibrate_params_constraints)
-                tries += 1
+        if scenario == :PL
+            for pexs in pareto_exponents
+                push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,pexs,0.0,skew,abund))
             end
-
-            # if calibration failed, record infeasible
-            if calibrate_params_constraints && any(isnan, xi_cons) || any(isnan, r_res)
-                push!(local_recs[tid], (
-                    S=S, conn=conn, C_ratio=C_ratio,
-                    IS=IS, d=d_value, m=pred_mortality,
-                    epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
-                    feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                    ssp = species_specific_perturbation, pexs = pexs, scorr = 0.0
-                ))
-                continue
-            elseif !calibrate_params_constraints && any(isnan, r_res)
-                push!(local_recs[tid], (
-                    S=S, conn=conn, C_ratio=C_ratio,
-                    IS=IS, d=d_value, m=pred_mortality,
-                    epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
-                    feasible=false, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                    ssp =species_specific_perturbation, pexs = pexs, scorr = 0.0
-                ))
-                continue
+        elseif scenario == :MOD
+            for modg in mod_gammas
+                push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,0.0,modg,skew,abund))
             end
-
-            # --- simulate the unperturbed dynamics ---
-            pfull = (R, C, m_cons, xi_cons, r_res, d_res, epsilon_mat, A)
-            prob   = ODEProblem(trophic_ode!, fixed, tspan, pfull)
-            sol    = solve(prob, Tsit5(); callback=cb, reltol=1e-8, abstol=1e-8)
-            B_eq = sol.u[end]
-            # --- feasibility check ---
-            if sol.t[end] < t_perturb || any(isnan, sol.u[end]) || any(isinf, sol.u[end]) || any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:S])
-                ok = false
-                push!(local_recs[tid], (
-                S=S, conn=conn, C_ratio=C_ratio,
-                IS=IS, d=d_value, m=pred_mortality,
-                epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
-                feasible=ok, before_p = 0.0, after_p = 0.0, constraints=calibrate_params_constraints,
-                ssp = species_specific_perturbation, pexs = pexs, scorr = 0.0
-                ))
-            else
-                ok = true
-
-                Beq = sol.u[end]
-                before_pers = mean(Beq .> EXTINCTION_THRESHOLD)
-                
-                rt_full, os_full, ire_full, _, B2, sp_rt_full = simulate_press_perturbation(
-                    fixed, pfull, (0.0, 500.0), 250.0, delta;
-                    solver=Tsit5(), plot=false,
-                    show_warnings=true,
-                    full_or_simple = true,
-                    cb = cb, 
-                    species_specific_perturbation=false
-                )
-
-                # 1) get the Jacobian at the “true” equilibrium B_post0
-                D, Mstar   = compute_jacobian(B_eq, pfull)
-                J_simp          = D * Mstar
-
-                I_mat    = I(R+C)  # identity matrix (R+C)×(R+C)
-
-                # 2) build the press‐vector properly: ∂f_C/∂ξ_i = –B_C* at equilibrium
-                press_vec      = zeros(R+C)
-                press_vec[R+1:R+C] .= 1.0
-
-                # analytic per-unit sensitivity
-                V            = -inv(I_mat .- A)    # (R+C)×(R+C)
-                deltaB_ana  = V * press_vec          # length R+C
-
-                # simulated per-unit response (length R+C)
-                deltaB_sim = (B2 .- B_eq) ./ delta
-
-                zero_idx = findall(iszero.(deltaB_sim))
-                    
-                deltaB_sim[zero_idx] .= NaN
-                deltaB_ana[zero_idx] .= NaN
-                filter!(x -> !isnan(x), deltaB_sim)
-                filter!(x -> !isnan(x), deltaB_ana)
-
-                scorr = round(cor(deltaB_ana, deltaB_sim), digits=3)
-
-                push!(local_recs[tid], (
-                    S=S, conn=conn, C_ratio=C_ratio,
-                    IS=IS, d=d_value, m=pred_mortality,
-                    epsilon=epsilon_mean, delta=delta, scenario=scenario, iter=iter, R=R, C=C,
-                    feasible=ok, before_p = before_pers, after_p = mean(B2 .> EXTINCTION_THRESHOLD),
-                    constraints=calibrate_params_constraints, ssp = species_specific_perturbation,
-                    pexs = pexs, scorr = scorr
-                ))
-            end
+        else  # :ER
+            push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,0.0,0.0,skew,abund))
         end
     end
 
-    # 3) gather & return
-    allrecs = reduce(vcat, local_recs)
-    return DataFrame(allrecs)
+    T = nthreads()
+    local_recs = [Vector{NamedTuple}() for _ in 1:T]
+
+    @threads for idx in sample(1:length(combos), min(number_of_combos, length(combos)), replace=false)
+        tid = threadid()
+        S, conn, C_ratio, IS, d_val, m_val, eps_mean, delta, scenario, pexs, modg, skew, abund = combos[idx]
+
+        # resource / consumer split
+        C = clamp(round(Int, S*C_ratio), 1, S-1)
+        R = S - C
+
+        # pick correct callback
+        cb = eval(Symbol("cb_no_trigger$(S)"))
+
+        # 1) interaction matrix
+        A = zeros(S,S)
+        A = make_A(A, R, conn, scenario;
+                    pareto_exponent=pexs,
+                    mod_gamma=modg)
+        A = A .* IS
+
+        # 2) equilibrium draws: pyramid skew via eps_mean*modg? no, keep independent
+        if abund == :Log
+            R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
+            C_eq = abs.(rand(LogNormal(log(abundance_mean*skew) - ((abundance_mean*skew)^2)/2, abundance_mean*skew), C))
+        elseif abund == :Normal
+            R_eq = abs.(rand(Normal(abundance_mean, abundance_mean), R))
+            C_eq = abs.(rand(Normal(abundance_mean*skew, abundance_mean*skew), C))
+        end
+        fixed = vcat(R_eq, C_eq)
+
+        # 3) rates
+        m_cons      = fill(m_val, C)
+        d_res       = fill(d_val, R)
+        ε_mat       = clamp.(rand(Normal(eps_mean, eps_mean), S, S), 0, 1)
+
+        # 4) calibrate
+        xi_cons, r_res = calibrate_params(R_eq, C_eq,
+            (R,C,m_cons,d_res,ε_mat,A);
+            xi_threshold=xi_threshold,
+            constraints=calibrate_params_constraints
+        )
+        tries = 1
+        while (any(isnan, xi_cons) || any(isnan, r_res)) && tries < max_calib
+            A .= 0
+            A = make_A(A, R, conn, scenario;
+                        pareto_exponent=pexs,
+                        mod_gamma=modg)
+            A = A .* IS
+            
+            if abund == :Log
+                R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
+                C_eq = abs.(rand(LogNormal(log(abundance_mean*skew) - ((abundance_mean*skew)^2)/2, abundance_mean*skew), C))
+            elseif abund == :Normal
+                R_eq = abs.(rand(Normal(abundance_mean, abundance_mean), R))
+                C_eq = abs.(rand(Normal(abundance_mean*skew, abundance_mean*skew), C))
+            end
+            fixed = vcat(R_eq, C_eq)
+            xi_cons, r_res = calibrate_params(R_eq, C_eq,
+                (R,C,m_cons,d_res,ε_mat,A);
+                xi_threshold=xi_threshold,
+                constraints=calibrate_params_constraints
+            )
+            tries += 1
+        end
+
+        # if calibration fails
+        if calibrate_params_constraints && any(isnan, xi_cons) || any(isnan, r_res)
+            push!(local_recs[tid], (
+                S=S, conn=conn, C_ratio=C_ratio,
+                IS=IS, d=d_val, m=m_val, epsilon=eps_mean,
+                delta=delta, scenario=scenario,
+                R=R, C=C,
+                feasible=false,
+                constraints = calibrate_params_constraints,
+                ssp = species_specific_perturbation,
+                before_p=0.0, after_p=0.0,
+                pexs=pexs, mod_gamma=modg,
+                scorr=0.0, skew = skew,
+                abundance_distribution = abund
+            ))
+            continue
+        elseif !calibrate_params_constraints && any(isnan, r_res)
+            push!(local_recs[tid], (
+                S=S, conn=conn, C_ratio=C_ratio,
+                IS=IS, d=d_val, m=m_val, epsilon=eps_mean,
+                delta=delta, scenario=scenario,
+                R=R, C=C,
+                feasible=false,
+                constraints = calibrate_params_constraints,
+                ssp = species_specific_perturbation,
+                before_p=0.0, after_p=0.0,
+                pexs=pexs, mod_gamma=modg,
+                scorr=0.0, skew = skew,
+                abundance_distribution = abund
+            ))
+            continue
+        end
+
+        # 5) simulate unperturbed
+        p_full = (R,C,m_cons,xi_cons,r_res,d_res,ε_mat,A)
+        sol    = solve(ODEProblem(trophic_ode!, fixed, tspan, p_full),
+                        Tsit5(); callback=cb, abstol=1e-8, reltol=1e-8)
+        B_eq   = sol.u[end]
+        
+        if sol.t[end] < t_perturb || any(isnan, sol.u[end]) || any(isinf, sol.u[end]) ||
+            any([!isapprox(sol.u[end][i], vcat(R_eq, C_eq)[i], atol=atol) for i in 1:S]) || any(sol.u[end] .< EXTINCTION_THRESHOLD)
+            push!(local_recs[tid], (
+                S=S, conn=conn, C_ratio=C_ratio,
+                IS=IS, d=d_val, m=m_val, epsilon=eps_mean,
+                delta=delta, scenario=scenario,
+                R=R, C=C,
+                feasible=false,
+                constraints = calibrate_params_constraints,
+                ssp = species_specific_perturbation,
+                before_p=0.0, after_p=0.0,
+                pexs=pexs, mod_gamma=modg,
+                scorr=0.0, skew = skew,
+                abundance_distribution = abund
+            ))
+            continue
+        else
+            
+            before_p = mean(B_eq .> EXTINCTION_THRESHOLD)
+
+            # 6) press perturbation
+            rt, os, ire, _, B2, _ = simulate_press_perturbation(
+                fixed, p_full, tspan, t_perturb, delta;
+                solver=Tsit5(), plot=false,
+                show_warnings=true,
+                cb=cb,
+                species_specific_perturbation=species_specific_perturbation
+            )
+
+            # 7) analytic vs sim scorr
+            # 1) get the Jacobian at the “true” equilibrium B_post0
+            D, Mstar   = compute_jacobian(B_eq, p_full)
+            J_simp          = D * Mstar
+
+            I_mat    = I(R+C)  # identity matrix (R+C)×(R+C)
+
+            # 2) build the press‐vector properly: ∂f_C/∂ξ_i = –B_C* at equilibrium
+            press_vec      = zeros(R+C)
+            press_vec[R+1:R+C] .= 1.0
+
+            # analytic per-unit sensitivity
+            V            = -inv(I_mat .- A)    # (R+C)×(R+C)
+            deltaB_ana  = V * press_vec          # length R+C
+
+            # simulated per-unit response (length R+C)
+            deltaB_sim = (B2 .- B_eq) ./ delta
+
+            zero_idx = findall(iszero.(deltaB_sim))
+                
+            deltaB_sim[zero_idx] .= NaN
+            deltaB_ana[zero_idx] .= NaN
+            filter!(x -> !isnan(x), deltaB_sim)
+            filter!(x -> !isnan(x), deltaB_ana)
+
+            scorr = round(cor(deltaB_ana, deltaB_sim), digits=3)
+
+            after_p = mean(B2 .> EXTINCTION_THRESHOLD)
+
+            push!(local_recs[tid], (
+                S=S, conn=conn, C_ratio=C_ratio,
+                IS=IS, d=d_val, m=m_val, epsilon=eps_mean,
+                delta=delta, scenario=scenario,
+                R=R, C=C,
+                feasible=true,
+                constraints = calibrate_params_constraints,
+                ssp = species_specific_perturbation,
+                before_p=before_p, after_p=after_p,
+                pexs=pexs, mod_gamma=modg,
+                scorr=scorr, skew = skew,
+                abundance_distribution = abund
+            ))
+        end
+    end
+
+    # gather and return
+    return DataFrame(reduce(vcat, local_recs))
 end
-
-# if false
-#     S_vals      = [50]
-#     conn_vals   = 0.1:0.2:1.0
-#     C_ratios    = 0.2:0.1:0.5
-#     IS_vals     = [0.001, 0.01, 0.1, 1.0, 2.0]
-#     d_vals      = [0.01, 0.1, 1.0, 2.0]
-#     mort_vals   = [0.05, 0.1, 0.2, 0.5]
-#     epsilon_vals= [0.01, 0.1, 0.2, 0.5]
-#     delta_vals  = [0.1, 0.2, 0.3, 0.4, 0.5]
-
-#     A_feas = feasibility_search(
-#         S_vals, conn_vals, C_ratios, IS_vals,
-#         d_vals, mort_vals, epsilon_vals, delta_vals;
-#         Niter=20,
-#         tspan=(0.0,100.0),
-#         t_perturb=50.0,
-#         max_calib=5,
-#         abundance_mean=1.0,
-#         atol=1.0,
-#         xi_threshold=0.7,
-#         number_of_combos=100
-#     )
-# end
-
-# percent_feasible = nrow(filter(r -> r.feasible, df1))/nrow(df1)
-# subset_df = filter(r -> r.feasible, df1)
