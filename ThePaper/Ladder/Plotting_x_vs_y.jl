@@ -56,11 +56,15 @@ function plot_x_vs_yy(
         x_clean = [Float64(x) for (x, v) in zip(x_raw, valid) if v]
         y_clean = [Float64(y) for (y, v) in zip(y_raw, valid) if v]
 
-        # if y_value == :aft
-        #     limits!(ax, (minimum(x_clean), maximum(x_clean)), (0.5, 1.05))
+        if y_value == :aft
+            limits!(ax, (minimum(x_clean), maximum(x_clean)), (0.5, 1.1))
+        end
         # elseif y_value == :rt
         #     limits!(ax, (minimum(x_clean), maximum(x_clean)), (-10, 50.0))
         # end
+        if x_value == :degree_cv && y_value == :aft
+            limits!(ax, (0, 4), (0.5, 1.05))
+        end
 
         color_clean = [Float64(c) for (c, v) in zip(color_vals, valid) if v && isa(c, Real) && !ismissing(c)]
 
@@ -91,10 +95,11 @@ function plot_x_vs_yy(
     display(fig)
 end
 
-plot_x_vs_yy(df_to_plot, :degree_cv, :aft; color_by=:scenario, variable_to_subset = :S, subset = 50)
-for i in 30:10:60
-    plot_x_vs_yy(df_to_plot, :degree_cv, :aft; color_by=:scenario, variable_to_subset = :C_ratio, subset = 0.1)
-end
+plot_x_vs_yy(df_to_plot, :degree_cv, :rt; color_by=:conn, variable_to_subset = :C, subset = 9)
+plot_x_vs_yy(df_to_plot, :degree_cv, :rt; color_by=:C)
+# for i in 30:10:60
+#     plot_x_vs_yy(df_to_plot, :degree_cv, :aft; color_by=:scenario, variable_to_subset = :C_ratio, subset = 0.1)
+# end
 
 ############## FOR WHEN MAC SPITS OUT THE RESULTS ##############
 mac_results = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL.csv") |> DataFrame
@@ -104,7 +109,7 @@ mac_results3 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL1_75_noc
 mac_results4 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL1_75_noconstraint_speciesSpecificRTs_s30405060.csv") |> DataFrame
 mac_results5 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL1_75_noconstraint_speciesSpecificRTs_s30to100.csv") |> DataFrame
 only_mod =  CSV.File("ThePaper/Ladder/Outputs/guided_results_noconstraint_sspRTs_s40506070_onlyMOD.csv") |> DataFrame
-df_to_plot = df_results
+df_to_plot = df
 yes_const = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERPLMOD_75_yesconstraint_NOsspRTs_s30405060.csv") |> DataFrame
 MOD_Results1 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL1_75_noconstraint_sspRTs_s40506070_withMOD.csv") |> DataFrame
 # name_of_the_x = [:conn, :C_ratio, :degree_cv, :RelVar, :IS, :d, :m]
