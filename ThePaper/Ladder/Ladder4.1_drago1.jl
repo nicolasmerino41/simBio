@@ -134,7 +134,7 @@ end
 #############################################################################
 #############################################################################
 function compute_jacobian(B, p)
-    R, C, m_cons, xi_cons, r_res, d_res, ε, A = p
+    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
     S = R + C
 
     # 1) Build D
@@ -144,8 +144,8 @@ function compute_jacobian(B, p)
     end
     for k in 1:C
         i = R + k
-        α = m_cons[k] / xi_cons[k]
-        D[i,i] = α * B[i]
+        alpha = m_cons[k] / xi_cons[k]
+        D[i,i] = alpha * B[i]
     end
 
     # 2) Build Mstar = -I + A*
@@ -160,7 +160,7 @@ function compute_jacobian(B, p)
     for i in R+1:S
         for j in 1:S
             if A[i,j] > 0.0
-                Mstar[i,j] += ε[i,j] * A[i,j]
+                Mstar[i,j] += epsilon[i,j] * A[i,j]
             elseif A[j,i] < 0.0
                 Mstar[i,j] += A[i,j]
             end
@@ -290,6 +290,8 @@ function simulate_press_perturbation(
             lines!(ax1, sol1.t[1:end-1], sol1[i, 1:end-1], color=:red)
             lines!(ax2, sol2.t, sol2[i, :], color=:red)
         end
+        lines!(ax1, sol1.t[1:end-1], fill(0.0, length(sol1[1, 1:end-1])), color = :black)
+        lines!(ax2, sol2.t, fill(0.0, length(sol2[1, :])), color = :black)
         display(fig)
     end
 
