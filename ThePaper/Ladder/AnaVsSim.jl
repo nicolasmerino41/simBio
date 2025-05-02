@@ -8,9 +8,9 @@ C = 4
 # R_eq = fill(100.0, R)
 # C_eq = fill(10.0, C)
 abundance_mean = 100.0
-R_eq = abs.(rand(Normal(abundance_mean, abundance_mean), R))
-C_eq = abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.1), C))
-C_eq[4] = 0.0
+R_eq = abs.(rand(Normal(abundance_mean, abundance_mean*0.1), R))
+C_eq = abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.01), C))
+# C_eq[4] = 0.0
 # baseline mortality & self–regulation
 m_cons₀ = fill(0.1, C)
 d_res₀  = fill(1.0, R)
@@ -157,11 +157,6 @@ end
 
 # simulated per-unit response (length R+C)
 ΔB_sim_unit = (B_post2 .- B_eq) ./ δξ 
-
-mask = .!iszero.(ΔB_sim_unit)       # keep only species with nonzero sim‐response
-ana = ΔB_ana_unit[mask]
-sim = ΔB_sim_unit[mask]
-sens_corr = cor(ana, sim)
 
 zero_idx = findall(iszero.(ΔB_sim_unit))
 new_ΔB_sim_unit = copy(ΔB_sim_unit)
