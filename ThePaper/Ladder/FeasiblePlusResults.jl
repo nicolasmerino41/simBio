@@ -459,7 +459,7 @@ begin
         pareto_exponents        = [1.1, 2.0, 5.0],   # only used for :PL
         mod_gammas              = [1.0, 5.0, 10.0],  # only used for :MOD
         pyramid_skewness = [0.5, 0.1, 0.01, 0.001],
-        abundance_distribution = [:Log, :Normal],
+        abundance_distribution = [:Normal], #:Log
         tspan=(0.0,500.0),
         t_perturb=250.0,
         max_calib=10,
@@ -504,4 +504,4 @@ CSV.write("guided_results_ERPLMOD_skew_logabund_constraint_s30_c3and6.csv", df_r
 
 c1and3and6 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERPLMOD_skew_logabund_constraint_s30_c1and3and6.csv") |> DataFrame
 c9and12 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERPLMOD_skew_logabund_constraint_s30_c9and12.csv") |> DataFrame
-df = vcat(c1and3and6, c9and12)
+df_to_plot = vcat(c1and3and6, c9and12)
