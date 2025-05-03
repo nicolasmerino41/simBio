@@ -1,6 +1,7 @@
 # ----------------------------------------------------------------
 # Precompute analytic and simulated responses for each species
 # ----------------------------------------------------------------
+B_eq = sol0.u[end]
 δr  = 1.0                # resource growth perturbation step
 δξ  = 1.0                # consumer threshold perturbation step
 S   = R + C              # total species count
