@@ -1,0 +1,75 @@
+---
+title: "NewFramework10.3_Collectivity"
+author: "Nico, Núria & Jeff"
+date: "2025-05-03"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 5
+    number_sections: true
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Spectral radius \(\phi\) as a collectivity metric  
+Compute  
+
+$$
+  \phi \;=\;\max\bigl| \lambda (A^*)\bigr|
+$$  
+
+for the non‐dimensionalized interaction matrix \(A^*\).
+
+- If \(\phi<1\), indirect effects decay rapidly; if \(\phi\ge1\), long‐loop feedbacks dominate.  
+
+## Empirical signatures of collectivity  
+1. **Perturbation depth**: average graph‐distance reached by single‐species removals.  
+2. **Temporal unpredictability**:  
+   $$
+     1 - corr\bigl(\text{early response},\,\text{late response}\bigr)
+   $$  
+   to a pulse perturbation.  
+3. **Biotic‐niche contribution**:  
+   $$
+     \frac{\sum_i\bigl|N_i/K_i - 1\bigr|^2}{\sum_i\,(N_i/K_i)^2}
+   $$  
+   measures how much equilibrium abundances deviate from mono‐culture expectations.  
+
+## Relation to May’s complexity (C)  
+Let  
+$$
+  C = \sigma\,\sqrt{p\,(S-1)},
+$$  
+with \(\sigma^2=\text{Var}(A_{ij})\) and connectance \(p\). Then
+
+- **Lower bound**: \(\phi \ge C\).  
+
+- **Upper bound**: \(\phi \le C\,\sqrt{S-1}\).  
+
+Random webs sit near \(\phi\approx C\); structured webs shift \(\phi\) away from that baseline.  
+
+## Collectivity vs. stability  
+
+- **Stability**: \(\Re(\lambda_{\max}(J))<0\).  
+
+- **Collectivity**: \(\phi\) large \(\Rightarrow\) widespread indirect feedbacks.  
+
+They need not coincide—track both \(\phi\) and the dominant Jacobian eigenvalue.  
+
+## Next steps in our ladder analysis  
+
+- Compute \(\phi\) and \(C\) at each simplification step and monitor their gap.  
+
+- Measure perturbation depth, temporal unpredictability, and biotic‐niche index per step.  
+
+- Overlay \(\phi\) vs.\ \(C\) to diagnose when and why structural integration is lost.  
