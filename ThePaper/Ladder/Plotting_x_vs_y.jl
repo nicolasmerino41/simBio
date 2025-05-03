@@ -24,7 +24,7 @@ function plot_x_vs_yy(
     is_numeric_color = eltype(Cs) <: Real
     color_vals = is_numeric_color ? Cs : map(x -> findfirst(==(x), unique(Cs)), Cs)
 
-    fig = Figure(; size = (1600, 900))
+    fig = Figure(; size = (1600, 750))
     ncols = 4
     nrows = ceil(Int, length(step_keys) / ncols)
 
@@ -94,8 +94,8 @@ function plot_x_vs_yy(
 
     display(fig)
 end
-
-plot_x_vs_yy(df_to_plot, :degree_cv, :rt; color_by=:conn, variable_to_subset = :C, subset = 9)
+df_to_plot = df_to_plot[df_to_plot[!, :scenario] .== "MOD", :]
+plot_x_vs_yy(df_to_plot, :C, :aft; color_by=:conn, variable_to_subset = :scenario, subset = "PL")
 plot_x_vs_yy(df_to_plot, :degree_cv, :rt; color_by=:C)
 # for i in 30:10:60
 #     plot_x_vs_yy(df_to_plot, :degree_cv, :aft; color_by=:scenario, variable_to_subset = :C_ratio, subset = 0.1)
@@ -123,3 +123,6 @@ MOD_Results1 = CSV.File("ThePaper/Ladder/Outputs/guided_results_ERplusPL1_75_noc
 # end
 
 mac_results5 = filter(row -> row.C_ratio == 0.1, mac_results5)
+
+
+as = df[df[!, :scenario] .== :PL, :]
