@@ -1,0 +1,68 @@
+---
+title: "NewFramework10.4_Summary"
+author: "Nico, Núria & Jeff"
+date: "2025-05-04"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 5
+    number_sections: true
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+---
+
+# Summary of All Analyses
+
+Over the past few days we have systematically explored how community structure and simplified models affect stability, predictability and collective dynamics. Below is a concise overview of each step, why we did it, and what we found.
+
+1. **Stability across simplification ladders**  
+   - **What:** Built a hierarchy of models from the full consumer–resource matrix \(A\) down to mean-field and randomized approximations.  
+   - **Why:** To test how much detail is needed to preserve key stability metrics.  
+   - **Results:** Small‐scale simplifications (species-specific efficiencies) still predict return times and resilience well, but beyond global or random rewiring the analytic predictions break down.
+
+2. **Structural properties**  
+   - **Degree distribution** (ER vs Pareto power-law vs two-block modular)  
+   - **Pyramid skew** (ratio of resource vs consumer abundance variance)  
+   - **Abundance distribution** (LogNormal vs Normal draws)  
+   - **Why:** To link network topology and biomass patterns with stability outcomes.  
+   - **Results:** Interaction‐strength scale and connectance were the strongest drivers; pyramid skew and abundance law had minor effects.
+
+3. **Analytic vs simulated press-perturbations**  
+   - **What:** Derived the sensitivity matrix \(V = (I - A)^{-1}\) (rescaled by self-regulation) to predict \(\delta B\) under a uniform small press on all consumer thresholds (\(\xi\)).  
+   - **Why:** To validate that linear theory reliably forecasts community responses.  
+   - **Results:** Correlations \(\mathrm{corr}(V\mathbf1,\;\delta B_{\rm sim})\) consistently exceeded 0.8 when calibration succeeded, confirming the analytic approach.
+
+4. **Collectivity & May’s complexity threshold**  
+   - **Effective matrix:** \(A^* = \varepsilon\circ A \;-\; A^\top\)  
+   - **Metrics:** Spectral radius \(\phi=\rho(A^*)\), standard deviation \(\sigma\), connectance \(p\), May’s threshold \(\mathcal C_{\rm May}=\sigma\sqrt{p(S-1)}\).  
+   - **Why:** To measure how “collectively integrated” the community is, per Zelnik *et al.* (2024).  
+   - **Results:** Communities with \(\mathcal C_{\rm May}\approx1\) had \(\phi\approx1\); exceeding this threshold led to positive real parts of Jacobian eigenvalues (local instability), matching theory.
+
+5. **Knock-out depth**  
+   - **What:** Sequentially removed each species (\(B_i=0\)), re-simulated, and recorded which others moved by \( > \varepsilon \). Computed mean graph-distance (via Floyd–Warshall) from the knocked-out node to all affected species.  
+   - **Why:** To quantify how perturbations cascade in the network.  
+   - **Results:** More connected/stronger networks had deeper cascades; modular or sparse topologies contained knock-out effects more locally.
+
+6. **Temporal unpredictability**  
+   - **What:** Gave a small bump \(\delta\) to all consumer thresholds, compared early (\(t_{\rm early}\)) vs late (\(t_{\rm late}\)) deviations: \(1-\mathrm{corr}(\Delta B_{\rm early},\Delta B_{\rm late})\).  
+   - **Why:** To see if collective integration makes long-term outcomes hard to predict from short-term responses.  
+   - **Results:** Higher \(\phi\) → higher unpredictability; early and late responses decorrelate more in collective communities.
+
+7. **Biotic-niche contribution**  
+   - **Metric:** \(\sum_i(B_i/B_i^*-1)^2\big/\sum_i(B_i/B_i^*)^2\).  
+   - **Why:** To assess how far species deviate from ideal niches.  
+   - **Results:** Largely invariant under matrix simplifications; less informative for our ladder analysis.
+
+8. **Statistical modeling**  
+   - Fitted (mixed) linear models for each metric (\(\phi\), \(\mathcal C_{\rm May}\), depth, unpredictability, niche) vs  
+     $$\,\mathrm{B\_term},\ \mathrm{conn},\ \mathrm{C\_ratio},\ \mathrm{IS},\ \mathrm{epsilon},\ \mathrm{skew},\ \mathrm{scenario}\,$$
+   - **Key drivers:** Interaction‐strength scale (IS) and connectance; other factors had weaker or non-significant effects.
+
+**Overall**, our results confirm the central predictions of Zelnik *et al.* (2024):  
+Communities near the May stability threshold (\(\mathcal C_{\rm May}=1\)) are maximally collective, exhibit deep knock-out cascades, and show high temporal unpredictability.
