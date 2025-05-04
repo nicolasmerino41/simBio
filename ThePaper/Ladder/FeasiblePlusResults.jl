@@ -9,67 +9,86 @@ function make_A(
     conn::Float64,
     scenario::Symbol;
     pareto_exponent::Float64 = 1.75,
-    mod_gamma::Float64       = 5.0
+    mod_gamma::Float64       = 5.0,
+    B_term::Bool             = false
 )
     S = size(A,1)
     C = S - R
-    # zero out
     fill!(A, 0.0)
 
+    # define the allowed prey‐pool for each consumer i
+    function prey_indices(i)
+        base = 1:R
+        if B_term
+            # include other consumers but not self
+            return vcat(base, setdiff(R+1:S, i))
+        else
+            return base
+        end
+    end
+
     if scenario == :ER
-        # Erdős–Rényi random bipartite consumer-resource links
-        for i in (R+1):S, j in 1:R
-            if rand() < conn
-                A[i,j] = abs(rand(Normal()))
-                A[j,i] = -abs(rand(Normal()))
+        # Erdős–Rényi: each candidate link with probability conn
+        for i in (R+1):S
+            for j in prey_indices(i)
+                if rand() < conn
+                    A[i,j] = abs(rand(Normal()))
+                    A[j,i] = -abs(rand(Normal()))
+                end
             end
         end
 
     elseif scenario == :PL
-        # Power-law consumer out-degree controlled by pareto_exponent
-        x_m = 1.0  # minimum links per consumer
+        # Power‐law consumer out‐degree
+        x_m = 1.0
         raw_degrees = rand(Pareto(x_m, pareto_exponent), C)
-        ks = clamp.(floor.(Int, raw_degrees), 1, R)
+        ks = clamp.(floor.(Int, raw_degrees), 1, length(prey_indices(R+1)))
 
         for (idx, k) in enumerate(ks)
             ci = R + idx
-            prey_pool = 1:R
-            selected = sample(prey_pool, k; replace=false)
-            for j in selected
+            pool = prey_indices(ci)
+            chosen = sample(pool, min(k, length(pool)); replace=false)
+            for j in chosen
                 A[ci, j] = abs(rand(Normal()))
                 A[j, ci] = -abs(rand(Normal()))
             end
         end
 
     elseif scenario == :MOD
-        # Bipartite modular: two resource‐modules and two matching consumer‐modules
-        halfR = fld(R, 2)
-        halfC = fld(C, 2)
-        res_block1 = 1:halfR
-        res_block2 = (halfR+1):R
+        # Bipartite‐modular plus optional B–B links
+        halfR = fld(R,2)
+        halfC = fld(C,2)
+        res_block1  = 1:halfR
+        res_block2  = (halfR+1):R
         cons_block1 = (R+1):(R+halfC)
         cons_block2 = (R+halfC+1):S
-    
-        for i in (R+1):S         # each consumer
-            for j in 1:R         # only resources
-                # do they share the same module?
-                same_module = (i in cons_block1 && j in res_block1) ||
-                              (i in cons_block2 && j in res_block2)
-                # within‐module links denser by mod_gamma
-                p_link = same_module ? conn * mod_gamma : conn / mod_gamma
-                p_link = clamp(p_link, 0.0, 1.0)
-                if rand() < p_link
+
+        for i in (R+1):S
+            for j in prey_indices(i)
+                # decide module‐match only for resource‐blocks;
+                # for consumer–consumer we just use base conn
+                if j ≤ R
+                    same = (i in cons_block1 && j in res_block1) ||
+                           (i in cons_block2 && j in res_block2)
+                    p_link = same ? conn*mod_gamma : conn/mod_gamma
+                else
+                    # consumer–consumer: uniform random links
+                    p_link = conn
+                end
+                if rand() < clamp(p_link,0,1)
                     A[i,j] = abs(rand(Normal()))
                     A[j,i] = -abs(rand(Normal()))
                 end
             end
         end
+
     else
         error("Unknown scenario: $scenario")
     end
 
     return A
 end
+
 
 # # Usage examples:
 # A = zeros(S,S)
@@ -121,6 +140,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
         mod_gamma = row.mod_gamma
         abund = row.abundance_distribution
         skew = row.skew
+        B_term = row.B_term
 
         # pick correct callback
         cb = eval(Symbol("cb_no_trigger$(S)"))
@@ -131,7 +151,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                 # build A & epsilon_full
                 A = zeros(S,S)
                 
-                A = make_A(A, R, conn, scenario; pareto_exponent = pexs, mod_gamma = mod_gamma)
+                A = make_A(A, R, conn, scenario; pareto_exponent = pexs, mod_gamma = mod_gamma, B_term = B_term)
                 A = A .* IS
                 # epsilon_full = clamp.(rand(LogNormal(epsilon_mean, epsilon_mean), S, S), 0, 1)
                 epsilon_full   = clamp.(rand(Normal(epsilon_mean, epsilon_mean), S, S), 0, 1)
@@ -156,7 +176,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                 tries=1
                 while (any(isnan, xi_cons)||any(isnan, r_res)) && tries<max_calib
                     A .= 0
-                    A = make_A(A, R, conn, scenario; pareto_exponent = pexs, mod_gamma = mod_gamma)
+                    A = make_A(A, R, conn, scenario; pareto_exponent = pexs, mod_gamma = mod_gamma, B_term = B_term)
                     A = A .* IS
                     if abund == :Log
                         R_eq = abs.(rand(LogNormal(log(abundance_mean) - (abundance_mean^2)/2, abundance_mean), R))
@@ -189,6 +209,22 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     continue
                 end
                 B_eq = sol.u[end]
+
+                ################# ROBUSTNESS METRICS ############################
+                ### 5) Compute robustness to knock‐outs
+                surv_fracs = Float64[]
+                for i in R+1:S
+                    # initial condition with species i removed
+                    u0 = copy(fixed); u0[i] = 0.0
+                    sol_i = solve(ODEProblem(trophic_ode!, u0, (0.0,tspan[2]), p_full),
+                                  Tsit5(); callback=cb, reltol=1e-8, abstol=1e-8)
+                    B_end_i = sol_i.u[end]
+                    # number of survivors excluding the knocked‐out one
+                    survivors = count(j->(j!=i) && B_end_i[j] > EXTINCTION_THRESHOLD, 1:S)
+                    push!(surv_fracs, survivors/(S-1))
+                end
+                robustness_full = mean(surv_fracs)
+                #####################################################################
 
                 g = SimpleGraph(A .!= 0)
                 degs = degree(g)
@@ -273,7 +309,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     before_p   =mean(sol.u[end] .> EXTINCTION_THRESHOLD),
                     after_p    =mean(B2 .> EXTINCTION_THRESHOLD),
                     sp_rt_mean     =mean(filter(!isnan, sp_rt_full)),
-                    sp_rt_cv       =std(filter(!isnan, sp_rt_full)) / mean(filter(!isnan, sp_rt_full))
+                    sp_rt_cv       =std(filter(!isnan, sp_rt_full)) / mean(filter(!isnan, sp_rt_full)),
+                    robustness  = robustness_full
                     ))
 
                 # ladder steps 
@@ -375,6 +412,20 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                     # ire_obs = mean(filter(!isnan, ire2))
                     # err_IRE2  = abs(ire_obs - ire_pred2) / ((ire_obs + ire_pred2)/2)
                     # comp_err2 = (err_T2 + err_OS2 + err_IRE2)/3
+                    ##########################################################################
+                    ###################### ROBUSTNESS ########################################
+                    surv_fracs = Float64[]
+                    for i in 1:S
+                        # initial condition with species i removed
+                        u0 = copy(B_eq2); u0[i] = 0.0
+                        sol_i = solve(ODEProblem(trophic_ode!, u0, (0.0,tspan[2]), p_simp),
+                                    Tsit5(); callback=cb, reltol=1e-8, abstol=1e-8)
+                        B_end_i = sol_i.u[end]
+                        # number of survivors excluding the knocked‐out one
+                        survivors = count(j->(j!=i) && B_end_i[j] > EXTINCTION_THRESHOLD, 1:S)
+                        push!(surv_fracs, survivors/(S-1))
+                    end
+                    robustness_simp = mean(surv_fracs)
 
                     metrics[suf] = (
                         # compound_error = comp_err2,
@@ -387,7 +438,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         before_p       = before_p,
                         after_p        = mean(B2_simp .> EXTINCTION_THRESHOLD),
                         sp_rt_mean         = mean(filter(!isnan, sp_rt_simp)),
-                        sp_rt_cv           = std(filter(!isnan, sp_rt_simp)) / mean(filter(!isnan, sp_rt_simp))
+                        sp_rt_cv           = std(filter(!isnan, sp_rt_simp)) / mean(filter(!isnan, sp_rt_simp)),
+                        robustness     = robustness_simp
                     )
                 end
 
@@ -414,7 +466,8 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                         Symbol("bef_$suf")     => m.before_p,
                         Symbol("aft_$suf")     => m.after_p,
                         Symbol("sp_rt_$suf")   => m.sp_rt_mean,
-                        Symbol("sp_rt_cv_$suf")   => m.sp_rt_cv)
+                        Symbol("robust_$suf")    => m.robustness,
+                        Symbol("sp_rt_cv_$suf")   => m.sp_rt_cv),
                     )
                 end
 
@@ -459,6 +512,7 @@ begin
         pareto_exponents        = [1.1, 2.0, 5.0],   # only used for :PL
         mod_gammas              = [1.0, 5.0, 10.0],  # only used for :MOD
         pyramid_skewness = [0.5, 0.1, 0.01, 0.001],
+        B_term = [true, false],
         abundance_distribution = [:Normal], #:Log
         tspan=(0.0,500.0),
         t_perturb=250.0,
@@ -466,7 +520,7 @@ begin
         abundance_mean=10.0,
         atol=1.0,
         xi_threshold=0.7,
-        number_of_combos=100000,
+        number_of_combos=1000,
         calibrate_params_constraints = true,
         species_specific_perturbation = false
     )
@@ -475,10 +529,10 @@ end
 # (b) Extract good combos
 df_good = unique(
     df_feas[df_feas.feasible .== true,
-            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs, :mod_gamma, :scorr, :skew, :abundance_distribution]]
+            [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs, :mod_gamma, :scorr, :skew, :abundance_distribution, :B_term]]
 )
 df_good = unique(
-    df_good[df_good.scorr .> 0.8, [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs, :mod_gamma, :skew, :abundance_distribution]]
+    df_good[df_good.scorr .> 0.8, [:S, :conn, :C_ratio, :IS, :d, :m, :epsilon, :R, :C, :scenario, :constraints, :ssp, :pexs, :mod_gamma, :skew, :abundance_distribution, :B_term]]
 )
 
 # (c) Guided rppp
@@ -491,7 +545,7 @@ begin
         tspan=(0.0,500.0), t_perturb=250.0,
         atol=10.0,
         abundance_mean=10.0,
-        combinations=10000, # You want 10000
+        combinations=10, # You want 10000
         plot_full=false,
         plot_simple=false,
         plot_ana_vs_sim_full = false,
