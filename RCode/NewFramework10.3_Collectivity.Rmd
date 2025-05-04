@@ -15,6 +15,9 @@ output:
     toc_float:
       collapsed: false
     highlight: tango
+  word_document:
+    toc: true
+    toc_depth: '5'
 ---
 
 ```{r setup, include=FALSE}
