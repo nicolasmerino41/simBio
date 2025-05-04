@@ -95,7 +95,7 @@ function plot_x_vs_yy(
     display(fig)
 end
 df_to_plot = df_to_plot[df_to_plot[!, :scenario] .== "MOD", :]
-plot_x_vs_yy(df_to_plot, :C, :aft; color_by=:conn, variable_to_subset = :scenario, subset = "PL")
+plot_x_vs_yy(df_to_plot, :C, :rt; color_by=:conn, variable_to_subset = :scenario, subset = "PL")
 plot_x_vs_yy(df_to_plot, :degree_cv, :rt; color_by=:C)
 # for i in 30:10:60
 #     plot_x_vs_yy(df_to_plot, :degree_cv, :aft; color_by=:scenario, variable_to_subset = :C_ratio, subset = 0.1)
