@@ -6,6 +6,7 @@ function feasibility_search(
     mod_gammas              = [1.0, 5.0, 10.0],  # only used for :MOD
     pyramid_skewness = [1.0, 0.1, 0.01],
     abundance_distribution = [:Log, :Normal],
+    B_term = [false],
     tspan=(0.0,50.0),
     t_perturb=25.0,
     max_calib=10,
@@ -14,7 +15,7 @@ function feasibility_search(
     xi_threshold=0.7,
     number_of_combos=1000,
     calibrate_params_constraints = true,
-    species_specific_perturbation = false
+    species_specific_perturbation = false,
 )
     # build all combinations, but only pair pexs for :PL and mod_gamma for :MOD
     combos = Tuple[]
@@ -23,18 +24,19 @@ function feasibility_search(
         eps in epsilon_vals, delta in delta_vals,
         scenario in degree_distribution_types,
         skew in pyramid_skewness,
-        abund in abundance_distribution 
+        abund in abundance_distribution,
+        B_term in B_term
 
         if scenario == :PL
             for pexs in pareto_exponents
-                push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,pexs,0.0,skew,abund))
+                push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,pexs,0.0,skew,abund,B_term))
             end
         elseif scenario == :MOD
             for modg in mod_gammas
-                push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,0.0,modg,skew,abund))
+                push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,0.0,modg,skew,abund,B_term))
             end
         else  # :ER
-            push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,0.0,0.0,skew,abund))
+            push!(combos, (S,conn,C_ratio,IS,d,m,eps,delta,scenario,0.0,0.0,skew,abund,B_term))
         end
     end
 
@@ -43,7 +45,7 @@ function feasibility_search(
 
     @threads for idx in sample(1:length(combos), min(number_of_combos, length(combos)), replace=false)
         tid = threadid()
-        S, conn, C_ratio, IS, d_val, m_val, eps_mean, delta, scenario, pexs, modg, skew, abund = combos[idx]
+        S, conn, C_ratio, IS, d_val, m_val, eps_mean, delta, scenario, pexs, modg, skew, abund, B_term = combos[idx]
 
         # resource / consumer split
         C = clamp(round(Int, S*C_ratio), 1, S-1)
@@ -56,7 +58,8 @@ function feasibility_search(
         A = zeros(S,S)
         A = make_A(A, R, conn, scenario;
                     pareto_exponent=pexs,
-                    mod_gamma=modg)
+                    mod_gamma=modg,
+                    B_term=B_term)
         A = A .* IS
 
         # 2) equilibrium draws: pyramid skew via eps_mean*modg? no, keep independent
@@ -85,7 +88,8 @@ function feasibility_search(
             A .= 0
             A = make_A(A, R, conn, scenario;
                         pareto_exponent=pexs,
-                        mod_gamma=modg)
+                        mod_gamma=modg,
+                        B_term=B_term)
             A = A .* IS
             
             if abund == :Log
@@ -117,7 +121,8 @@ function feasibility_search(
                 before_p=0.0, after_p=0.0,
                 pexs=pexs, mod_gamma=modg,
                 scorr=0.0, skew = skew,
-                abundance_distribution = abund
+                abundance_distribution = abund,
+                B_term = B_term
             ))
             continue
         elseif !calibrate_params_constraints && any(isnan, r_res)
@@ -132,7 +137,8 @@ function feasibility_search(
                 before_p=0.0, after_p=0.0,
                 pexs=pexs, mod_gamma=modg,
                 scorr=0.0, skew = skew,
-                abundance_distribution = abund
+                abundance_distribution = abund,
+                B_term = B_term
             ))
             continue
         end
@@ -156,7 +162,8 @@ function feasibility_search(
                 before_p=0.0, after_p=0.0,
                 pexs=pexs, mod_gamma=modg,
                 scorr=0.0, skew = skew,
-                abundance_distribution = abund
+                abundance_distribution = abund,
+                B_term = B_term
             ))
             continue
         else
@@ -212,7 +219,8 @@ function feasibility_search(
                 before_p=before_p, after_p=after_p,
                 pexs=pexs, mod_gamma=modg,
                 scorr=scorr, skew = skew,
-                abundance_distribution = abund
+                abundance_distribution = abund,
+                B_term = B_term
             ))
         end
     end
