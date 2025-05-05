@@ -111,11 +111,7 @@ end
 # ————————————————————————————————————————————————————————————————
 # 6. ONCE STABLE, COMPUTE ANALYTICAL VS SIMULATED RESPONSE
 # ————————————————————————————————————————————————————————————————
-B_post_weird = copy(B_post0)
-B_post_weird[22:end] .= 0.0
-prob = ODEProblem(trophic_ode!, B_post_weird, (0.0, 1000), p)
-sol  = solve(prob, Rodas5(); callback = cb, abstol = 1e-12, reltol = 1e-12)
-B_eq = sol.u[end]
+B_eq = sol0.u[end]
 # 1) get the Jacobian at the “true” equilibrium B_post0
 D, Mstar   = compute_jacobian(B_eq, p)
 J          = D * Mstar
