@@ -21,7 +21,7 @@ new_results8 = deserialize("ThePaper/Ladder/Outputs/new_results8.jls")
 new_results9 = deserialize("ThePaper/Ladder/Outputs/new_results9.jls")
 new_results10 = deserialize("ThePaper/Ladder/Outputs/new_results10.jls")
 new_results11 = deserialize("ThePaper/Ladder/Outputs/new_results11.jls")
-df = df_results
+df = new_results4
 if df == new_results4 || df == new_results5 || df == new_results6 
     S_vals = [10, 20, 30, 40]
 elseif df == new_results7
