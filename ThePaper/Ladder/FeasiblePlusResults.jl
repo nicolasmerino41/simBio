@@ -2,6 +2,7 @@ include("Ladder4.1_drago1.jl")
 using DifferentialEquations, Random, Statistics, DataFrames, CSV
 import Base.Threads: @threads, nthreads, threadid
 include("ExploringFeasibleSpace.jl")
+include("Collectivity.jl")
 
 function make_A(
     A::AbstractMatrix{<:Real},
