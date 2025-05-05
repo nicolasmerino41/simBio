@@ -322,9 +322,9 @@ for S_val in S_vals
     df_subset = filter(row -> row.S == S_val, df)
 
     begin
-        step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
+        step_keys  = ["Full", "S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11", "S12", "S13", "S14", "S15"]
         step_names = [
-            "Full A (Species-specific ϵ)", "Full A (Global ϵ)", "Full A (Re-randomised ϵ)",
+            "Full Model", "Full A (Species-specific ϵ)", "Full A (Global ϵ)", "Full A (Re-randomised ϵ)",
             "Global -Aij&Aij (ϵ_full)", "Global -Aij&Aij (Species-specific ϵ)", "Global -Aij&Aij (Global ϵ)", "Global -Aij&Aij (Re-randomised ϵ)",
             "Global A (ϵ_full)", "Global A (Species-specific ϵ)", "Global A (Global ϵ)", "Global A (Re-randomised ϵ)",
             "Re-randomised A (ϵ_full)", "Re-randomised A (Species-specific ϵ)", "Re-randomised A (Global ϵ)", "Re-randomised A (Re-randomised ϵ)"
