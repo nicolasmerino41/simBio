@@ -1,17 +1,10 @@
 using DataFrames, GLM, StatsModels, OrderedCollections
 
 # assume df is your collected DataFrame, e.g. df_collect_1
-df = df_collect_1
+df = collectivity_df
 # 1) make sure categorical columns are encoded as factors
 categorical(df_collect_1, :scenario)
 df.B_term = convert.(Bool, df.B_term)  # if necessary
-
-# 2) define a common formula template
-#    we'll regress each response on:
-#      B_term, conn, C_ratio, IS, d, m, epsilon, skew, and scenario
-base_terms = Term(:B_term) + Term(:conn) + Term(:C_ratio) +
-             Term(:IS)     + Term(:d)    + Term(:m)       +
-             Term(:epsilon)+ Term(:skew) + Term(:scenario)
 
 # 3) fit linear models for each response
 lm_φ   = lm(@formula(φ ~ 1 + B_term + conn + C_ratio + IS + epsilon + skew + scenario), df)
@@ -43,8 +36,8 @@ df = df_collect_1
 using CSV, DataFrames, GLM, MixedModels, CairoMakie, StatsBase
 
 # 1. Load data
-df = CSV.read("collectivity_ladder.csv", DataFrame)
-categorical!(df, :scenario)
+# df = CSV.read("collectivity_df.csv", DataFrame)
+# categorical!(df, :scenario)
 
 # metrics & steps
 metrics = [:φ, :C_may, :depth, :unpredict, :niche]
