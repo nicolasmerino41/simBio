@@ -217,7 +217,8 @@ function simulate_press_perturbation(
     ########## FIRST PART: WHOLE COMMUNITY PERTURBATION ##########
     # --- Phase 2: apply press (reduce thresholds by delta) ---
     xi_press = xi_cons .+ delta
-    p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
+    r_press = r_res .- delta
+    p_press  = (R, C, m_cons, xi_press, r_press, d_res, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]

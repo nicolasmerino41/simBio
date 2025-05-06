@@ -9,7 +9,7 @@ T   = 500.0
 
 # 1) build the linear‐response operator V = (I - A*)^-1
 I_mat = I(R+C)
-V     = -inv(I_mat .- A_star)
+V     = -inv(I_mat .- copyA)
 
 # 2) Allocate storage
 ΔB_ana = zeros(S, S)

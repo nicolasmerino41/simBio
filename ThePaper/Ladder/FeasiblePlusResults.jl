@@ -119,7 +119,7 @@ function rppp_guided(df_params::DataFrame, delta_vals;
                      plot_full=false, plot_simple=false,
                      plot_ana_vs_sim_full = false, plot_ana_vs_sim_simp = false
 )
-
+    
     results = Vector{NamedTuple}()
     results_lock = ReentrantLock()
     suffix(step) = step==1 ? "Full" : "S$(step-1)"

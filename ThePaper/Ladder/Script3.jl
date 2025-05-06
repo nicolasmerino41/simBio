@@ -1,4 +1,4 @@
-# 1) pick the failing cases
+# THIS SCRIPT PLOTS THE LOW-CORRELATION CASES TO SEE IF THEIR DYNAMICS ARE DIFFERENT
 fails = df[df.sens_corr .< 0.9, :]
 println("Found $(nrow(fails)) low–correlation runs; plotting up to 6 of them")
 
