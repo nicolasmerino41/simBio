@@ -1,7 +1,14 @@
-using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs
-import Base.Threads: @threads
+include("Ladder4.1_drago1.jl")
+using DifferentialEquations, Random, Statistics, DataFrames, CSV
+import Base.Threads: @threads, nthreads, threadid
+include("ExploringFeasibleSpace.jl")
+# include("Collectivity.jl")
+cb_no_trigger30 = build_callbacks(30, EXTINCTION_THRESHOLD)
+cb_no_trigger40 = build_callbacks(40, EXTINCTION_THRESHOLD)
+cb_no_trigger50 = build_callbacks(50, EXTINCTION_THRESHOLD)
+
 function persistence_sweep(;
-    S::Int=30,
+    S=[30, 40, 50],
     C_vals=[3,6,9,12],
     conn_vals=[0.05, 0.1, 0.15, 0.2, 0.25, 0.3],
     IS_vals=[0.1,1.0],
@@ -24,13 +31,19 @@ function persistence_sweep(;
 
     # full cartesian product
     combos = collect(Iterators.product(
-        C_vals, conn_vals, IS_vals, skew_vals, abundance_types, scenarios, delta_vals, d_vals, m_vals
+        S, C_vals, conn_vals, IS_vals, skew_vals, abundance_types, scenarios, delta_vals, d_vals, m_vals
     ))
-    global cb = build_callbacks(S, EXTINCTION_THRESHOLD)
+    # global cb = build_callbacks(S, EXTINCTION_THRESHOLD)
 
-    @threads for (C, conn, IS, skew, abund_type, scenario, delta, d, m) in combos[sample(1:length(combos), min(length(combos), number_of_combinations), replace=false)]
+    @threads for (S, C, conn, IS, skew, abund_type, scenario, delta, d, m) in combos[sample(1:length(combos), min(length(combos), number_of_combinations), replace=false)]
         R = S - C
-
+        if S == 30
+            cb = cb_no_trigger30
+        elseif S == 40
+            cb = cb_no_trigger40
+        else
+            cb = cb_no_trigger50
+        end
         # 1) try calibrating
         xi_cons, r_res = fill(NaN,C), fill(NaN,R)
         p_final = nothing
@@ -40,11 +53,11 @@ function persistence_sweep(;
         while any(isnan, xi_cons) && tries < max_calib
             tries += 1
 
-            # build A and ε
+            # build A and eps
             A = make_A(zeros(S,S), R, conn, scenario;
                         pareto_exponent=1.0, mod_gamma=1.0) .* IS
-            ε_scale = rand(eps_scales)
-            ε = clamp.(rand(Normal(ε_scale,ε_scale), S, S), 0, 1)
+            eps_scale = rand([eps_scales][1])
+            eps = clamp.(rand(Normal(eps_scale,eps_scale), S, S), 0, 1)
 
             # draw equilibrium
             if abund_type == :Log
@@ -61,12 +74,12 @@ function persistence_sweep(;
             # calibrate
             xi_cons, r_res = calibrate_params(
             R_eq, C_eq,
-            (R,C, fill(m,C), fill(d,R), ε, A);
+            (R,C, fill(m,C), fill(d,R), eps, A);
             xi_threshold=0.7, constraints=true
             )
 
             if !any(isnan, xi_cons)
-            p_final = (R, C, fill(m,C), xi_cons, r_res, fill(d,R), ε, A)
+            p_final = (R, C, fill(m,C), xi_cons, r_res, fill(d,R), eps, A)
             break
             end
         end
@@ -88,8 +101,8 @@ function persistence_sweep(;
         # 4) ladder‐step persistence
         pers_steps = Dict(i => NaN for i in 1:16)
         for step in 1:16
-            A_s, ε_s = transform_for_ladder_step(step, p_final[8], p_final[7])
-            p_s = (R,C, p_final[3], p_final[4], p_final[5], p_final[6], ε_s, A_s)
+            A_s, eps_s = transform_for_ladder_step(step, p_final[8], p_final[7])
+            p_s = (R,C, p_final[3], p_final[4], p_final[5], p_final[6], eps_s, A_s)
             _,_,_, pstep, _, _ = simulate_press_perturbation(
             B_eq, p_s, tspan, t_perturb, delta;
             solver=Tsit5(), cb=cb, full_or_simple=false)
@@ -97,7 +110,7 @@ function persistence_sweep(;
         end
 
         record = (
-            C=C, conn=conn, IS=IS, skew=skew,
+            S = S, C=C, conn=conn, IS=IS, skew=skew,
             abundance=abund_type, scenario=scenario,
             delta=delta, pers_full=pers_full,
             d=d, m=m,
@@ -115,7 +128,7 @@ end
 
 # run the sweep
 dfp = persistence_sweep(;
-    S=30,
+    S=[30,40,50],
     C_vals=[3,6,9,12],
     conn_vals=[0.05, 0.1, 0.15, 0.2, 0.25, 0.3],
     IS_vals=[0.1,1.0, 2.0],
@@ -127,15 +140,19 @@ dfp = persistence_sweep(;
     d_vals=[0.1, 1.0],
     m_vals=[0.1, 0.3],
     abundance_mean=10.0,
-    number_of_combinations=10000,
+    number_of_combinations=100000,
     tspan=(0.,500.0),
     t_perturb=250.0,
     delta_vals=[1.0, 3.0, 5.0],
     max_calib=10
 )
 # braoder_dfp = CSV.write("ThePaper/Ladder/Outputs/broader_persistence_sweep.csv", dfp)
-limited_dfp = CSV.File("ThePaper/Ladder/Outputs/persistence_sweep.csv") |> DataFrame
-broader_dfp = CSV.File("ThePaper/Ladder/Outputs/broader_persistence_sweep.csv") |> DataFrame
+# serialize("broader_persistence_sweep_304050.jls", dfp)
+broader_dfp_304050 = deserialize("ThePaper/Ladder/Outputs/broader_persistence_sweep_304050.jls")
+
+# limited_dfp = CSV.File("ThePaper/Ladder/Outputs/persistence_sweep.csv") |> DataFrame
+# broader_dfp = CSV.File("ThePaper/Ladder/Outputs/broader_persistence_sweep.csv") |> DataFrame
+dfp = broader_dfp_304050
 # plotting helper
 function get_grid_position(step)
     # 4×4 grid: place step 1 in (1,1), step 2 in (1,2), … step 4 in (1,4),
@@ -146,7 +163,7 @@ function get_grid_position(step)
 end
 
 begin
-    fig = Figure(; size=(1100,600))
+    fig = Figure(; size=(1100,750))
 
     for step in 1:16
     r,c = get_grid_position(step)
@@ -191,7 +208,7 @@ function plot_persistence_grids(
         sub = df[df[!, facet_by] .== f, :]
         nsteps = length(steps)
         nrows  = ceil(Int, nsteps/ncols)
-        fig = Figure(; size=(900, 600))
+        fig = Figure(; size=(900, 750))
         Label(fig[0, 2], "$facet_by = $f", fontsize = 24, tellwidth = false)
 
         for (idx, step) in enumerate(steps)
@@ -233,7 +250,7 @@ end
 plot_persistence_grids(
   dfp;
   color_by = :IS,
-  facet_by = :C,
+  facet_by = :S,
   steps    = 1:16,
   ncols    = 4
 )
