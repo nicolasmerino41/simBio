@@ -1,13 +1,13 @@
 # 0. IMPORT YOUR MODEL FUNCTIONS (make_A, calibrate_params, compute_jacobian, trophic_ode!)
 # ————————————————————————————————————————————————————————————————
 # fix system size
-R = 20
-C = 4
+R = 30
+C = 6
 
 # target equilibrium
 # R_eq = fill(100.0, R)
 # C_eq = fill(10.0, C)
-abundance_mean = 100.0
+abundance_mean = 10.0
 R_eq = abs.(rand(Normal(abundance_mean, abundance_mean*0.1), R))
 C_eq = abs.(rand(Normal(abundance_mean*0.1, abundance_mean*0.01), C))
 # C_eq[4] = 0.0
@@ -108,9 +108,36 @@ if !found
     error("No stable combination found in the given grid.")
 end
 
+simulate_press_perturbation(
+    B_eq, p, (0.0, 500.0), 250., 5.0;
+    solver=Tsit5(),
+    plot=true,
+    show_warnings=true,
+    full_or_simple=true,
+    cb = cb_no_trigger36,
+    species_specific_perturbation=false
+)
+
+for α in [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, -0.1, -0.5, -0.9]
+    # xi_test = xi_cons .* (1 .+ δ_crit * α)
+    p_test  = p
+    _,_,_, pers,new_equil,_ = simulate_press_perturbation(B_eq, p_test, (0.0, 500.0), 250., α;
+                                                  solver=Tsit5(), cb=cb, species_specific_perturbation=false)
+    @info "α=$(α): persistence=$(any(new_equil .< 0.0))"
+end
 # ————————————————————————————————————————————————————————————————
 # 6. ONCE STABLE, COMPUTE ANALYTICAL VS SIMULATED RESPONSE
 # ————————————————————————————————————————————————————————————————
+begin
+    B_weird = copy(B_eq)
+    xi_weird = copy(xi_cons)
+    xi_weird = xi_cons .+ 1.5#119275159592018 #5.119275159592018
+    # p_weird = p
+    p_weird = (p[1], p[2], p[3], xi_weird, p[5], p[6], p[7], p[8])
+    sol_weird         = solve(ODEProblem(trophic_ode!, B_weird, (0.0,500.0), p_weird), Rodas5(); abstol=1e-12, reltol=1e-12, callback = cb_no_trigger36)
+    sol_weird.u[end]
+    any(sol_weird.u[end] .< EXTINCTION_THRESHOLD)
+end
 B_eq = sol0.u[end]
 # 1) get the Jacobian at the “true” equilibrium B_post0
 D, Mstar   = compute_jacobian(B_eq, p)
@@ -119,9 +146,6 @@ J          = D * Mstar
 I_mat    = I(R+C)  # identity matrix (R+C)×(R+C)
 
 # 2) build the press‐vector properly: ∂f_C/∂ξ_i = –B_C* at equilibrium
-press      = zeros(R+C)
-press[R+1:R+C] .= 1.0
-
 # 3) analytic per‐unit sensitivity (for δξ = +1)
 # ΔB_ana_unit = -inv(J) * press    # no further division needed, since δξ=1
 
@@ -131,10 +155,10 @@ press_vec[R+1:R+C] .= 1.0
 # press_vec = vcat(zeros(R), -B_eq[R+1:end])
 
 # pick a delta ξ
-δξ           = -1.0
+δξ           = 1.0
 
 # analytic per-unit sensitivity
-V            = -inv(I_mat .- A_star)    # (R+C)×(R+C)
+V            = -inv(I_mat .- A)    # (R+C)×(R+C)
 ΔB_ana_unit  = V * press_vec          # length R+C
 
 # to simulate, we only update the C-vector ξ_cons:
