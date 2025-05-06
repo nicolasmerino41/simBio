@@ -15,12 +15,17 @@ end
 function plot_persistence_vs_degree_cv(
     df::DataFrame;
     facet_by::Symbol,
+    color_by::Symbol,
     steps::UnitRange=1:16,
     ncols::Int=4
 )   
-    df = filter(row -> row.pers_full > 0, df)
+    df = filter(row -> row.pers_full > 0.1, df)
     df = add_degree_cv!(df)
     facets = unique(df[!, facet_by])
+    cats   = unique(df[!, color_by])
+    palette = distinguishable_colors(length(cats))
+    color_map = Dict(cats[i] => palette[i] for i in eachindex(cats))
+
     for f in facets
         sub = df[df[!, facet_by] .== f, :]
         nsteps = length(steps)
@@ -39,8 +44,10 @@ function plot_persistence_vs_degree_cv(
             xs = sub.degree_cv
             ys = sub[!, Symbol("pers_step_$step")]
 
+            # now build a color array by indexing into our Dict
+            cols = [ color_map[val] for val in sub[!, color_by] ]
             mask = .!ismissing.(xs) .& .!ismissing.(ys) .& .!isnan.(xs) .& .!isnan.(ys)
-            scatter!(ax, xs[mask], ys[mask]; markersize=6, alpha=0.7)
+            scatter!(ax, xs[mask], ys[mask]; color=cols, markersize=6, alpha=0.7)
 
             bad_idx = isnan.(xs) .| isnan.(ys)
             correlation = cor(xs[.!bad_idx], ys[.!bad_idx])
@@ -55,9 +62,11 @@ function plot_persistence_vs_degree_cv(
     end
 end
 
+subset_df = filter(row -> row.S == 50, dfp)
 plot_persistence_vs_degree_cv(
     dfp;
     facet_by = :C,
+    color_by = :scenario,
     steps    = 1:16,
     ncols    = 4
 )
