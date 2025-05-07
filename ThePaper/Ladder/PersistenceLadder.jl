@@ -149,10 +149,13 @@ dfp = persistence_sweep(;
 # braoder_dfp = CSV.write("ThePaper/Ladder/Outputs/broader_persistence_sweep.csv", dfp)
 # serialize("broader_persistence_sweep_304050.jls", dfp)
 broader_dfp_304050 = deserialize("ThePaper/Ladder/Outputs/broader_persistence_sweep_304050.jls")
-
+dfp_304050_withAFT = deserialize("ThePaper/Ladder/Outputs/persistence_sweep_304050_withAFT.jls")
+dfp_full = deserialize("ThePaper/Ladder/Outputs/full_sweep_304050.jls")
+dfp_full_with_random_mort = deserialize("ThePaper/Ladder/Outputs/full_sweep_304050_randomised_mortality.jls")
+dfp_full_with_random_m_and_d = deserialize("ThePaper/Ladder/Outputs/full_sweep_304050_randomised_m_and_d.jls")
 # limited_dfp = CSV.File("ThePaper/Ladder/Outputs/persistence_sweep.csv") |> DataFrame
 # broader_dfp = CSV.File("ThePaper/Ladder/Outputs/broader_persistence_sweep.csv") |> DataFrame
-dfp = broader_dfp_304050
+dfp = copy(dfp_full_with_random_m_and_d)
 # plotting helper
 function get_grid_position(step)
     # 4×4 grid: place step 1 in (1,1), step 2 in (1,2), … step 4 in (1,4),
@@ -164,41 +167,83 @@ end
 
 begin
     fig = Figure(; size=(1100,750))
+    fig1 = Figure(; size=(1100,750))
+    fig2 = Figure(; size=(1100,750))
+    for step in 1:19
+        r,c = get_grid_position(step)
+        ax = Axis(
+            fig[r,c];
+            title="Step $step vs Full",
+            xlabel="pers_full", ylabel="pers_step_$step"
+        )
+        ax1 = Axis(
+            fig1[r,c];
+            title="Step $step vs Full",
+            xlabel="aft_full", ylabel="aft_step_$step"
+        )   
+        ax2 = Axis(
+            fig2[r,c];
+            title="Step $step vs Full",
+            xlabel="rt_full", ylabel="rt_step_$step"
+        ) 
 
-    for step in 1:16
-    r,c = get_grid_position(step)
-    ax = Axis(fig[r,c];
-        title="Step $step vs Full",
-        xlabel="pers_full", ylabel="pers_step_$step")
+        xs = dfp.pers_full
+        ys = dfp[!, Symbol("pers_step_$step")]
+        xs1 = dfp.aft_full
+        ys1 = dfp[!, Symbol("aft_step_$step")]
+        xs2 = dfp.rt_full
+        ys2 = dfp[!, Symbol("rt_step_$step")]
 
-    xs = dfp.pers_full
-    ys = dfp[!, Symbol("pers_step_$step")]
+        scatter!(ax, xs, ys; markersize=5, alpha=0.6)
+        scatter!(ax1, xs1, ys1; markersize=5, alpha=0.6)
+        scatter!(ax2, xs2, ys2; markersize=5, alpha=0.6)
 
-    scatter!(ax, xs, ys; markersize=5, alpha=0.6)
+        # 1:1 line
+        lines!(ax, 0:1, 0:1; color=:black, linestyle=:dash)
+        lines!(ax1, 0:1, 0:1; color=:black, linestyle=:dash)
+        lines!(ax2, 0:1, 0:1; color=:black, linestyle=:dash)
 
-    # 1:1 line
-    lines!(ax, 0:1, 0:1; color=:black, linestyle=:dash)
-
-    # annotate r in bottom right
-    bad_idx = isnan.(xs) .| isnan.(ys)
-    correlation = cor(xs[.!bad_idx], ys[.!bad_idx])
-    text!(ax, "r=$(round(correlation, digits=2))",;
+        # annotate r in bottom right
+        bad_idx = isnan.(xs) .| isnan.(ys)
+        bad_idx1 = isnan.(xs1) .| isnan.(ys1)
+        bad_idx2 = isnan.(xs2) .| isnan.(ys2)
+        correlation = cor(xs[.!bad_idx], ys[.!bad_idx])
+        correlation1 = cor(xs1[.!bad_idx1], ys1[.!bad_idx1])
+        correlation2 = cor(xs2[.!bad_idx2], ys2[.!bad_idx2])
+        text!(
+            ax, "r=$(round(correlation, digits=4))",;
             position = (0.95,0.05), 
             align = (:right,:bottom), 
-            fontsize=8)
+            fontsize=8
+        )
+        text!(
+            ax1, "r=$(round(correlation1, digits=4))",;
+            position = (0.95,0.05), 
+            align = (:right,:bottom), 
+            fontsize=8
+        )
+        text!(
+            ax2, "r=$(round(correlation2, digits=4))",;
+            position = (175,50), 
+            align = (:right,:bottom), 
+            fontsize=8
+        )
     end
 
     display(fig)
+    display(fig1)
+    display(fig2)
 end
 
 function plot_persistence_grids(
-    df::DataFrame;
+    df::DataFrame,
+    variable::Symbol;
     color_by::Symbol,
     facet_by::Symbol,
     steps::UnitRange=1:16,
     ncols::Int=4
 )   
-    df = filter(row -> row.pers_full > 0, df)
+    # df = filter(row -> row.$variable_full > 0, df)
     facets = unique(df[!, facet_by])
     cats   = unique(df[!, color_by])
     palette = distinguishable_colors(length(cats))
@@ -209,29 +254,29 @@ function plot_persistence_grids(
         nsteps = length(steps)
         nrows  = ceil(Int, nsteps/ncols)
         fig = Figure(; size=(900, 750))
-        Label(fig[0, 2], "$facet_by = $f", fontsize = 24, tellwidth = false)
+        Label(fig[0, 2], "Persistence $variable $facet_by = $f, colored by $color_by", fontsize = 24, tellwidth = false)
 
         for (idx, step) in enumerate(steps)
             row = 1 + div(idx-1, ncols)
             col = 1 + mod(idx-1, ncols)
             ax = Axis(fig[row, col];
                       title  = "step $step",
-                      xlabel = "pers_full",
-                      ylabel = "pers_step_$step")
+                      xlabel = "$(variable)_full",
+                      ylabel = "$(variable)_step_$step")
 
-            xs = sub.pers_full
-            ys = sub[!, Symbol("pers_step_$step")]
+            xs = sub[!, Symbol("$(variable)_full")]
+            ys = sub[!, Symbol("$(variable)_step_$(step)")]
 
             # now build a color array by indexing into our Dict
             cols = [ color_map[val] for val in sub[!, color_by] ]
-            limits!(ax, (0.5, 1.05), (0.5, 1.05))
+            # limits!(ax, (0.5, 1.05), (0.5, 1.05))
             scatter!(ax, xs, ys; color=cols, markersize=6, alpha=0.7)
 
             lines!(ax, 0:1, 0:1; color=:black, linestyle=:dash)
 
             bad_idx = isnan.(xs) .| isnan.(ys)
             correlation = cor(xs[.!bad_idx], ys[.!bad_idx])
-            text!(ax, "r=$(round(correlation, digits=2))",;
+            text!(ax, "r=$(round(correlation, digits=4))",;
                     position = (0.9,0.6), 
                     align = (:right,:bottom), 
                     fontsize=8)
@@ -247,10 +292,12 @@ function plot_persistence_grids(
     end
 end
 
+sub = filter(row -> row.S == 50, dfp)
 plot_persistence_grids(
-  dfp;
+  sub,
+  :rt;
   color_by = :IS,
-  facet_by = :S,
-  steps    = 1:16,
+  facet_by = :scenario,
+  steps    = 1:19,
   ncols    = 4
 )
