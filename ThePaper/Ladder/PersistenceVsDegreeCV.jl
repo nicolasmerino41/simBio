@@ -30,7 +30,7 @@ function plot_persistence_vs_degree_cv(
         sub = df[df[!, facet_by] .== f, :]
         nsteps = length(steps)
         nrows  = ceil(Int, nsteps/ncols)
-        fig = Figure(; size=(900, 600))
+        fig = Figure(; size=(900, 750))
         Label(fig[0, 2], "$facet_by = $f", fontsize = 24, tellwidth = false)
 
         for (i, step) in enumerate(steps)
@@ -65,8 +65,8 @@ end
 subset_df = filter(row -> row.S == 50, dfp)
 plot_persistence_vs_degree_cv(
     dfp;
-    facet_by = :C,
-    color_by = :scenario,
-    steps    = 1:16,
+    facet_by = :S,
+    color_by = :IS,
+    steps    = 1:19,
     ncols    = 4
 )

@@ -218,7 +218,7 @@ function collectivity_ladder(
 end
 
 # === Example usage ===
-# CSV.File("ThePaper/Ladder/Outputs/collectivity_df.csv")
+df = CSV.File("ThePaper/Ladder/Outputs/collectivity_df.csv") |> DataFrame
 # @time collectivity_df = collectivity_ladder(df_good; abundance_mean=10.0, ladder_steps=1:16)
 # CSV.write("ThePaper/Ladder/Outputs/collectivity_df.csv", collectivity_df)
 
