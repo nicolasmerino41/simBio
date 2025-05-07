@@ -196,29 +196,69 @@ function persistence_sweep(;
         # !ok && continue
 
         # 3) full‐model persistence
-        _,_,_, pers_full, new_equil, _ = simulate_press_perturbation(
+        rt,_,_, pers_full, new_equil, _ = simulate_press_perturbation(
             B_eq, p_final, tspan, t_perturb, delta;
             solver=Tsit5(), cb=cb)
         aft_full = sum(new_equil .> EXTINCTION_THRESHOLD)/S
+        rt_full = mean(filter(!isnan, rt))
 
         # 4) ladder‐step persistence
-        pers_steps = Dict(i => NaN for i in 1:16)
-        aft_steps = Dict(i => NaN for i in 1:16)
-        for step in 1:16
-            A_s, eps_s = transform_for_ladder_step(step, p_final[8], p_final[7])
-            p_s = (R,C, p_final[3], p_final[4], p_final[5], p_final[6], eps_s, A_s)
-            _,_,_, pstep, new_equil, _ = simulate_press_perturbation(
-            B_eq, p_s, tspan, t_perturb, delta;
-            solver=Tsit5(), cb=cb, full_or_simple=false)
-            pers_steps[step] = pstep
-            aft = sum(new_equil .> EXTINCTION_THRESHOLD)/S
-            aft_steps[step] = aft
+        pers_steps = Dict(i => NaN for i in 1:19)
+        aft_steps = Dict(i => NaN for i in 1:19)
+        rt_steps = Dict(i => NaN for i in 1:19)
+        for step in 1:19
+            if step <= 16
+                A_s, eps_s = transform_for_ladder_step(step, p_final[8], p_final[7])
+                p_s = (R,C, p_final[3], p_final[4], p_final[5], p_final[6], eps_s, A_s)
+                rt,_,_, pstep, new_equil, _ = simulate_press_perturbation(
+                B_eq, p_s, tspan, t_perturb, delta;
+                solver=Tsit5(), cb=cb, full_or_simple=false)
+                pers_steps[step] = pstep
+                aft = sum(new_equil .> EXTINCTION_THRESHOLD)/S
+                aft_steps[step] = aft
+                rt_steps[step] = mean(filter(!isnan, rt))
+            elseif step == 17
+                A_s, eps_s = transform_for_ladder_step(16, p_final[8], p_final[7])
+                new_m_cons = fill(abs(rand(Normal(p_final[3][1], p_final[3][1]))), C)
+                p_s = (R,C, new_m_cons, p_final[4], p_final[5], p_final[6], eps_s, A_s)
+                rt,_,_, pstep, new_equil, _ = simulate_press_perturbation(
+                B_eq, p_s, tspan, t_perturb, delta;
+                solver=Tsit5(), cb=cb, full_or_simple=false)
+                pers_steps[step] = pstep
+                aft = sum(new_equil .> EXTINCTION_THRESHOLD)/S
+                aft_steps[step] = aft
+                rt_steps[step] = mean(filter(!isnan, rt))
+            elseif step == 18
+                A_s, eps_s = transform_for_ladder_step(16, p_final[8], p_final[7])
+                new_d_cons = fill(abs(rand(Normal(p_final[6][1], p_final[6][1]))), R)
+                p_s = (R,C, p_final[3], p_final[4], p_final[5], new_d_cons, eps_s, A_s)
+                rt,_,_, pstep, new_equil, _ = simulate_press_perturbation(
+                B_eq, p_s, tspan, t_perturb, delta;
+                solver=Tsit5(), cb=cb, full_or_simple=false)
+                pers_steps[step] = pstep
+                aft = sum(new_equil .> EXTINCTION_THRESHOLD)/S
+                aft_steps[step] = aft
+                rt_steps[step] = mean(filter(!isnan, rt))
+            elseif step == 19
+                A_s, eps_s = transform_for_ladder_step(16, p_final[8], p_final[7])
+                new_m_cons = fill(abs(rand(Normal(p_final[3][1], p_final[3][1]))), C)
+                new_d_cons = fill(abs(rand(Normal(p_final[6][1], p_final[6][1]))), R)
+                p_s = (R,C, new_m_cons, p_final[4], p_final[5], new_d_cons, eps_s, A_s)
+                rt,_,_, pstep, new_equil, _ = simulate_press_perturbation(
+                B_eq, p_s, tspan, t_perturb, delta;
+                solver=Tsit5(), cb=cb, full_or_simple=false)
+                pers_steps[step] = pstep
+                aft = sum(new_equil .> EXTINCTION_THRESHOLD)/S
+                aft_steps[step] = aft
+                rt_steps[step] = mean(filter(!isnan, rt))
+            end
         end
         step_pairs = collect(Iterators.flatten(
             ([
                 Symbol("pers_step_$i") => pers_steps[i],
-                Symbol("aft_step_$i") => aft_steps[i]
-            ] for i in 1:16)
+                Symbol("aft_step_$i") => aft_steps[i],
+                Symbol("rt_step_$i") => rt_steps[i]
+            ] for i in 1:19)
         ))
 
         record = (
@@ -232,6 +272,7 @@ function persistence_sweep(;
             delta = delta, 
             pers_full = pers_full, 
             aft_full = aft_full,
+            rt_full,
             d = d, 
             m = m,
             step_pairs...,  # Properly flattened pairs
@@ -262,11 +303,12 @@ dfp = persistence_sweep(;
     d_vals=[0.1, 1.0],
     m_vals=[0.1, 0.3],
     abundance_mean=10.0,
-    number_of_combinations=100,
+    number_of_combinations=10000,
     tspan=(0.,500.0),
     t_perturb=250.0,
     delta_vals=[1.0, 3.0, 5.0, 8.0],
     max_calib=10
 )
+
 # braoder_dfp = CSV.write("ThePaper/Ladder/Outputs/broader_persistence_sweep.csv", dfp)
-serialize("persistence_sweep_304050_withAFT.jls", dfp)
+serialize("full_sweep_304050_randomised_m_and_d.jls", dfp)
