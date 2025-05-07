@@ -75,21 +75,22 @@ end
 
 function analytical_vs_sim(p, B_eq; δξ=1.0, cb, plot=false)
     
-    R, C, m_cons, xi_cons, r_res, d_res, ε, A_star = p
+    R, C, m_cons, xi_cons, r_res, d_res, ε, A = p
     D, Mstar   = compute_jacobian(B_eq, p)
     J          = D * Mstar
 
     I_mat    = I(R+C)  # identity matrix (R+C)×(R+C)
-
-    # 2) build the press‐vector properly: ∂f_C/∂ξ_i = –B_C* at equilibrium
-    press      = zeros(R+C)
-    press[R+1:R+C] .= 1.0
 
     # press_vec is length R+C, carrying the +1’s for consumers and 0’s for resources
     press_vec = (zeros(R+C))    # length R+C
     press_vec[R+1:R+C] .= 1.0
     
     # analytic per-unit sensitivity
+    # 1a) zero out ε on non‐feeding links, build A*
+    eps_eff = copy(ε)
+    eps_eff[A .<= 0.0] .= 0.0
+    A_star = eps_eff .* A
+
     V            = -inv(I_mat .- A_star)    # (R+C)×(R+C)
     ΔB_ana_unit  = V * press_vec          # length R+C
 
@@ -321,7 +322,10 @@ A4 = community_pipeline(
     max_calib = 10,
     plot_sensitivity = false,
 )
-df = A4
+
+serialize("ThePaper/Ladder/Outputs/A4.jls", A4)
+df_community_pipeline = A4
+
 begin
     
     # 1) Define colors and markers
@@ -342,35 +346,35 @@ begin
     # 3) Scatter by (scenario, IS)
     for scen in keys(scenario_colors)
         for isval in keys(is_markers)
-            mask = (df.scenario .== scen) .& (df.IS .== isval)
+            mask = (df_community_pipeline.scenario .== scen) .& (df_community_pipeline.IS .== isval)
             if !any(mask) continue end
 
             scatter!(
             ax1,
-            df.connectance[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.connectance[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval],
             label  = "$(scen), IS=$(isval)"
             )
             scatter!(
             ax2,
-            df.degree_cv[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.degree_cv[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval]
             )
             scatter!(
             ax3,
-            df.pyramid_ratio[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.pyramid_ratio[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval]
             )
             scatter!(
             ax4,
-            df.skew[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.skew[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval]
             )
@@ -416,13 +420,13 @@ begin
 
     for scen in keys(scenario_colors)
         for isval in keys(is_markers)
-            mask = (df.scenario .== scen) .& (df.IS .== isval)
+            mask = (df_community_pipeline.scenario .== scen) .& (df_community_pipeline.IS .== isval)
             if !any(mask) continue end
 
             push!(handles, scatter!(
             axφ,
-            df.φ[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.φ[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval]
             ))
@@ -430,22 +434,22 @@ begin
 
             scatter!(
             axCmay,
-            df.C_may[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.C_may[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval]
             )
             scatter!(
             axDepth,
-            df.depth[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.depth[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval]
             )
             scatter!(
             axUnp,
-            df.unpredict[mask],
-            df.sens_corr[mask];
+            df_community_pipeline.unpredict[mask],
+            df_community_pipeline.sens_corr[mask];
             color  = scenario_colors[scen],
             marker = is_markers[isval]
             )
