@@ -279,7 +279,7 @@ function persistence_sweep(;
             p_final = p_final,
             R_eq = R_eq,
             C_eq = C_eq
-)
+        )
 
         lock(locki) do
             push!(results, record)
