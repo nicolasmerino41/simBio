@@ -70,25 +70,23 @@ end
 #############################################################################
 #############################################################################
 # ────────────────────────────────────────────────────────────────────────────────
-# 1) Compute “safe” ξ and K so that M is strictly diagonally dominant
+# 1) Compute safe Xi and K so that M is strictly diagonally dominant
 # ────────────────────────────────────────────────────────────────────────────────
-function compute_default_thresholds(A::AbstractMatrix, ε::AbstractMatrix, R::Int; margin::Float64=0.05)
+function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, R::Int; margin::Float64=0.1)
     S = size(A,1)
     C = S - R
 
-    # (a) consumer thresholds ξ_k
     xi_cons = zeros(Float64, C)
     for k in 1:C
         i = R + k
-        gain = sum(ε[i,j]*A[i,j] for j in 1:R if A[i,j] > 0.0; init=0.0)
-        loss = sum(abs(A[j,i])    for j in 1:R if A[j,i] < 0.0; init=0.0)
+        gain = sum(epsilon[i,j]*A[i,j] for j in 1:R if A[i,j] > 0; init =0.0)
+        loss = sum(-A[i,j]    for j in R+1:S if A[i,j] < 0; init =0.0)
         xi_cons[k] = (gain + loss)*(1 + margin)
     end
 
-    # (b) resource capacities K_i
     K_res = zeros(Float64, R)
     for i in 1:R
-        drain = sum(A[R+j,i] for j in 1:C if A[R+j,i] > 0.0; init=0.0)
+        drain = sum(-A[i,j] for j in R+1:S if A[i,j] < 0; init = 0.0)
         K_res[i] = drain*(1 + margin)
     end
 
@@ -96,13 +94,29 @@ function compute_default_thresholds(A::AbstractMatrix, ε::AbstractMatrix, R::In
 end
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 2) Given ξ and K build & solve M·B_eq = b, check positivity
+# 2) Given Xi and K build & solve M·B_eq = b, check positivity
 # ────────────────────────────────────────────────────────────────────────────────
+"""
+    calibrate_from_K_xi(
+      K_res::Vector{<:Real},    # length R: resource carrying capacities
+      xi_cons::Vector{<:Real},  # length C: consumer thresholds
+      epsilon::AbstractMatrix,        # S×S conversion efficiencies
+      A::AbstractMatrix         # S×S interaction signs/magnitudes
+    ) -> (R_eq, C_eq) or nothing
+
+Solve the steady‐state abundances B = [R_eq; C_eq] from:
+
+  For i=1:R (resources):
+    0 = -K_i - B_i  - ∑_{j=R+1}^S A_{j,i} * B_j
+
+  For i=R+1:S (consumers, indexed k=i-R):
+    0 = -Xi_k - B_i + ∑_{j=1}^R epsilon_{i,j}*A_{i,j}*B_j - ∑_{j=1}^R A_{j,i}*B_j
+
+Returns nothing if no positive solution exists.
+"""
 function calibrate_from_K_xi(
-    xi_cons::AbstractVector,    # length C
-    K_res::AbstractVector,      # length R
-    ε::AbstractMatrix,          # S×S
-    A::AbstractMatrix           # S×S
+    xi_cons::AbstractVector, K_res::AbstractVector,
+    epsilon::AbstractMatrix, A::AbstractMatrix
 )
     R = length(K_res)
     S = size(A,1)
@@ -111,55 +125,46 @@ function calibrate_from_K_xi(
     M = zeros(Float64, S, S)
     b = zeros(Float64, S)
 
-    # ─── Resources (i=1:R):
-    #    B_i - ∑_j A[i,j] * B_j =  K_res[i]
+    # resource rows
     for i in 1:R
-        M[i,i] = 1.0
         for j in 1:S
-            # move ∑ A[i,j]B_j to LHS
-            M[i,j] -= A[i,j]
+            M[i,j] = (i==j ? 1.0 : 0.0) - A[i,j]
         end
         b[i] = K_res[i]
     end
 
-    # ─── Consumers (i=R+1:S), indexed k=i−R:
-    #    B_i 
-    #   - ∑_{A[i,j]>0} ε[i,j] A[i,j] B_j 
-    #   - ∑_{A[i,j]<0} (−A[i,j]) B_j 
-    #   = -ξ_cons[k]
+    # consumer rows
     for k in 1:C
         i = R + k
-        M[i,i] = 1.0
         for j in 1:S
-            if A[i,j] > 0
-                # feeding gain term
-                M[i,j] -=  ε[i,j] * A[i,j]
+            if j == i
+                M[i,j] = 1.0
+            elseif A[i,j] > 0
+                M[i,j] = -epsilon[i,j]*A[i,j]   # prey term
             elseif A[i,j] < 0
-                # predation loss term (A[i,j]<0 => -A[i,j]>0)
-                M[i,j] -= -A[i,j]
+                M[i,j] = -A[i,j]          # predation loss
+            else
+                M[i,j] = 0.0
             end
         end
-        # note the minus on the RHS
         b[i] = -xi_cons[k]
     end
 
-    B_eq = M \ b
-    return any(B_eq .<= 0.0) ? nothing :
-           (B_eq[1:R], B_eq[R+1:end])
+    return M \ b
 end
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 3) Wrapper replacing your old cal_param
 # ────────────────────────────────────────────────────────────────────────────────
 """
-    cal_param(R::Int, C::Int, ε, A; margin)
+    cal_param(R::Int, C::Int, epsilon, A; margin)
 
-Auto-computes ξ_cons, K_res, then solves for (R_eq, C_eq).  
+Auto-computes Xi_cons, K_res, then solves for (R_eq, C_eq).  
 Returns `(R_eq, C_eq, xi_cons, K_res)` or `nothing` if infeasible.
 """
-function cal_param(R::Int, C::Int, ε::AbstractMatrix, A::AbstractMatrix; margin::Float64=0.05)
-    xi_cons, K_res = compute_default_thresholds(A, ε, R; margin=margin)
-    eq = calibrate_from_K_xi(xi_cons, K_res, ε, A)
+function cal_param(R::Int, C::Int, epsilon::AbstractMatrix, A::AbstractMatrix; margin::Float64=0.05)
+    xi_cons, K_res = compute_default_thresholds(A, epsilon, R; margin=margin)
+    eq = calibrate_from_K_xi(xi_cons, K_res, epsilon, A)
     if eq === nothing
         return nothing
     else
@@ -169,65 +174,65 @@ function cal_param(R::Int, C::Int, ε::AbstractMatrix, A::AbstractMatrix; margin
 end
 
 """
-    calibrate_from_K_xi(
-      K_res::Vector{<:Real},    # length R: resource carrying capacities
-      xi_cons::Vector{<:Real},  # length C: consumer thresholds
-      ε::AbstractMatrix,        # S×S conversion efficiencies
-      A::AbstractMatrix         # S×S interaction signs/magnitudes
-    ) -> (R_eq, C_eq) or nothing
 
-Solve the steady‐state abundances B = [R_eq; C_eq] from:
+For each margin delt in `margins`, form
 
-  For i=1:R (resources):
-    0 = −K_i − B_i  − ∑_{j=R+1}^S A_{j,i} * B_j
+    Xi_cons, K_res = compute_default_thresholds(A, epsilon, R; margin=delt)
 
-  For i=R+1:S (consumers, indexed k=i−R):
-    0 = −ξ_k − B_i + ∑_{j=1}^R ε_{i,j}*A_{i,j}*B_j − ∑_{j=1}^R A_{j,i}*B_j
+and keep those where
 
-Returns nothing if no positive solution exists.
+1. `M / b` is finite & positive,
+2. the Jacobian at that equilibrium is locally stable.
+
+Returns a vector of
+  (xi_cons=…, K_res=…, margin=delt, R_eq=…, C_eq=…)
+for every delt that passes these checks.
 """
-# ────────────────────────────────────────────────────────────────────────────────
-# 2) Given ξ and K build & solve M·B_eq = b, check positivity
-# ────────────────────────────────────────────────────────────────────────────────
-function calibrate_from_K_xi(xi_cons::AbstractVector, K_res::AbstractVector,
-                             ε::AbstractMatrix, A::AbstractMatrix)
-    R = length(K_res)
-    C = length(xi_cons)
-    S = R + C
+function generate_feasible_thresholds(
+    A::AbstractMatrix, epsilon::AbstractMatrix, R::Int;
+    margins = 10 .^(range(-2, 1, length=50))
+)
+    S = size(A,1)
+    C = S - R
+    out = NamedTuple[]
+    for delt in margins
+        # 1) propose thresholds
+        xi_cons, K_res = compute_default_thresholds(A, epsilon, R; margin=delt)
 
-    M = zeros(S,S)
-    b = zeros(S)
-
-    # — resource rows: B_i + sum_j A[j,i]*B_j = K_res[i]
-    for i in 1:R
-        M[i,i] = 1.0
-        for j in R+1:S
-            M[i,j] = A[j,i]
+        # 2) try solve equilibrium
+        eq = try
+            calibrate_from_K_xi(xi_cons, K_res, epsilon, A)
+        catch
+            continue
         end
-        b[i] =  K_res[i]    # <--- NO minus
+
+        # 3) positivity & finiteness
+        if any(!isfinite, eq) || any(x->x<=0, eq)
+            continue
+        end
+
+        # 4) stability
+        R_eq = view(eq, 1:R)
+        C_eq = view(eq, R+1:S)
+        p    = (R, C, xi_cons, xi_cons, K_res, ones(R), epsilon, A)
+        D, M = compute_jacobian(vcat(R_eq, C_eq), p)
+        J    = D*M
+        if any(x -> !isfinite(x), eq) || any(x -> x <= 0, eq)
+            continue
+        end
+
+        # 5) accept
+        push!(out, (
+            xi_cons = xi_cons,
+            K_res    = K_res,
+            margin   = delt,
+            R_eq     = copy(R_eq),
+            C_eq     = copy(C_eq),
+        ))
     end
 
-    # — consumer rows: B_i - sum εA_{i,j}B_j + sum |A_{j,i}|B_j = xi_cons[k]
-    for k in 1:C
-        i = R + k
-        M[i,i] = 1.0
-        for j in 1:R
-            if A[i,j] > 0.0
-                M[i,j] -= ε[i,j]*A[i,j]
-            end
-        end
-        for j in 1:S
-            if A[j,i] < 0.0
-                M[i,j] += -A[j,i]
-            end
-        end
-        b[i] = xi_cons[k]    # correct sign here
-    end
-
-    B_eq = M \ b
-    return any(B_eq .<= 0.0) ? nothing : (B_eq[1:R], B_eq[R+1:end])
+    return out
 end
-
 #############################################################################
 #############################################################################
 ############################# make_A ########################################
@@ -276,7 +281,6 @@ function make_A(A::AbstractMatrix, R::Int, conn::Float64, scenario::Symbol;
 
     return A
 end
-
 #############################################################################
 #############################################################################
 ################## JACOBIAN, RESILIENCE AND RESISTANCE ######################
@@ -336,6 +340,75 @@ function compute_reactivity(B, p)
     return maximum(real.(ev_sym))
 end
 
+# ────────────────────────────────────────────────────────────────────────────────
+# 0) Helper: compute the collectivity parameter phi for one (A, epsilon)
+# ────────────────────────────────────────────────────────────────────────────────
+"""
+    compute_collectivity(A, epsilon)
+
+Given the S×S interaction matrix A and efficiency matrix epsilon, build the 
+non‐dimensional direct‐interaction matrix A_prime with
+
+  A_prime[i,j] =  epsilon[i,j]*A[i,j]   if A[i,j] > 0  (consumer gains)
+           A[i,j]          if A[i,j] < 0  (losses)
+           0.0             if A[i,j] == 0
+
+and return phi = max(abs, eigvals(A_prime)).
+"""
+function compute_collectivity(A::AbstractMatrix, epsilon::AbstractMatrix)
+    S = size(A,1)
+    A_prime = zeros(eltype(A), S, S)
+    for i in 1:S, j in 1:S
+        if     A[i,j] >  0
+            A_prime[i,j] =  epsilon[i,j] * A[i,j]
+        elseif A[i,j] <  0
+            A_prime[i,j] =  A[i,j]
+        else
+            A_prime[i,j] =  0.0
+        end
+    end
+    # spectral radius
+    vals = eigvals(A_prime)
+    return maximum(abs, vals)
+end
+
+#############################################################################
+#############################################################################
+######################## COMPUTE COLLECTIVITY ###############################
+#############################################################################
+#############################################################################
+# ────────────────────────────────────────────────────────────────────────────────
+# 0) Helper: compute the collectivity parameter phi for one (A, epsilon)
+# ────────────────────────────────────────────────────────────────────────────────
+"""
+    compute_collectivity(A, epsilon)
+
+Given the S×S interaction matrix A and efficiency matrix epsilon, build the 
+non‐dimensional direct‐interaction matrix A_prime with
+
+  A_prime[i,j] =  epsilon[i,j]*A[i,j]   if A[i,j] > 0  (consumer gains)
+           A[i,j]          if A[i,j] < 0  (losses)
+           0.0             if A[i,j] == 0
+
+and return phi = max(abs, eigvals(A_prime)).
+"""
+function compute_collectivity(A::AbstractMatrix, epsilon::AbstractMatrix)
+    S = size(A,1)
+    A_prime = zeros(eltype(A), S, S)
+    for i in 1:S, j in 1:S
+        if     A[i,j] >  0
+            A_prime[i,j] =  epsilon[i,j] * A[i,j]
+        elseif A[i,j] <  0
+            A_prime[i,j] =  A[i,j]
+        else
+            A_prime[i,j] =  0.0
+        end
+    end
+    # spectral radius
+    vals = eigvals(A_prime)
+    return maximum(abs, vals)
+end
+
 #############################################################################
 #############################################################################
 ################## SIMULATE PRESS PERTURBATIONS #############################
@@ -367,7 +440,7 @@ function simulate_press_perturbation(
     # --- Phase 2: apply press (reduce thresholds by delta) ---
     xi_press = xi_cons .+ delta
     # r_press = r_res .- delta
-    p_press  = (R, C, m_cons, xi_press, r_press, d_res, epsilon, A)
+    p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
@@ -448,112 +521,112 @@ function simulate_press_perturbation(
 
     return return_times, overshoot, ire, before_persistence, after_persistence, new_equil, species_specific_return_times
 end
+#############################################################################
+#############################################################################
+################## SIMULATE PULSE PERTURBATIONS #############################
+#############################################################################
+#############################################################################
+"""
+    simulate_pulse_perturbation(
+        u0, p, tspan, t_pulse, delt;
+        solver=Tsit5(),
+        plot=false,
+        cb=nothing,
+        species_specific_perturbation=false
+    ) -> (return_times, before_persist, after_persist, eq_state, species_rt)
 
-# -------------------------------
-# Example parameter definitions
-if false
-    # Define target equilibrium abundances
-    R_eq = fill(5.0, R)  # Equilibrium biomass for each resource
-    C_eq = fill(1.0, C)  # Equilibrium biomass for each consumer
+- `u0` : initial abundances (length S)
+- `p`  : parameters tuple `(R, C, m_cons, xi_cons, r_res, d_res, epsilon, A)`
+- `tspan` : `(t0, tfinal)`
+- `t_pulse` : time at which to apply the pulse
+- `delt`  : fractional pulse (e.g. 0.2 knocks everyone up by +20%; use `-0.5` to reduce by 50%)
+- `cb` : a `CallbackSet` for extinction, defaults to none
+- `species_specific_perturbation` : if `true`, also gives per-consumer pulse return-times
 
-    # Compute the new parameters
-    new_xi_cons, new_r_res = calibrate_parametrization(R_eq, C_eq, p_tuple)
+Returns:
+1. `return_times::Vector{Float64}` – time for each of the S species to return within 10% of equilibrium  
+2. `before_persist::Float64` – fraction of species alive just before the pulse  
+3. `after_persist::Float64`  – fraction of species alive at the end  
+4. `eq_state::Vector{Float64}` – the asymptotic state after the pulse  
+5. `species_rt::Vector{Float64}` (length C) – if `species_specific_perturbation`, return-times for each consumer pulse
+"""
+function simulate_pulse_perturbation(
+    u0, p, tspan, t_pulse, delt;
+    solver=Tsit5(),
+    plot=false,
+    cb=nothing,
+    species_specific_perturbation=false
+)
+    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
+    S = R + C
 
-    println("New consumer thresholds (xi_cons): ", new_xi_cons)
-    println("New resource growth rates (r_res): ", new_r_res)
+    # 1) Integrate up to the pulse
+    prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], t_pulse), p)
+    sol1 = solve(prob1, solver; callback=cb, reltol=1e-8, abstol=1e-8)
+    pre_state = sol1.u[end]
+    before_persist = count(x->x>EXTINCTION_THRESHOLD, pre_state) / S
 
-    # Numbers of resources and consumers
-    R = 2      # e.g., two resources
-    C = 3      # e.g., three consumers
+    # 2) Apply the pulse: fractional change delt
+    pulsed = pre_state .* (1 + delt)
 
-    # Consumer parameters (vectors of length C)
-    m_cons  = ones(C)             # Mortality rates (example: all ones)
-    xi_cons = ones(C)             # Overpopulation thresholds
+    # 3) Integrate from t_pulse to tfinal with same parameters
+    prob2 = ODEProblem(trophic_ode!, pulsed, (t_pulse, tspan[2]), p)
+    sol2 = solve(prob2, solver; callback=cb, reltol=1e-8, abstol=1e-8)
 
-    # Resource parameters (vectors of length R)
-    r_res = ones(R)               # Intrinsic growth rates
-    d_res = ones(R)               # Scaling factors for resources
+    # equilibrium after pulse (assumed to be sol2.u[end])
+    eq_state = sol2.u[end]
+    after_persist = count(x->x>EXTINCTION_THRESHOLD, eq_state) / S
 
-    # Conversion efficiency
-    epsilon = 0.5
-
-    # Global interaction matrix A (size: (R+C) x (R+C))
-    # Here we create a random matrix for demonstration.
-    A = randn(R+C, R+C)
-
-    # Bundle parameters into a tuple in the specified order
-    p_tuple = (R, C, m_cons, new_xi_cons, new_r_res, d_res, epsilon, A)
-    # -------------------------------
-    # Initial conditions:
-    # Resources start at 5.0, consumers at 1.0
-    u0 = [ones(R) .* 5.0; ones(C) .* 1.0]
-    tspan = (0.0, 50.0)
-
-    # Set up and solve the ODE problem
-    prob = ODEProblem(trophic_ode!, u0, tspan, p_tuple)
-    sol = solve(prob, Tsit5())
-
-    # Plot the solution
-    # Labels: first R are resources, next C are consumers.
-    begin
-        fig = Figure(; size=(800, 600), title="Trophic Dynamics")
-        ax = Axis(fig[1, 1], xlabel="Time", ylabel="Population Size", title="Trophic Dynamics")
-        for i in 1:(R)
-            MK.lines!(ax, sol.t, sol[i, :], label="Resource $i", color=:blue, linewidth=1)
+    # 4) Return times: when each species returns within 10% of eq_state
+    return_times = fill(NaN, S)
+    for i in 1:S
+        target = eq_state[i]
+        for (t, u) in zip(sol2.t, sol2.u)
+            if abs(u[i] - target) / (abs(target) + 1e-8) < 0.10
+                return_times[i] = t - t_pulse
+                break
+            end
         end
-        for i in 1:(C)
-            MK.lines!(ax, sol.t, sol[R+i, :], label="Consumer $i", color=:red, linewidth=1)
+    end
+
+    # 5) Species‐specific pulse (only consumers) if requested
+    species_rt = fill(NaN, C)
+    if species_specific_perturbation
+        for k in 1:C
+            i = R + k
+            # perturb only consumer k
+            u_k = copy(pre_state)
+            u_k[i] *= (1 + delt)
+            prob_k = ODEProblem(trophic_ode!, u_k, (t_pulse, tspan[2]), p)
+            sol_k  = solve(prob_k, solver; callback=cb, reltol=1e-8, abstol=1e-8)
+            final = sol_k.u[end][i]
+            # find return time for species i
+            for (t, u) in zip(sol_k.t, sol_k.u)
+                if abs(u[i] - final) / (abs(final) + 1e-8) < 0.10
+                    species_rt[k] = t - t_pulse
+                    break
+                end
+            end
+        end
+    end
+
+    # 6) Optional plotting
+    if plot
+        fig = Figure(resolution=(1200,600))
+        ax1 = Axis(fig[1,1], title="Pre-Pulse Dynamics", xlabel="Time", ylabel="Biomass")
+        ax2 = Axis(fig[1,2], title="Post-Pulse Dynamics", xlabel="Time", ylabel="Biomass")
+        for i in 1:R
+            lines!(ax1, sol1.t, [u[i] for u in sol1.u], color=:blue)
+            lines!(ax2, sol2.t, [u[i] for u in sol2.u], color=:blue)
+        end
+        for i in R+1:S
+            lines!(ax1, sol1.t, [u[i] for u in sol1.u], color=:red)
+            lines!(ax2, sol2.t, [u[i] for u in sol2.u], color=:red)
         end
         display(fig)
     end
-end
-#############################################################################
-#############################################################################
-################## Build Jacobian & Analytical V ############################
-#############################################################################
-#############################################################################
-function build_jacobian(B_eq, p)
-    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
-    total = R + C
-    J = zeros(total, total)
 
-    # Resource block
-    for i in 1:R
-        # diff(du_i)/diffB_i = - d_res[i] * B_eq[i]
-        J[i,i] = -d_res[i]*B_eq[i]
-        # diff(du_i)/diffB_j (j a consumer)
-        for j in (R+1):total
-            J[i,j] =  d_res[i]*B_eq[i]*A[i,j]
-        end
-    end
-
-    # Consumer block
-    for k in 1:C
-        i = R + k
-        psi = B_eq[i] / xi_cons[k]
-        prefactor = m_cons[k] * psi
-        for j in 1:total
-            # -delta_{ij} + epsilon[i,j]*A[i,j]  - A[j,i]
-            J[i,j] = prefactor * ( (i==j ? -1 : 0) + epsilon[i,j]*A[i,j] - A[j,i] )
-        end
-    end
-
-    return J
-end
-
-"""
-    compute_analytical_V(J, R, C, m_cons, xi_cons)
-
-Return V = J^{-1} * D, with D_{ii}=m_i/xi_i for consumers (i>R), D_{ii}=0 for resources.
-"""
-function compute_analytical_V(J, R, C, m_cons, xi_cons)
-    total = size(J,1)
-    D = zeros(total, total)
-    for k in 1:C
-        D[R+k, R+k] = m_cons[k] / xi_cons[k]
-    end
-    # Solve J * V = D  ?  V = J \ D
-    return J \ D
+    return return_times, before_persist, after_persist, eq_state, species_rt
 end
 
 ##########################################################################
@@ -660,7 +733,6 @@ function transform_for_ladder_step(step, A_adj, epsilon_full)
         error("Unknown ladder step $step")
     end
 end
-
 #########################################################################
 #########################################################################
 ######################### BUILD CALLBACKS ###############################
