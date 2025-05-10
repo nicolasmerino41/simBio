@@ -437,7 +437,7 @@ function simulate_press_perturbation(
 
     ########## FIRST PART: WHOLE COMMUNITY PERTURBATION ##########
     # --- Phase 2: apply press (reduce thresholds by delta) ---
-    xi_press = xi_cons .+ delta
+    xi_press = xi_cons .* (1 + delta)  # perturb all species
     # r_press = r_res .- delta
     p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
@@ -760,4 +760,29 @@ function build_callbacks(S::Int, EXTINCTION_THRESHOLD::Float64)
     cb_no_trigger = CallbackSet(callbacks...)
 
     return cb_no_trigger
+end
+
+# """
+#     median_return_rate(J::AbstractMatrix, B::AbstractVector;
+#                        t::Real, n::Int=1000, rng::AbstractRNG = Random.GLOBAL_RNG)
+    
+# For Jacobian J and equilibrium B (length S), draw `n` random pulses
+# u[k] with entries ∝ B.^2, normalize each to unit norm, then compute
+# alpha_k = |exp(t*J)*u[k]|.  Returns
+# R_med(t) = -(1/t) * log(median(alpha_k)).
+# """
+function median_return_rate(J, B; t=1.0, n=1000, rng=Random.GLOBAL_RNG)
+    S = length(B)
+    # precompute matrix exponential
+    E = exp(t*J)
+    alpha = Vector{Float64}(undef, n)
+
+    # draw pulses
+    for k in 1:n
+        u = randn(rng, S) .* (B .^ 2)         # biomass-weighted
+        u ./= norm(u)                         # unit length
+        alpha[k] = norm(E * u)                    # growth factor
+    end
+
+    return -log(median(alpha)) / t
 end
