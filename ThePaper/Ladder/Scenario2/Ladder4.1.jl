@@ -94,14 +94,14 @@ function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, 
 end
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 2) Given Xi and K build & solve M·B_eq = b, check positivity
+# 2) Given Xi and K build & solve M B_eq = b, check positivity
 # ────────────────────────────────────────────────────────────────────────────────
 """
     calibrate_from_K_xi(
       K_res::Vector{<:Real},    # length R: resource carrying capacities
       xi_cons::Vector{<:Real},  # length C: consumer thresholds
-      epsilon::AbstractMatrix,        # S×S conversion efficiencies
-      A::AbstractMatrix         # S×S interaction signs/magnitudes
+      epsilon::AbstractMatrix,        # SS conversion efficiencies
+      A::AbstractMatrix         # SS interaction signs/magnitudes
     ) -> (R_eq, C_eq) or nothing
 
 Solve the steady‐state abundances B = [R_eq; C_eq] from:
@@ -174,7 +174,6 @@ function cal_param(R::Int, C::Int, epsilon::AbstractMatrix, A::AbstractMatrix; m
 end
 
 """
-
 For each margin delt in `margins`, form
 
     Xi_cons, K_res = compute_default_thresholds(A, epsilon, R; margin=delt)
@@ -185,7 +184,7 @@ and keep those where
 2. the Jacobian at that equilibrium is locally stable.
 
 Returns a vector of
-  (xi_cons=…, K_res=…, margin=delt, R_eq=…, C_eq=…)
+  (xi_cons=..., K_res=..., margin=delt, R_eq=..., C_eq=...)
 for every delt that passes these checks.
 """
 function generate_feasible_thresholds(
@@ -346,7 +345,7 @@ end
 """
     compute_collectivity(A, epsilon)
 
-Given the S×S interaction matrix A and efficiency matrix epsilon, build the 
+Given the S S interaction matrix A and efficiency matrix epsilon, build the 
 non‐dimensional direct‐interaction matrix A_prime with
 
   A_prime[i,j] =  epsilon[i,j]*A[i,j]   if A[i,j] > 0  (consumer gains)
@@ -383,7 +382,7 @@ end
 """
     compute_collectivity(A, epsilon)
 
-Given the S×S interaction matrix A and efficiency matrix epsilon, build the 
+Given the S S interaction matrix A and efficiency matrix epsilon, build the 
 non‐dimensional direct‐interaction matrix A_prime with
 
   A_prime[i,j] =  epsilon[i,j]*A[i,j]   if A[i,j] > 0  (consumer gains)
@@ -544,11 +543,11 @@ end
 - `species_specific_perturbation` : if `true`, also gives per-consumer pulse return-times
 
 Returns:
-1. `return_times::Vector{Float64}` – time for each of the S species to return within 10% of equilibrium  
-2. `before_persist::Float64` – fraction of species alive just before the pulse  
-3. `after_persist::Float64`  – fraction of species alive at the end  
-4. `eq_state::Vector{Float64}` – the asymptotic state after the pulse  
-5. `species_rt::Vector{Float64}` (length C) – if `species_specific_perturbation`, return-times for each consumer pulse
+1. `return_times::Vector{Float64}` - time for each of the S species to return within 10% of equilibrium  
+2. `before_persist::Float64` - fraction of species alive just before the pulse  
+3. `after_persist::Float64`  - fraction of species alive at the end  
+4. `eq_state::Vector{Float64}` - the asymptotic state after the pulse  
+5. `species_rt::Vector{Float64}` (length C) - if `species_specific_perturbation`, return-times for each consumer pulse
 """
 function simulate_pulse_perturbation(
     u0, p, tspan, t_pulse, delt;

@@ -125,7 +125,7 @@ function ComputingLadder(
             ok, B0 = survives!(fixed, p; cb=cb)
             !ok && continue
 
-            # resilience_full is –max Re(eig(J)), but compute_resilience returns max Re
+            # resilience_full is -max Re(eig(J)), but compute_resilience returns max Re
             resilience_full = compute_resilience(fixed, p)
             reactivity_full =  compute_reactivity(fixed, p)
 
@@ -179,7 +179,7 @@ function ComputingLadder(
                     gain = sum(epsilon_s[i,j]*A_s[i,j]*R_eq_full[j] for j in 1:R if A_s[i,j] > 0; init=0.0 )
                     # 2) predation losses: A_s[i,j]<0, but we need "+(-A)B"
                     loss = sum(A_s[i,j]*C_eq_full[j-R] for j in R+1:S if A_s[i,j] < 0; init=0.0 )
-                    # consumer eq: xi = B_i – gain – loss
+                    # consumer eq: xi = B_i - gain - loss
                     xi_hat[k] = -C_eq_full[k] + gain + loss
                 end
 
@@ -195,7 +195,7 @@ function ComputingLadder(
                 # 5c) Solve for new equilibrium
                 eq = calibrate_from_K_xi(xi_hat, K_hat, epsilon_s, A_s)
                 if eq === nothing
-                    @warn("Ladder step $step infeasible: xi_hat=$(xi_hat), K_hat=$(K_hat), step=$step")
+                    # @warn("Ladder step $step infeasible: xi_hat=$(xi_hat), K_hat=$(K_hat), step=$step")
                     continue
                 end
                 R_eq_s, C_eq_s = eq
@@ -229,7 +229,7 @@ function ComputingLadder(
             step_pairs = collect(Iterators.flatten(
                 ([
                     Symbol("before_persistence_S$i") => before_persistence_S[i],
-                    Symbol("aft_S$i") => after_persistence_S[i],
+                    Symbol("after_persistence_S$i") => after_persistence_S[i],
                     Symbol("rt_press_S$i") => rt_press_S[i],
                     Symbol("rt_pulse_S$i") => rt_pulse_S[i],
                     Symbol("collectivity_S$i") => collectivity_S[i],
@@ -269,8 +269,8 @@ A = ComputingLadder(
     delta_vals=[1.0,3.0],
     eps_scales=[1.0, 0.1],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 10000,
-    threshold_steps=10,
+    number_of_combinations = 100000,
+    threshold_steps=15,
 )
 
 serialize("Final_results.jls", A)
