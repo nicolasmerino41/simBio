@@ -10,7 +10,7 @@ function is_locally_stable(J::AbstractMatrix)
         return false
     end
     lambda = eigvals(J)
-    maximum(real(lambda)) < 0
+    maximum(real.(lambda)) < 0 
 end
 
 function survives!(fixed, p; tspan=(0.,500.), cb)
@@ -121,13 +121,20 @@ function ComputingLadder(
 
             # 3) stability & survival
             D, M = compute_jacobian(fixed, p)
-            !is_locally_stable(D*M) && continue
+            J = D * M
+            !is_locally_stable(J) && continue
             ok, B0 = survives!(fixed, p; cb=cb)
             !ok && continue
 
             # resilience_full is -max Re(eig(J)), but compute_resilience returns max Re
             resilience_full = compute_resilience(fixed, p)
             reactivity_full =  compute_reactivity(fixed, p)
+
+            # but you can also sweep t=0.1, 1, 10, etc.
+            t0 = 1.0
+
+            # full‐model median return rate
+            Rmed_full = median_return_rate(J, fixed; t=t0, n=2000)
 
             # 4) full‐model persistence
             rt_press, os, ire, before_full, after_persistence_full, new_equil, _ = simulate_press_perturbation(
@@ -149,8 +156,9 @@ function ComputingLadder(
             )
             rt_press_full = mean(filter(!isnan, rt_press))
             rt_pulse_full = mean(filter(!isnan, rt_pulse))
-
+            rt_pulse_full_vector = rt_pulse
             collectivity_full = psi 
+            tau_full = 1.0 ./ B0
 
             # 5) ladder persistence
             before_persistence_S = Dict(i => NaN for i in 1:16)
@@ -160,6 +168,9 @@ function ComputingLadder(
             collectivity_S = Dict(i => NaN for i in 1:16)
             resilience_S  = Dict(i=>NaN for i in 1:16)
             reactivity_S  = Dict(i=>NaN for i in 1:16)
+            stable_S    = Dict(i=>NaN for i in 1:16)
+            Rmed_s    = Dict(i=>NaN for i in 1:16)
+            tau_S = Dict(i => Float64[] for i in 1:16)
             @info "Running ladder"
 
             for step in 1:16
@@ -167,8 +178,8 @@ function ComputingLadder(
                 A_s, epsilon_s = transform_for_ladder_step(step, A, epsilon)
 
                 # original equilibrium abundances
-                R_eq_full, C_eq_full = R_eq, C_eq
-
+                R_eq_full, C_eq_full = B0[1:R], B0[R+1:S]
+                
                 psi_s = compute_collectivity(A_s, epsilon_s)
 
                 # 5a) Recompute xi_hat
@@ -194,11 +205,12 @@ function ComputingLadder(
 
                 # 5c) Solve for new equilibrium
                 eq = calibrate_from_K_xi(xi_hat, K_hat, epsilon_s, A_s)
-                if eq === nothing
-                    # @warn("Ladder step $step infeasible: xi_hat=$(xi_hat), K_hat=$(K_hat), step=$step")
-                    continue
-                end
-                R_eq_s, C_eq_s = eq
+                # if eq === nothing
+                #     # @warn("Ladder step $step infeasible: xi_hat=$(xi_hat), K_hat=$(K_hat), step=$step")
+                #     continue
+                # end
+                R_eq_s, C_eq_s = eq[1:R], eq[R+1:S]
+                tau_S[step] = 1.0 ./ eq
 
                 # 5d) simulate simplified model
                 p_s = (R, C, xi_hat, xi_hat, K_hat, ones(R), epsilon_s, A_s)
@@ -224,6 +236,12 @@ function ComputingLadder(
                 collectivity_S[step] = psi_s
                 resilience_S[step] = compute_resilience(B0, p_s)
                 reactivity_S[step] = compute_reactivity(B0, p_s)
+
+                D_s, M_s = compute_jacobian(B0, p_s)
+                J_s = D_s * M_s
+                stable_S[step] = is_locally_stable(J_s)
+                Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
+                Rmed_s[step] = Rm_s
             end
 
             step_pairs = collect(Iterators.flatten(
@@ -234,7 +252,10 @@ function ComputingLadder(
                     Symbol("rt_pulse_S$i") => rt_pulse_S[i],
                     Symbol("collectivity_S$i") => collectivity_S[i],
                     Symbol("resilience_S$i") => resilience_S[i],
-                    Symbol("reactivity_S$i") => reactivity_S[i]
+                    Symbol("reactivity_S$i") => reactivity_S[i],
+                    Symbol("stable_S$i") => stable_S[i],
+                    Symbol("Rmed_s$i") => Rmed_s[i],
+                    Symbol("tau_S$i") => tau_S[i],
                 ] for i in 1:16)
             ))
 
@@ -243,6 +264,7 @@ function ComputingLadder(
                 delta =delta, eps=eps,
                 before_persistence_full=before_full, after_persistence_full=after_persistence_full, rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
                 collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
+                Rmed_full=Rmed_full, tau_full=tau_full, rt_pulse_full_vector=rt_pulse_full_vector,
                 step_pairs...,  # Properly flattened pairs
                 p_final = p,
                 R_eq = R_eq,
@@ -263,14 +285,14 @@ end
 # ────────────────────────────────────────────────────────────────────────────────
 A = ComputingLadder(
     50, 20;
-    conn_vals=0.01:0.05:0.9,
+    conn_vals=0.01:0.04:0.9,
     IS_vals=[0.01, 0.1, 1.0, 2.0],
     scenarios=[:ER,:PL,:MOD],
-    delta_vals=[1.0,3.0],
-    eps_scales=[1.0, 0.1],
+    delta_vals=[0.1, 0.3, 0.5, 2.0],
+    eps_scales=[1.0, 0.1, 0.5],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 100000,
-    threshold_steps=15,
+    number_of_combinations = 48,
+    threshold_steps=20,
 )
 
 serialize("Final_results.jls", A)
