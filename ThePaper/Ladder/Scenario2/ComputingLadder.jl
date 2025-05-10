@@ -274,15 +274,17 @@ A = ComputingLadder(
 
 
 A = deserialize("ThePaper/Ladder/Outputs/Final_results.jls")
+subs = filter(row -> row.stable_S16 == 1, A)
 
 function plot_step_correlations(
     df::DataFrame,
-    var::Symbol;             # :before_persistence, :after_persistence or :rt
-    color_by::Symbol = :conn # e.g. :conn, :IS, :scen, :delta, :R_eq, :C_eq, etc.
+    var::Symbol;            
+    color_by::Symbol = :conn, 
+    remove_unstable::Bool = false
 )
     # 1) your keys & labels
-    step_keys = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10",
-                 "S11","S12","S13","S14","S15"]
+    step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8",
+                  "S9","S10","S11","S12","S13","S14","S15"]
     step_names = [
         "Full Model",
         "Full A (Species-specific ϵ)", "Full A (Global ϵ)", "Full A (Re-randomised ϵ)",
@@ -295,6 +297,12 @@ function plot_step_correlations(
     ]
     @assert length(step_keys)+1 == length(step_names)
 
+    # 1b) optionally drop any run that went unstable at any step
+    if remove_unstable
+        res_cols = Symbol.("resilience_" .* step_keys)
+        df = filter(row -> all(row[c] < 0 for c in res_cols), df)
+    end
+
     # 2) assemble the panel‐column symbols
     full_col   = Symbol(string(var), "_full")
     panel_cols = [ full_col;
@@ -302,7 +310,6 @@ function plot_step_correlations(
 
     # 3) pull data vectors
     full_vals  = df[!, full_col]
-    
     color_vals = df[!, color_by]
     cmin, cmax = minimum(color_vals), maximum(color_vals)
 
@@ -311,8 +318,7 @@ function plot_step_correlations(
     rows = ceil(Int, sqrt(ns))
     cols = ceil(Int, ns/rows)
 
-    fig = Figure(; size = (900, 650))
-    # optional big title:
+    fig = Figure(; size=(900, 580))
     Label(fig[0, 1:cols], uppercase(string(var, " correlations")); fontsize=24)
 
     # 5) loop panels
@@ -320,14 +326,11 @@ function plot_step_correlations(
         r = div(idx-1, cols) + 1
         c = mod(idx-1, cols) + 1
 
-        ax = Axis(
-            fig[r, c];
+        ax = Axis(fig[r, c];
             xlabel = string(full_col),
             ylabel = string(panel_cols[idx]),
             title  = step_names[idx],
-            titlesize = 10,
-            xlabelsize = 12,
-            ylabelsize = 12,
+            titlesize = 10, xlabelsize = 12, ylabelsize = 12,
         )
 
         step_vals = df[!, panel_cols[idx]]
@@ -353,35 +356,26 @@ function plot_step_correlations(
         )
     end
 
-    # # 6) single colorbar on the right
-    # cbax = Axis(fig[1:rows, cols+1], showaxis=false)
-    # Colorbar(cbax;
-    #     colormap = :viridis,
-    #     limits   = (cmin, cmax),
-    #     label    = string(color_by)
-    # )
-
     display(fig)
-    return fig
 end
 
 # e.g. colour by connectance
-plot_step_correlations(A, :rt_press;  color_by = :conn)
+plot_step_correlations(A, :rt_press;  color_by = :conn, remove_unstable=true)
 
 # or colour by number of surviving species after full press
-plot_step_correlations(A, :before_persistence; color_by = :conn)
+plot_step_correlations(A, :before_persistence; color_by = :conn, remove_unstable=true)
 
 # or by scenario
-plot_step_correlations(A, :after_persistence;  color_by = :conn)
+plot_step_correlations(A, :after_persistence;  color_by = :conn, remove_unstable=true)
 
 # or by delta
-plot_step_correlations(A, :rt_pulse;)
+plot_step_correlations(A, :rt_pulse; color_by = :resilience_full, remove_unstable=true)
 
 # or by equilibrium abundances
-plot_step_correlations(A, :collectivity;)
+plot_step_correlations(A, :collectivity; remove_unstable=true)
 
 # or by resilience
-plot_step_correlations(A, :resilience;)
+plot_step_correlations(A, :resilience; remove_unstable=true)
 
 # or by reactivity
-plot_step_correlations(A, :reactivity;)
+plot_step_correlations(A, :reactivity; remove_unstable=true)
