@@ -272,10 +272,6 @@ A = ComputingLadder(
     threshold_steps=2,
 )
 
-
-A = deserialize("ThePaper/Ladder/Outputs/Final_results.jls")
-subs = filter(row -> row.stable_S16 == 1, A)
-
 function plot_step_correlations(
     df::DataFrame,
     var::Symbol;            
@@ -359,11 +355,15 @@ function plot_step_correlations(
     display(fig)
 end
 
+A = deserialize("ThePaper/Ladder/Outputs/Final_results.jls")
+A = deserialize("ThePaper/Ladder/Outputs/Final_results_bTermOn.jls")
+subs = filter(row -> row.stable_S16 == 1, A)
+
 # e.g. colour by connectance
 plot_step_correlations(A, :rt_press;  color_by = :conn, remove_unstable=true)
 
 # or colour by number of surviving species after full press
-plot_step_correlations(A, :before_persistence; color_by = :conn, remove_unstable=true)
+sniplot_step_correlations(A, :before_persistence; color_by = :conn, remove_unstable=true)
 
 # or by scenario
 plot_step_correlations(A, :after_persistence;  color_by = :conn, remove_unstable=true)
@@ -375,7 +375,7 @@ plot_step_correlations(A, :rt_pulse; color_by = :resilience_full, remove_unstabl
 plot_step_correlations(A, :collectivity; remove_unstable=true)
 
 # or by resilience
-plot_step_correlations(A, :resilience; remove_unstable=true)
+plot_step_correlations(A, :resilience; remove_unstable=false)
 
 # or by reactivity
 plot_step_correlations(A, :reactivity; remove_unstable=true)
