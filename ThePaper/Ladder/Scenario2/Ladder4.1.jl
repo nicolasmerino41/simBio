@@ -237,45 +237,63 @@ end
 ############################# make_A ########################################
 #############################################################################
 #############################################################################
-function make_A(A::AbstractMatrix, R::Int, conn::Float64, scenario::Symbol;
-                pareto_exponent::Float64=1.75, mod_gamma::Float64=5.0)
+function make_A(
+    A::AbstractMatrix, R::Int, conn::Float64, scenario::Symbol;
+    pareto_exponent::Float64=1.75,
+    mod_gamma::Float64=5.0,
+    B_term::Bool=false
+)
     S = size(A,1)
     C = S - R
     fill!(A, 0.0)
 
-    prey_indices(i) = 1:R
-
     if scenario == :ER
         for i in (R+1):S, j in 1:R
-            if rand() < conn
-                A[i,j] = abs(randn()); A[j,i] = -abs(randn())
+            if rand() < conn && i != j
+                A[i,j] = abs(randn())
+                A[j,i] = -abs(randn())
             end
         end
-
+        
     elseif scenario == :PL
         raw = rand(Pareto(1.0, pareto_exponent), C)
-        ks  = clamp.(floor.(Int,raw), 1, R)
+        ks  = clamp.(floor.(Int, raw), 1, R)
         for (idx,k) in enumerate(ks)
-            i = R+idx
+            i = R + idx
             for j in sample(1:R, min(k,R); replace=false)
-                A[i,j] = abs(randn()); A[j,i] = -abs(randn())
+                if i != j
+                    A[i,j] = abs(randn())
+                    A[j,i] = -abs(randn())
+                end
             end
         end
 
     elseif scenario == :MOD
-        halfR,halfC = fld(R,2),fld(C,2)
-        res1, res2 = 1:halfR, (halfR+1):R
-        con1, con2 = (R+1):(R+halfC), (R+halfC+1):S
+        halfR, halfC = fld(R,2), fld(C,2)
+        res1, res2   = 1:halfR, (halfR+1):R
+        con1, con2   = (R+1):(R+halfC), (R+halfC+1):S
 
         for i in (R+1):S, j in 1:R
             same = (i in con1 && j in res1) || (i in con2 && j in res2)
-            p = same ? conn*mod_gamma : conn/mod_gamma
-            if rand() < clamp(p,0,1)
-                A[i,j] = abs(randn()); A[j,i] = -abs(randn())
+            p    = same ? conn*mod_gamma : conn/mod_gamma
+            if rand() < clamp(p,0,1) && i != j
+                A[i,j] = abs(randn())
+                A[j,i] = -abs(randn())
             end
         end
+
     else
         error("Unknown scenario $scenario")
+    end
+
+    # optionally sprinkle in consumer→consumer predation
+    if B_term
+        for i in (R+1):S, j in (R+1):S
+            if i != j && rand() < conn
+                A[i,j] = abs(randn())
+                A[j,i] = -abs(randn())
+            end
+        end
     end
 
     return A
