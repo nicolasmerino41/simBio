@@ -1,26 +1,29 @@
 @time begin
-    PC = "MM-1"
+    PC = "nicol"
     const EXTINCTION_THRESHOLD = 1e-6
     using Pkg
     Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\ThePaper"))
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
     meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
     # using ArchGDAL #, Shapefile, NCDatasets
-    using CSV, DataFrames
-    using NamedArrays, StaticArrays, OrderedCollections
-    # using Rasters, RasterDataSources #, DimensionalData
-    # using DynamicGrids, Dispersal
-    using Dates, Distributions, Serialization, StatsBase, Random, GLM #JLD2
-    using ColorSchemes, Colors #Crayons, 
+    using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs
+    import Base.Threads: @threads
+    include("Ladder/Scenario2/Ladder4.1.jl")
+    # using CSV, DataFrames
+    # using NamedArrays, StaticArrays, OrderedCollections
+    # # using Rasters, RasterDataSources #, DimensionalData
+    # # using DynamicGrids, Dispersal
+    # using Dates, Distributions, Serialization, StatsBase, Random, GLM #JLD2
+    # using ColorSchemes, Colors #Crayons, 
     using CairoMakie # ImageMagick
-    using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
-    using Graphs, CategoricalArrays
-    # if end_true
-    #     using DifferentialEquations # EcologicalNetworksDynamics, 
-    # end
-    # using Plots
-    const MK, DF = Makie, DataFrames
-    const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
+    # using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
+    # using Graphs, CategoricalArrays
+    # # if end_true
+    # #     using DifferentialEquations # EcologicalNetworksDynamics, 
+    # # end
+    # # using Plots
+    # const MK, DF = Makie, DataFrames
+    # const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 end
 
 # Pkg.add("DifferentialEquations")
