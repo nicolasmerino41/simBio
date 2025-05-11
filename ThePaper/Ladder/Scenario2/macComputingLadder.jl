@@ -73,7 +73,8 @@ function ComputingLadder(
     delta_vals=[1.0,3.0],
     tspan=(0.,500.), tpert=250.0,
     number_of_combinations = 100,
-    threshold_steps=50
+    threshold_steps=50,
+    B_term = false
 )
     R = S - C
     A = zeros(S,S)
@@ -89,7 +90,7 @@ function ComputingLadder(
         sample(combos, min(length(combos), number_of_combinations); replace=false)
 
         # 1) build A & epsilon
-        A = make_A(A,R,conn,scen).*IS
+        A = make_A(A,R,conn,scen; B_term = B_term).*IS
         epsilon = clamp.(randn(S,S).*eps,0,1)
 
         # --- NEW: compute collectivity phi ---
@@ -125,16 +126,24 @@ function ComputingLadder(
             !is_locally_stable(J) && continue
             ok, B0 = survives!(fixed, p; cb=cb)
             !ok && continue
-
+            
             # resilience_full is -max Re(eig(J)), but compute_resilience returns max Re
             resilience_full = compute_resilience(fixed, p)
             reactivity_full =  compute_reactivity(fixed, p)
-
+            
+            original_k_xi = vcat(K_res, xi_cons)
             # but you can also sweep t=0.1, 1, 10, etc.
             t0 = 1.0
 
             # full‐model median return rate
             Rmed_full = median_return_rate(J, fixed; t=t0, n=2000)
+            
+            ############### TRYING SOMETHING NEW ################
+            prob1 = ODEProblem(trophic_ode!, B0, (tspan[1], tpert), p)
+            sol1 = solve(prob1, Tsit5(); callback = cb, reltol=1e-8, abstol=1e-8)
+            pre_state = sol1.u[end]
+            manual_before_persistence = count(x -> x > EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
+            ###############################################################
 
             # 4) full‐model persistence
             rt_press, os, ire, before_full, after_persistence_full, new_equil, _ = simulate_press_perturbation(
@@ -146,6 +155,12 @@ function ComputingLadder(
                 cb=cb,
                 species_specific_perturbation=false
             )
+
+            if manual_before_persistence != before_full || !isone(manual_before_persistence)
+                @warn("manual_before_persistence != before_full")
+                continue
+            end
+
             # 4a) full‐model pulse
             rt_pulse, _, _, _, _ = simulate_pulse_perturbation(
                 B0, p, tspan, tpert, delta;
@@ -171,15 +186,17 @@ function ComputingLadder(
             stable_S    = Dict(i=>NaN for i in 1:16)
             Rmed_s    = Dict(i=>NaN for i in 1:16)
             tau_S = Dict(i => Float64[] for i in 1:16)
+            K_Xi_S = Dict(i => Float64[] for i in 1:16)
             @info "Running ladder"
+
+            # original equilibrium abundances
+            # R_eq_full, C_eq_full = B0[1:R], B0[R+1:S] # B0 is the simulated equilibrium
+            R_eq_full, C_eq_full = fixed[1:R], fixed[R+1:S] # fixed is the calibrated equilibrium
 
             for step in 1:16
                 # build simplified A and epsilon
                 A_s, epsilon_s = transform_for_ladder_step(step, A, epsilon)
 
-                # original equilibrium abundances
-                R_eq_full, C_eq_full = B0[1:R], B0[R+1:S]
-                
                 psi_s = compute_collectivity(A_s, epsilon_s)
 
                 # 5a) Recompute xi_hat
@@ -204,16 +221,26 @@ function ComputingLadder(
                 end
 
                 # 5c) Solve for new equilibrium
-                eq = calibrate_from_K_xi(xi_hat, K_hat, epsilon_s, A_s)
-                # if eq === nothing
-                #     # @warn("Ladder step $step infeasible: xi_hat=$(xi_hat), K_hat=$(K_hat), step=$step")
+                eq = try
+                        calibrate_from_K_xi(xi_hat, K_hat, epsilon_s, A_s)
+                    catch err
+                        @warn "Step $step: equilibrium solve failed (singular or NaNs)" 
+                        continue
+                    end
+        
+                R_eq_s, C_eq_s = eq[1:R], eq[R+1:S]
+                # also guard against non-finite or non-positive solution
+                # if any(!isfinite, eq) || any(x->x<=0, eq)
+                #     @warn "Step $step: infeasible equilibrium (non-finite or ≤0)"
                 #     continue
                 # end
-                R_eq_s, C_eq_s = eq[1:R], eq[R+1:S]
+                
                 tau_S[step] = 1.0 ./ eq
+                K_Xi_S[step] = vcat(K_hat, xi_hat)
 
                 # 5d) simulate simplified model
                 p_s = (R, C, xi_hat, xi_hat, K_hat, ones(R), epsilon_s, A_s)
+
                 rt_press2, _, _, before_s, after_s, _, _ = simulate_press_perturbation(
                     B0, p_s, tspan, tpert, delta;
                     solver=Tsit5(),
@@ -228,7 +255,7 @@ function ComputingLadder(
                     cb=cb,
                     species_specific_perturbation=false
                 )
-
+                
                 before_persistence_S[step] = before_s
                 after_persistence_S[step]  = after_s
                 rt_press_S[step]   = mean(filter(!isnan, rt_press2))
@@ -256,6 +283,7 @@ function ComputingLadder(
                     Symbol("stable_S$i") => stable_S[i],
                     Symbol("Rmed_s$i") => Rmed_s[i],
                     Symbol("tau_S$i") => tau_S[i],
+                    Symbol("K_Xi_S$i") => K_Xi_S[i],
                 ] for i in 1:16)
             ))
 
@@ -264,11 +292,12 @@ function ComputingLadder(
                 delta =delta, eps=eps,
                 before_persistence_full=before_full, after_persistence_full=after_persistence_full, rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
                 collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
-                Rmed_full=Rmed_full, tau_full=tau_full, rt_pulse_full_vector=rt_pulse_full_vector,
+                Rmed_full=Rmed_full, tau_full=tau_full, rt_pulse_full_vector=rt_pulse_full_vector, K_Xi_full=original_k_xi,
                 step_pairs...,  # Properly flattened pairs
                 p_final = p,
                 R_eq = R_eq,
-                C_eq = C_eq
+                C_eq = C_eq,
+                B0 = B0
             )
 
             lock(locki) do
@@ -291,8 +320,9 @@ A = ComputingLadder(
     delta_vals=[0.1, 0.3, 0.5, 2.0],
     eps_scales=[1.0, 0.1, 0.5],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 48,
-    threshold_steps=20,
+    number_of_combinations = 10,
+    threshold_steps=2,
+    B_term = false
 )
 
 serialize("Final_results.jls", A)
