@@ -85,10 +85,115 @@ for row in eachrow(A)
     fig = Figure()
     ax  = Axis(fig[1,1];)
     scatter!(ax, τ_full, rt; color=:blue)
-    lines!(ax, [0,maximum(τ_full)], [0,maximum(τ_full)]; color=:black, linestyle=:dash)
+    lines!(ax, [0,maximum(rt)], [0,maximum(rt)]; color=:black, linestyle=:dash)
     display(fig)
 
     # species‐by‐species correlation
-    # println("Step $k  cor(τ_full,τ_step) = ", cor(τ_full, τ_step))
-    println("Stable is $(row.stable_full)")
+    println("cor(τ_full,τ_step) = ", cor(τ_full, rt))
+    # println("Stable is $(row.stable_full)")
 end
+for (i, row) in enumerate(eachrow(A))
+
+  τ_full = row.tau_full
+  rt     = row.rt_pulse_full_vector
+
+  # clean up (in case of NaNs)
+  mask = .!isnan.(τ_full) .& .!isnan.(rt)
+  x = τ_full[mask]
+  y = rt[mask]
+  if length(x) < 2
+      @warn "Not enough points to fit regression on instance $i"
+      continue
+  end
+
+  # compute Pearson r and regression coefficients
+  r = cor(x, y)
+  m = cov(x,y) / var(x)
+  b = mean(y) - m * mean(x)
+
+  # bounds for drawing lines and placing text
+  lo, hi = minimum(x), maximum(x)
+  ylo, yhi = minimum(y), maximum(y)
+
+  # build the figure
+  fig = Figure(; size = (500, 500))
+  ax = Axis(fig[1,1];
+      xlabel = "Theoretical τᵢ = 1 / Bᵢ*",
+      ylabel = "Simulated pulse-return time",
+      title  = "Case $i: r=$(round(r, digits=2)))"
+  )
+
+  # scatter & regression line
+  scatter!(ax, x, y; color = :blue, markersize = 6)
+  lines!(ax, [lo, hi], [b + m*lo, b + m*hi];
+        color = :red, linewidth = 2)
+
+  # add the after_persistence_full text in top-left
+  text!(
+    ax,
+    "collectivity = $(round(row.collectivity_full, digits=2)), \n" *
+    "after_persistence = $(round(row.after_persistence_full, digits=2)), \n" *
+    "resilience = $(round(row.resilience_full, digits=2)), \n" * 
+    "reactivity = $(round(row.reactivity_full, digits=2)), \n";
+    position = (lo, yhi),
+    align    = (:left, :top),
+    fontsize = 12,
+    color    = :black
+  )
+
+  display(fig)
+
+  # print out fit details
+  println("  Pearson r(τ, RT) = ", round(r, digits=2))
+  # println("  regression: RT = $(round(b,2)) + $(round(m,2))*τ")
+end
+
+function fit_tau_rt_cor_drivers(A::DataFrame)
+  # 1) compute r_i for each community
+  rs = Float64[]
+  for row in eachrow(A)
+      τ = row.tau_full
+      rt = row.rt_pulse_full_vector
+      mask = .!isnan.(τ) .& .!isnan.(rt)
+      if sum(mask) < 2
+          push!(rs, NaN)
+      else
+          push!(rs, cor(τ[mask], rt[mask]))
+      end
+  end
+
+  # 2) build meta‐DataFrame
+  meta = DataFrame(
+      r                      = rs,
+      conn                   = A.conn,
+      IS                     = A.IS,
+      scen                   = A.scen,
+      delta                  = A.delta,
+      eps                    = A.eps,
+      after_persistence_full = A.after_persistence_full,
+      collectivity_full      = A.collectivity_full,
+      resilience_full        = A.resilience_full,
+      reactivity_full        = A.reactivity_full,
+      Rmed_full              = A.Rmed_full,
+  )
+
+  # drop any rows where r is NaN
+  dropmissing!(meta, :r)
+
+  # make scenario a categorical predictor
+  # meta.scen = CategoricalArray(meta.scen)
+
+  # 3) fit linear model
+  f = @formula(r ~ conn + IS + scen + delta + eps +
+                 after_persistence_full + collectivity_full +
+                 resilience_full + reactivity_full + Rmed_full)
+  lm = GLM.lm(f, meta)
+
+  println("\n=== Model summary ===")
+  display(coeftable(lm))
+
+  return lm, meta
+end
+
+# usage:
+lm, meta = fit_tau_rt_cor_drivers(A)
