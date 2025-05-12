@@ -105,7 +105,7 @@ function ComputingLadder(
             t0 = 1.0
 
             # full‐model median return rate
-            Rmed_full = median_return_rate(J, fixed; t=t0, n=2000)
+            # Rmed_full = median_return_rate(J, fixed; t=t0, n=2000)
             
             ############### TRYING SOMETHING NEW ################
             prob1 = ODEProblem(trophic_ode!, B0, (tspan[1], tpert), p)
@@ -152,7 +152,7 @@ function ComputingLadder(
             resilience_S  = Dict(i=>NaN for i in 1:16)
             reactivity_S  = Dict(i=>NaN for i in 1:16)
             stable_S    = Dict(i=>NaN for i in 1:16)
-            Rmed_s    = Dict(i=>NaN for i in 1:16)
+            # Rmed_s    = Dict(i=>NaN for i in 1:16)
             tau_S = Dict(i => Float64[] for i in 1:16)
             K_Xi_S = Dict(i => Float64[] for i in 1:16)
             @info "Running ladder"
@@ -243,8 +243,8 @@ function ComputingLadder(
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
                 stable_S[step] = is_locally_stable(J_s)
-                Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
-                Rmed_s[step] = Rm_s
+                # Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
+                # Rmed_s[step] = Rm_s
             end
 
             step_pairs = collect(Iterators.flatten(
@@ -257,7 +257,7 @@ function ComputingLadder(
                     Symbol("resilience_S$i") => resilience_S[i],
                     Symbol("reactivity_S$i") => reactivity_S[i],
                     Symbol("stable_S$i") => stable_S[i],
-                    Symbol("Rmed_s$i") => Rmed_s[i],
+                    # Symbol("Rmed_s$i") => Rmed_s[i],
                     Symbol("tau_S$i") => tau_S[i],
                     Symbol("K_Xi_S$i") => K_Xi_S[i],
                 ] for i in 1:16)
@@ -268,7 +268,8 @@ function ComputingLadder(
                 delta =delta, eps=eps, m_val=m_val, g_val=g_val,
                 before_persistence_full=before_full, after_persistence_full=after_persistence_full, rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
                 collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
-                Rmed_full=Rmed_full, tau_full=tau_full, rt_pulse_full_vector=rt_pulse_full_vector, K_Xi_full=original_k_xi,
+                # Rmed_full=Rmed_full, 
+                tau_full=tau_full, rt_pulse_full_vector=rt_pulse_full_vector, K_Xi_full=original_k_xi,
                 step_pairs...,  # Properly flattened pairs
                 p_final = p,
                 R_eq = R_eq,
@@ -298,9 +299,9 @@ A = ComputingLadder(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 1000,
-    threshold_steps=10,
+    number_of_combinations = 100,
+    threshold_steps=7,
     B_term = false
 )
 
-serialize("Final_results_new_param.jls", A)
+serialize("Final_results_new_param_normed.jls", A)
