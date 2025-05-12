@@ -19,48 +19,6 @@ function survives!(fixed, p; tspan=(0.,500.), cb)
     return sol.t[end]<tspan[2] ? (false,sol.u[end]) : (all(sol.u[end] .> EXTINCTION_THRESHOLD),sol.u[end])
 end
 
-function calibrate_with_margins(
-    A::AbstractMatrix, epsilon::AbstractMatrix, R::Int;
-    margins=[0.05,0.2,0.5,1.0,2.0]
-)
-    S = size(A,1)
-    C = S - R
-
-    for delt in margins
-        xi_cons, K_res = compute_default_thresholds(A, epsilon, R; margin=delt)
-        B = try
-            calibrate_from_K_xi(xi_cons, K_res, epsilon, A)
-        catch
-            continue  # singular
-        end
-
-        # positivity & finiteness
-        if any(!isfinite, B) || any(x->x<=0, B)
-            continue
-        end
-
-        # split out
-        B_res = view(B, 1:R)
-        B_cons = view(B, R+1:S)
-
-        # build Jacobian and test local stability:
-        # (this is a *placeholder*; replace with your real compute_jacobian!)
-        D = Diagonal(1.0 ./ B)     # crude approx: D=diag(1/B_i)
-        Mj = zeros(S,S)             # you'd fill this with the true partials
-        J = D*Mj
-        if any(!isfinite, J)
-            continue
-        end
-        # Here we skip eigvals if Mj is zero; in your real code,
-        # use `eigvals(J)` and test `maximum(real(lambda))<0`.
-
-        # success
-        return B_res, B_cons, xi_cons, K_res, delt
-    end
-
-    return nothing
-end
-
 # ────────────────────────────────────────────────────────────────────────────────
 # Main sweep: fix S & C, vary structure, collect full & ladder pers.
 # ────────────────────────────────────────────────────────────────────────────────
@@ -68,6 +26,8 @@ function ComputingLadder(
     S::Int=30, C::Int=6;
     conn_vals=[0.05,0.1,0.2],
     IS_vals=[0.1,1.0],
+    mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
+    growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     scenarios=[:ER,:PL,:MOD],
     eps_scales=[0.1],
     delta_vals=[1.0,3.0],
@@ -83,29 +43,32 @@ function ComputingLadder(
     cb = build_callbacks(S,EXTINCTION_THRESHOLD)
 
     combos = collect(Iterators.product(
-        conn_vals,IS_vals,scenarios,delta_vals,eps_scales
+        conn_vals,IS_vals,scenarios,delta_vals,eps_scales,mortality_vals,growth_vals
     ))
 
-    @threads for (conn,IS,scen,delta,eps) in 
-        sample(combos, min(length(combos), number_of_combinations); replace=false)
+    for (conn,IS,scen,delta,eps,m_val,g_val) in sample(combos, min(length(combos), number_of_combinations); replace=false)
 
         # 1) build A & epsilon
         A = make_A(A,R,conn,scen; B_term = B_term).*IS
         epsilon = clamp.(randn(S,S).*eps,0,1)
 
         # --- NEW: compute collectivity phi ---
-        psi = compute_collectivity(A, epsilon)
+        psi = compute_collectivity(copy(A), copy(epsilon))
 
         # 2) calibrate Xi,K → get (R_eq,C_eq,xi_cons,K_res)
         # 2) generate *all* feasible (Xi,K) sets for this A,epsilon
-        thr_sets = generate_feasible_thresholds(
-            A, epsilon, R;
-            margins = 10 .^(range(-2, 1, length=threshold_steps)))
-        
+        old_epsilon = copy(epsilon)
+        thr_sets = generate_feasible_thresholds(A, epsilon, R; margins = 10 .^(range(-2, 1, length=threshold_steps)))
+        @assert all(old_epsilon .== epsilon) "epsilon was mutated inside generate_feasible_thresholds!"
+
         isempty(thr_sets) && ( @warn "No feasible thresholds for $conn, $IS, $scen, $eps)" ; continue )
 
         # 2b) now loop over each feasible threshold‐set
         for t in thr_sets
+            if any(t.C_eq .<= 0) || any(t.R_eq .<= 0)
+                @error "Non‐positive equilibrium abundances squized in the loop: $t"
+                continue
+            end
             xi_cons   = t.xi_cons
             K_res     = t.K_res
             used_margin = t.margin
@@ -113,11 +76,11 @@ function ComputingLadder(
             C_eq        = t.C_eq
 
             # set up parameters & run the rest of your pipeline exactly as before
-            m_cons = xi_cons
-            d_res  = ones(R)
-            r_res  = K_res
+            m_cons = fill(m_val, C)
+            # d_res  = ones(R)
+            r_res  = fill(g_val, R)
 
-            p     = (R, C, m_cons, xi_cons, r_res, d_res, epsilon, A)
+            p     = (R, C, m_cons, xi_cons, r_res, K_res, epsilon, A)
             fixed = vcat(R_eq, C_eq)
 
             # 3) stability & survival
@@ -126,9 +89,15 @@ function ComputingLadder(
             !is_locally_stable(J) && continue
             ok, B0 = survives!(fixed, p; cb=cb)
             !ok && continue
+            if !all(isapprox.(B0, fixed, atol=1e-3))
+                error("B0 is not close to fixed point: B0 =  $(B0), and fixed = $(fixed)")
+                continue
+            end
             
             # resilience_full is -max Re(eig(J)), but compute_resilience returns max Re
-            resilience_full = compute_resilience(fixed, p)
+            old_epsilon = copy(epsilon)
+            resilience_full = (fixed, p)
+            @assert all(old_epsilon .== epsilon) "epsilon was mutated inside compute_resilience!"
             reactivity_full =  compute_reactivity(fixed, p)
             
             original_k_xi = vcat(K_res, xi_cons)
@@ -144,7 +113,6 @@ function ComputingLadder(
             pre_state = sol1.u[end]
             manual_before_persistence = count(x -> x > EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
             ###############################################################
-
             # 4) full‐model persistence
             rt_press, os, ire, before_full, after_persistence_full, new_equil, _ = simulate_press_perturbation(
                 B0, p, tspan, tpert, delta;
@@ -157,7 +125,7 @@ function ComputingLadder(
             )
 
             if manual_before_persistence != before_full || !isone(manual_before_persistence)
-                @warn("manual_before_persistence != before_full")
+                error("manual_before_persistence != before_full")
                 continue
             end
 
@@ -195,9 +163,15 @@ function ComputingLadder(
 
             for step in 1:16
                 # build simplified A and epsilon
-                A_s, epsilon_s = transform_for_ladder_step(step, A, epsilon)
+                A_s, epsilon_s = transform_for_ladder_step(step, copy(A), copy(epsilon))
 
-                psi_s = compute_collectivity(A_s, epsilon_s)
+                psi_s = compute_collectivity(copy(A_s), copy(epsilon_s))
+                if step == 1
+                    # 1) check that A, epsilon are unchanged
+                    @assert all(A_s .== A)             "A was mutated on step 1!"
+                    @assert all(epsilon_s .== epsilon) "epsilon was mutated on step 1!"
+                    @assert isapprox(psi_s, psi; atol=1e-12)  "collectivity mismatch at step 1: psi=$psi, psi_s=$(psi_s)"
+                end
 
                 # 5a) Recompute xi_hat
                 xi_hat = zeros(C)
@@ -215,9 +189,9 @@ function ComputingLadder(
                 K_hat = zeros(R)
                 for i in 1:R
                     # resource eq uses A[i,j] (j consumer) directly:
-                    drain = sum(A_s[i,j]*C_eq_full[j-R] for j in R+1:S if A_s[i,j] < 0; init=0.0 )
+                    drain = sum(A_s[i,j]*C_eq_full[j-R] for j in R+1:S if A_s[i,j] < 0; init=0.0)
                     # K_i = B_i + ∑ A[i,j] B_j
-                    K_hat[i] = R_eq_full[i] + drain
+                    K_hat[i] = abs(-R_eq_full[i] + drain)
                 end
 
                 # 5c) Solve for new equilibrium
@@ -237,9 +211,11 @@ function ComputingLadder(
                 
                 tau_S[step] = 1.0 ./ eq
                 K_Xi_S[step] = vcat(K_hat, xi_hat)
+                
+                # d_res_hat = r_res_full ./ K_hat
 
                 # 5d) simulate simplified model
-                p_s = (R, C, xi_hat, xi_hat, K_hat, ones(R), epsilon_s, A_s)
+                p_s = (R, C, m_cons, xi_hat, r_res, K_hat, epsilon_s, A_s)
 
                 rt_press2, _, _, before_s, after_s, _, _ = simulate_press_perturbation(
                     B0, p_s, tspan, tpert, delta;
@@ -289,7 +265,7 @@ function ComputingLadder(
 
             rec = (
                 conn=conn, IS=IS, scen=scen, margin=used_margin,
-                delta =delta, eps=eps,
+                delta =delta, eps=eps, m_val=m_val, g_val=g_val,
                 before_persistence_full=before_full, after_persistence_full=after_persistence_full, rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
                 collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
                 Rmed_full=Rmed_full, tau_full=tau_full, rt_pulse_full_vector=rt_pulse_full_vector, K_Xi_full=original_k_xi,
@@ -316,13 +292,15 @@ A = ComputingLadder(
     50, 20;
     conn_vals=0.01:0.04:0.9,
     IS_vals=[0.01, 0.1, 1.0, 2.0],
-    scenarios=[:ER,:PL,:MOD],
+    scenarios=[:ER, :PL,:MOD],
     delta_vals=[0.1, 0.3, 0.5, 2.0],
     eps_scales=[1.0, 0.1, 0.5],
+    mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
+    growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 10,
-    threshold_steps=2,
+    number_of_combinations = 1000,
+    threshold_steps=10,
     B_term = false
 )
 
-serialize("Final_results.jls", A)
+serialize("Final_results_new_param.jls", A)
