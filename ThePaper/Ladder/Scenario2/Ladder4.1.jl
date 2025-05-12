@@ -23,44 +23,38 @@ const EXTINCTION_THRESHOLD = 1e-6
 #############################################################################
 function trophic_ode!(du, u, p, t)
     # Unpack parameters from tuple
-    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
-    
-    # u is arranged as:
-    # u[1:R]          ? resources
-    # u[R+1 : R+C]  ? consumers
-    
-    # Resources dynamics (indices 1:R)
+    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
+    S = R + C
+
+    ### Resources (1:R) ###
     for i in 1:R
-        # Sum over predators of resource i (these are consumers, indices: R+1 to R+C)
-        pred_sum = 0.0
-        for j in R+1:R+C
-            pred_sum += A[i, j] * u[j]
+        # predation term ∑ A[i,j] * u[j]  (j = consumers)
+        pred_sum = zero(eltype(u))
+        for j in R+1:S
+            pred_sum += A[i,j] * u[j]
         end
-        # Resource i dynamics
-        du[i] = u[i] * d_res[i] * ( (r_res[i] / d_res[i]) - u[i] + pred_sum )
+
+        # logistic + predation:
+        # du[i] = r_i * u[i] * (1 - u[i]/K_i + pred_sum/K_i)
+        du[i] = r_res[i]/K_res[i] * u[i] * (K_res[i] - u[i] + pred_sum)
     end
 
-    # Consumers dynamics (indices R+1 to R+C)
+    ### Consumers (R+1 : R+C) ###
     for k in 1:C
-        i = R + k  # global index for consumer k
-        
-        # Gains from prey (only A_used[i,j]>0)
-        # println("A[i,j] = ", typeof(A))
-        # println("epsilon[i,j] = ", typeof(epsilon))
-        sum_prey = sum(
-            epsilon[i,j] * A[i,j] * u[j]
-            for j in 1:R+C if A[i,j] > 0.0;
-            init = 0.0
-        )
+        i = R + k
 
-        # Losses to predators (only A_used[i,j]<0)
-        sum_pred = sum(
-            A[i,j] * u[j]
-            for j in 1:R+C if A[i,j] < 0.0;
-            init = 0.0
-        )
-        
-        du[i] = u[i] * (m_cons[k] / xi_cons[k]) * ( -xi_cons[k] - u[i] + sum_prey + sum_pred )
+        sum_prey = zero(eltype(u))
+        sum_pred = zero(eltype(u))
+        for j in 1:S
+            if A[i,j] > 0
+                sum_prey += epsilon[i,j] * A[i,j] * u[j]
+            elseif A[i,j] < 0
+                sum_pred += A[i,j] * u[j]
+            end
+        end
+
+        # du[i] = u[i]*(m_i/ξ_i)*(-ξ_i - u[i] + gains + losses)
+        du[i] = u[i] * (m_cons[k] / xi_cons[k]) * (-xi_cons[k] - u[i] + sum_prey + sum_pred)
     end
 end
 
@@ -239,6 +233,7 @@ end
 #############################################################################
 function make_A(
     A::AbstractMatrix, R::Int, conn::Float64, scenario::Symbol;
+    IS = 1.0,
     pareto_exponent::Float64=1.75,
     mod_gamma::Float64=5.0,
     B_term::Bool=false
@@ -250,8 +245,8 @@ function make_A(
     if scenario == :ER
         for i in (R+1):S, j in 1:R
             if rand() < conn && i != j
-                A[i,j] = abs(randn())
-                A[j,i] = -abs(randn())
+                A[i,j] = abs(rand(Normal(0.0, IS)))
+                A[j,i] = -abs(rand(Normal(0.0, IS)))
             end
         end
         
@@ -262,8 +257,8 @@ function make_A(
             i = R + idx
             for j in sample(1:R, min(k,R); replace=false)
                 if i != j
-                    A[i,j] = abs(randn())
-                    A[j,i] = -abs(randn())
+                    A[i,j] = abs(rand(Normal(0.0, IS)))
+                    A[j,i] = -abs(rand(Normal(0.0, IS)))
                 end
             end
         end
@@ -277,8 +272,8 @@ function make_A(
             same = (i in con1 && j in res1) || (i in con2 && j in res2)
             p    = same ? conn*mod_gamma : conn/mod_gamma
             if rand() < clamp(p,0,1) && i != j
-                A[i,j] = abs(randn())
-                A[j,i] = -abs(randn())
+                A[i,j] = abs(rand(Normal(0.0, IS)))
+                A[j,i] = -abs(rand(Normal(0.0, IS)))
             end
         end
 
@@ -290,8 +285,8 @@ function make_A(
     if B_term
         for i in (R+1):S, j in (R+1):S
             if i != j && rand() < conn
-                A[i,j] = abs(randn())
-                A[j,i] = -abs(randn())
+                A[i,j] = abs(rand(Normal(0.0, IS)))
+                A[j,i] = -abs(rand(Normal(0.0, IS)))
             end
         end
     end
@@ -654,102 +649,120 @@ end
 function transform_for_ladder_step(step, A_adj, epsilon_full)
     total = size(A_adj,1)
 
-    if step == 1 # Full
+    if step == 1
+        # - no change -
         return A_adj, epsilon_full
-    elseif step == 2 # S2 epsilon mean per row
+
+    elseif step == 2
+        # S2: per‐row mean epsilon
         epsilon2 = similar(epsilon_full)
         for i in 1:total
-            epsilon2[i,:] .= mean(epsilon_full[i,:])
+            epsilon2[i, :] .= mean(epsilon_full[i, :])
         end
         return A_adj, epsilon2
-    elseif step == 3 # S3 epsilon global mean
-        return A_adj, fill(mean(epsilon_full), total, total)
-    elseif step == 4 # S4 epsilon re-randomised
+
+    elseif step == 3
+        # S3: global mean epsilon
+        mu = mean(epsilon_full)
+        return A_adj, fill(mu, total, total)
+
+    elseif step == 4
+        # S4: re-randomize epsilon from Normal(mean,std)
+        mu, sigma = mean(epsilon_full), std(epsilon_full)
         epsilon4 = similar(epsilon_full)
         for i in 1:total, j in 1:total
-            epsilon4[i, j] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+            epsilon4[i,j] = clamp(rand(Normal(mu,sigma)), 0, 1)
         end
         return A_adj, epsilon4
-    elseif 5 <= step <= 8 
-        
-        pos, neg = mean(A_adj[A_adj.>0]), mean(A_adj[A_adj.<0])
-        
-        A5 = map(x-> x>0 ? pos : x<0 ? neg : 0, A_adj)
-        if step==5 # epsilon is full
+
+    elseif 5 <= step <= 8
+        # S5-S8: replace A by its average positive & negative values
+        pos = mean(A_adj[A_adj .> 0])
+        neg = mean(A_adj[A_adj .< 0])
+        A5  = map(x -> x>0 ? pos : x<0 ? neg : 0, A_adj)
+
+        if step == 5
             return A5, epsilon_full
-        elseif step==6 # epsilon is mean per row
+        elseif step == 6
+            # per‐row mean epsilon
             epsilon6 = similar(epsilon_full)
-            for i in 1:total 
-                epsilon6[i,:] .= mean(epsilon_full[i,:])
+            for i in 1:total
+                epsilon6[i, :] .= mean(epsilon_full[i, :])
             end
             return A5, epsilon6
-        elseif step==7 # epsilon is global mean
-            epsilon7 = fill(mean(epsilon_full), total, total)
-            return A5, epsilon7
-        elseif step==8 # epsilon is re-randomised
+        elseif step == 7
+            mu = mean(epsilon_full)
+            return A5, fill(mu, total, total)
+        else  # step == 8
+            mu, sigma = mean(epsilon_full), std(epsilon_full)
             epsilon8 = similar(epsilon_full)
             for i in 1:total, j in 1:total
-                epsilon8[i, j] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+                epsilon8[i,j] = clamp(rand(Normal(mu,sigma)), 0, 1)
             end
             return A5, epsilon8
         end
-    elseif 9 <= step <= 12 # A is averaged across all non-zero values
-        
-        m = mean(abs.(A_adj[A_adj .!= 0]))
-        A6 = ifelse.(A_adj .!= 0, m*sign.(A_adj), 0.0)
-        
-        if step==9 # epsilon is full
+
+    elseif 9 <= step <= 12
+        # S9-S12: set every nonzero A entry to the mean magnitude m
+        m   = mean(abs.(A_adj[A_adj .!= 0]))
+        A6  = ifelse.(A_adj .!= 0, m*sign.(A_adj), 0.0)
+
+        if step == 9
             return A6, epsilon_full
-        elseif step==10 # epsilon is mean per row
+        elseif step == 10
             epsilon10 = similar(epsilon_full)
             for i in 1:total
-                epsilon10[i,:] .= mean(epsilon_full[i,:])
+                epsilon10[i, :] .= mean(epsilon_full[i, :])
             end
             return A6, epsilon10
-        elseif step==11 # epsilon is global mean
-            return A6, fill(mean(epsilon_full), total, total)
-        elseif step==12 # epsilon is re-randomised
+        elseif step == 11
+            mu = mean(epsilon_full)
+            return A6, fill(mu, total, total)
+        else  # step == 12
+            mu, sigma = mean(epsilon_full), std(epsilon_full)
             epsilon12 = similar(epsilon_full)
-            for i in 1:total*total
-                epsilon12[i] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+            for i in 1:total, j in 1:total
+                epsilon12[i,j] = clamp(rand(Normal(mu,sigma)), 0, 1)
             end
             return A6, epsilon12
         end
-    elseif 13 <= step <= 16 # A is fully randomised with same sparsity pattern as A_adj
-        # Fully randomized A matrix using Normal(mean, std) of abs non-zero A entries
-        A_vals = abs.(A_adj[A_adj .!= 0])
-        A_mean, A_std = mean(A_vals), std(A_vals)
-    
-        A_rand = similar(A_adj)
+
+    elseif 13 <= step <= 16
+        # S13-S16: fully re-randomize A over the same sparsity pattern
+        vals   = abs.(A_adj[A_adj .!= 0])
+        mu, sigma   = mean(vals), std(vals)
+        A_rand = zeros(eltype(A_adj), total, total)
         for i in 1:total, j in 1:total
-            if A_adj[i, j] != 0
-                A_rand[i, j] = rand(Normal(A_mean, A_std)) * sign(A_adj[i, j])
-            else
-                A_rand[i, j] = 0.0
+            if A_adj[i,j] != 0
+                A_rand[i,j] = rand(Normal(mu,sigma)) * sign(A_adj[i,j])
             end
         end
-    
-        if step == 13 # epsilon is full
+
+        if step == 13
             return A_rand, epsilon_full
-        elseif step == 14 # epsilon is mean per row
+        elseif step == 14
             epsilon14 = similar(epsilon_full)
             for i in 1:total
                 epsilon14[i, :] .= mean(epsilon_full[i, :])
             end
             return A_rand, epsilon14
-        elseif step == 15 # epsilon is global mean
-            return A_rand, fill(mean(epsilon_full), total, total)
-        elseif step == 16 # epsilon is re-randomised
+        elseif step == 15
+            mu = mean(epsilon_full)
+            return A_rand, fill(mu, total, total)
+        else  # step == 16
+            mu, sigma = mean(epsilon_full), std(epsilon_full)
             epsilon16 = similar(epsilon_full)
             for i in 1:total, j in 1:total
-                epsilon16[i, j] = clamp(rand(Normal(mean(epsilon_full), std(epsilon_full))), 0, 1)
+                epsilon16[i,j] = clamp(rand(Normal(mu,sigma)), 0, 1)
             end
             return A_rand, epsilon16
-        end    
+        end
+
     else
         error("Unknown ladder step $step")
     end
 end
+
 #########################################################################
 #########################################################################
 ######################### BUILD CALLBACKS ###############################
