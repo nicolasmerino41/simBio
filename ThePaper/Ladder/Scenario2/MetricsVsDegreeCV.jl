@@ -111,8 +111,13 @@ plot_vs_degree_cv(
 )
 
 # Return‐time vs degree_cv, no facets, no colour
+step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8",
+                  "S9","S10","S11","S12","S13","S14","S15", "S16"]
+res_cols = Symbol.("resilience_" .* step_keys)
+B = filter(row -> all(row[c] < 0 for c in res_cols), A)
+    
 plot_vs_degree_cv(
-    A, :resilience;
+    B, :reactivity;
     facet_by = nothing,
     color_by = nothing,
 )
