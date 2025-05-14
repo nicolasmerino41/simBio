@@ -106,7 +106,7 @@ function ComputingLadder(
             t0 = 1.0
 
             # full-model median return rate
-            # Rmed_full = median_return_rate(J, fixed; t=t0, n=2000)
+            # Rmed_full = median_return_rate(J, fixed; t=t0, n=20)
             
             ############### TRYING SOMETHING NEW ################
             prob1 = ODEProblem(trophic_ode!, B0, (tspan[1], tpert), p)
@@ -243,14 +243,14 @@ function ComputingLadder(
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
                 stable_S[step] = is_locally_stable(J_s)
-                # Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
+                # Rm_s = median_return_rate(J_s, B0; t=t0, n=20)
                 # Rmed_s[step] = Rm_s
             end
             
             for step in 17:19
-                # ─────────────────────────────────────────────────────────────────────────
-                # step 17: re‐randomise m_cons
-                # ─────────────────────────────────────────────────────────────────────────
+                # -------------------------------------------------------------------------
+                # step 17: re-randomise m_cons
+                # -------------------------------------------------------------------------
                 if step == 17
                     A_s, epsilon_s = transform_for_ladder_step(1, copy(A), copy(epsilon))
                     psi_s = compute_collectivity(copy(A_s), copy(epsilon_s))
@@ -295,9 +295,9 @@ function ComputingLadder(
                     # Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
                     # Rmed_s[step] = Rm_s
 
-                # ─────────────────────────────────────────────────────────────────────────
-                # step 18: re‐randomise xi_cons
-                # ─────────────────────────────────────────────────────────────────────────
+                # -------------------------------------------------------------------------
+                # step 18: re-randomise xi_cons
+                # -------------------------------------------------------------------------
                 elseif step == 18
                     A_s, epsilon_s = transform_for_ladder_step(1, copy(A), copy(epsilon))
                     psi_s = compute_collectivity(copy(A_s), copy(epsilon_s))
@@ -347,9 +347,9 @@ function ComputingLadder(
                     # Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
                     # Rmed_s[step] = Rm_s
 
-                # ─────────────────────────────────────────────────────────────────────────
-                # step 19: re‐randomise K_res
-                # ─────────────────────────────────────────────────────────────────────────
+                # -------------------------------------------------------------------------
+                # step 19: re-randomise K_res
+                # -------------------------------------------------------------------------
                 elseif step == 19
                     A_s, epsilon_s = transform_for_ladder_step(1, copy(A), copy(epsilon))
                     psi_s = compute_collectivity(copy(A_s), copy(epsilon_s))
@@ -422,7 +422,8 @@ function ComputingLadder(
                 delta =delta, eps=eps, m_val=m_val, g_val=g_val,
                 before_persistence_full=before_full, after_persistence_full=after_persistence_full, rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
                 collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
-                # Rmed_full=Rmed_full, tau_full=tau_full,
+                # Rmed_full=Rmed_full,
+                # tau_full=tau_full,
                 rt_pulse_full_vector=rt_pulse_full_vector, K_Xi_full=original_k_xi,
                 step_pairs...,  # Properly flattened pairs
                 p_final = p,
@@ -453,9 +454,9 @@ A = ComputingLadder(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 1000,
+    number_of_combinations = 10,
     threshold_steps=5,
     B_term = false
 )
 
-serialize("Truth_1000_th5.jls", A)
+serialize("Truth_10000_th5_fixedRes_and_rerandom.jls", A)
