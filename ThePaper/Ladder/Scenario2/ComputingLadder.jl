@@ -30,6 +30,7 @@ function plot_step_correlations(
     if remove_unstable
         res_cols = Symbol.("resilience_" .* step_keys)
         df = filter(row -> all(row[c] < 0 for c in res_cols), df)
+        println("subset size: ", nrow(df))
     end
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -101,6 +102,7 @@ A = deserialize("ThePaper/Ladder/Outputs/Final_results_new_1000_very_short.jls")
 A = deserialize("ThePaper/Ladder/Outputs/Truth_1000_th5.jls")
 A = deserialize("ThePaper/Ladder/Outputs/Truth_10000_th10.jls")
 A = deserialize("ThePaper/Ladder/Outputs/Truth_100000_th15.jls")
+A = deserialize("ThePaper/Ladder/Outputs/Truth_1000_th5_fixedRes_and_rerandom.jls")
 
 df = A
 # e.g. colour by connectance
@@ -119,7 +121,7 @@ plot_step_correlations(df, :rt_pulse; remove_unstable=false)
 plot_step_correlations(df, :collectivity; remove_unstable=false, color_by = :conn)
 
 # or by resilience
-plot_step_correlations(df, :resilience; remove_unstable=false, color_by = :conn)
+plot_step_correlations(df, :resilience; remove_unstable=true, color_by = :resilience_full)
 
 # or by reactivity
 plot_step_correlations(df, :reactivity; remove_unstable=false, color_by = :conn)
