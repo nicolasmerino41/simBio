@@ -299,13 +299,13 @@ end
 #############################################################################
 #############################################################################
 function compute_jacobian(B, p)
-    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
+    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
     S = R + C
 
     # 1) Build D
     D = zeros(S,S)
     for i in 1:R
-        D[i,i] = d_res[i] * B[i]
+        D[i,i] = r_res[i]/K_res[i] * B[i]
     end
     for k in 1:C
         i = R + k
@@ -436,7 +436,7 @@ function simulate_press_perturbation(
     species_specific_perturbation=false
 )
     # Unpack parameters
-    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
+    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
 
     # --- Phase 1: run up to t_perturb ---
     prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], t_perturb), p)
@@ -452,7 +452,7 @@ function simulate_press_perturbation(
     # --- Phase 2: apply press (reduce thresholds by delta) ---
     xi_press = xi_cons .* (1 + delta)  # perturb all species
     # r_press = r_res .- delta
-    p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
+    p_press  = (R, C, m_cons, xi_press, r_res, K_res, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
@@ -490,7 +490,7 @@ function simulate_press_perturbation(
             xi_press = copy(xi_cons)          # <-- copy, not alias
             xi_press[i] *= (1 - delta)         # perturb only species i
     
-            p_press  = (R, C, m_cons, xi_press, r_res, d_res, epsilon, A)
+            p_press  = (R, C, m_cons, xi_press, r_res, K_res, epsilon, A)
             prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
             sol2     = solve(prob2, solver; callback=cb, reltol=1e-8, abstol=1e-8)
     
@@ -548,7 +548,7 @@ end
     ) -> (return_times, before_persist, after_persist, eq_state, species_rt)
 
 - `u0` : initial abundances (length S)
-- `p`  : parameters tuple `(R, C, m_cons, xi_cons, r_res, d_res, epsilon, A)`
+- `p`  : parameters tuple `(R, C, m_cons, xi_cons, r_res, K_res, epsilon, A)`
 - `tspan` : `(t0, tfinal)`
 - `t_pulse` : time at which to apply the pulse
 - `delt`  : fractional pulse (e.g. 0.2 knocks everyone up by +20%; use `-0.5` to reduce by 50%)
@@ -569,7 +569,7 @@ function simulate_pulse_perturbation(
     cb=nothing,
     species_specific_perturbation=false
 )
-    R, C, m_cons, xi_cons, r_res, d_res, epsilon, A = p
+    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
     S = R + C
 
     # 1) Integrate up to the pulse
@@ -734,7 +734,7 @@ function transform_for_ladder_step(step, A_adj, epsilon_full)
         A_rand = zeros(eltype(A_adj), total, total)
         for i in 1:total, j in 1:total
             if A_adj[i,j] != 0
-                A_rand[i,j] = rand(Normal(mu,sigma)) * sign(A_adj[i,j])
+                A_rand[i,j] = abs(rand(Normal(mu,sigma))) * sign(A_adj[i,j])
             end
         end
 
