@@ -53,7 +53,7 @@ function trophic_ode!(du, u, p, t)
             end
         end
 
-        # du[i] = u[i]*(m_i/ξ_i)*(-ξ_i - u[i] + gains + losses)
+        # du[i] = u[i]*(m_i/xi_i)*(-xi_i - u[i] + gains + losses)
         du[i] = u[i] * (m_cons[k] / xi_cons[k]) * (-xi_cons[k] - u[i] + sum_prey + sum_pred)
     end
 end
@@ -66,7 +66,67 @@ end
 # ────────────────────────────────────────────────────────────────────────────────
 # 1) Compute safe Xi and K so that M is strictly diagonally dominant
 # ────────────────────────────────────────────────────────────────────────────────
-function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, R::Int; margin::Float64=0.1)
+# function compute_default_thresholds(
+#     A::AbstractMatrix,
+#     epsilon::AbstractMatrix,
+#     R::Int;
+#     margin::Float64 = 1.0
+# )
+#     S = size(A,1)
+#     C = S - R
+
+#     # 1) compute the raw gains+losses per consumer
+#     gl = similar(zeros(C))
+#     for k in 1:C
+#         i = R + k
+#         gain = sum(epsilon[i,j]*A[i,j] for j in 1:R if A[i,j] > 0; init =0.0)
+#         loss = sum(-A[i,j] for j in R+1:S if A[i,j] < 0; init =0.0)
+#         gl[k] = gain + loss
+#     end
+
+#     # 2) community‐wide floor for xi:
+#     xi_floor = minimum(gl) * (1 + margin)
+
+#     # 3) now randomise every xiᵢ uniformly *above* that floor:
+#     xi_cons = xi_floor .+ rand(C) .* xi_floor
+
+#     # 4) same for resources: raw drains
+#     dr = similar(zeros(R))
+#     for i in 1:R
+#         dr[i] = sum(-A[i,j] for j in R+1:S if A[i,j] < 0; init=0.0)
+#     end
+
+#     # 5) community‐wide floor for K:
+#     K_floor = minimum(dr) * (1 + margin)
+
+#     # 6) randomise each Kᵢ above that floor:
+#     K_res = K_floor .+ rand(R) .* K_floor
+
+#     return xi_cons, K_res
+# end
+
+# function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, R::Int; margin::Float64=0.1)
+#     S = size(A,1)
+#     C = S - R
+
+#     xi_cons = zeros(Float64, C)
+#     for k in 1:C
+#         i = R + k
+#         gain = sum(epsilon[i,j]*A[i,j] for j in 1:R if A[i,j] > 0; init =0.0)
+#         loss = sum(-A[i,j] for j in R+1:S if A[i,j] < 0; init =0.0)
+#         xi_cons[k] = (gain + loss)*(1 + abs(rand(Normal(3.0, 1.0))))
+#     end
+
+#     K_res = zeros(Float64, R)
+#     for i in 1:R
+#         drain = sum(-A[i,j] for j in R+1:S if A[i,j] < 0; init = 0.0)
+#         K_res[i] = drain*(1 + abs(rand(Normal(30.0, 3.0))))
+#     end
+
+#     return xi_cons, K_res
+# end
+
+function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, R::Int; margin::Float64=10.0)
     S = size(A,1)
     C = S - R
 
@@ -86,6 +146,7 @@ function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, 
 
     return xi_cons, K_res
 end
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 2) Given Xi and K build & solve M B_eq = b, check positivity
@@ -148,25 +209,8 @@ function calibrate_from_K_xi(
 end
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 3) Wrapper replacing your old cal_param
+# 3) generate_feasible_thresholds
 # ────────────────────────────────────────────────────────────────────────────────
-"""
-    cal_param(R::Int, C::Int, epsilon, A; margin)
-
-Auto-computes Xi_cons, K_res, then solves for (R_eq, C_eq).  
-Returns `(R_eq, C_eq, xi_cons, K_res)` or `nothing` if infeasible.
-"""
-function cal_param(R::Int, C::Int, epsilon::AbstractMatrix, A::AbstractMatrix; margin::Float64=0.05)
-    xi_cons, K_res = compute_default_thresholds(A, epsilon, R; margin=margin)
-    eq = calibrate_from_K_xi(xi_cons, K_res, epsilon, A)
-    if eq === nothing
-        return nothing
-    else
-        R_eq, C_eq = eq
-        return (R_eq, C_eq, xi_cons, K_res)
-    end
-end
-
 """
 For each margin delt in `margins`, form
 
@@ -183,7 +227,7 @@ for every delt that passes these checks.
 """
 function generate_feasible_thresholds(
     A::AbstractMatrix, epsilon::AbstractMatrix, R::Int;
-    margins = 10 .^(range(-2, 1, length=50))
+    margins = 1.0
 )
     S = size(A,1)
     C = S - R
@@ -451,8 +495,9 @@ function simulate_press_perturbation(
     ########## FIRST PART: WHOLE COMMUNITY PERTURBATION ##########
     # --- Phase 2: apply press (reduce thresholds by delta) ---
     xi_press = xi_cons .* (1 + delta)  # perturb all species
+    K_press = K_res .* (delta)  # perturb all species
     # r_press = r_res .- delta
-    p_press  = (R, C, m_cons, xi_press, r_res, K_res, epsilon, A)
+    p_press  = (R, C, m_cons, xi_press, r_res, K_press, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
@@ -652,7 +697,6 @@ function transform_for_ladder_step(step, A_adj, epsilon_full)
     if step == 1
         # - no change -
         return A_adj, epsilon_full
-
     elseif step == 2
         # S2: per‐row mean epsilon
         epsilon2 = similar(epsilon_full)
@@ -749,7 +793,7 @@ function transform_for_ladder_step(step, A_adj, epsilon_full)
         elseif step == 15
             mu = mean(epsilon_full)
             return A_rand, fill(mu, total, total)
-        else  # step == 16
+        elseif step == 16
             mu, sigma = mean(epsilon_full), std(epsilon_full)
             epsilon16 = similar(epsilon_full)
             for i in 1:total, j in 1:total
@@ -757,12 +801,60 @@ function transform_for_ladder_step(step, A_adj, epsilon_full)
             end
             return A_rand, epsilon16
         end
+    elseif step == 17
+        # S17: global mean of epsilon*A
+        pos_vals = [
+            epsilon_full[i,j]*A_adj[i,j] 
+            for i in 1:total, j in 1:total if A_adj[i,j] > 0 
+        ]
+        neg_vals = abs.([A_adj[i,j] for i in 1:total, j in 1:total if A_adj[i,j] < 0])
+        mu = mean(vcat(pos_vals, neg_vals))
 
+        # build A17: mu in the same sparsity pattern, zeros preserved
+        A17 = map(x -> x>0 ? mu : x<0 ? -mu : 0.0, A_adj)
+
+        # epsilon17 = all ones
+        epsilon17 = ones(eltype(epsilon_full), total, total)
+
+        return A17, epsilon17
     else
         error("Unknown ladder step $step")
     end
 end
 
+function short_transform_for_ladder_step(step, A_adj, epsilon_full)
+    total = size(A_adj,1)
+
+    if step == 1
+        # - no change -
+        return A_adj, epsilon_full
+    elseif step == 2
+        # S9-S12: set every nonzero A entry to the mean magnitude m
+        m   = mean(abs.(A_adj[A_adj .!= 0]))
+        A2  = ifelse.(A_adj .!= 0, m*sign.(A_adj), 0.0)
+
+        mu = mean(epsilon_full)
+        return A2, fill(mu, total, total)
+    elseif step == 3
+        # S17: global mean of epsilon*A
+        pos_vals = [
+            epsilon_full[i,j]*A_adj[i,j] 
+            for i in 1:total, j in 1:total if A_adj[i,j] > 0 
+        ]
+        neg_vals = abs.([A_adj[i,j] for i in 1:total, j in 1:total if A_adj[i,j] < 0])
+        mu = mean(vcat(pos_vals, neg_vals))
+
+        # build A17: mu in the same sparsity pattern, zeros preserved
+        A3 = map(x -> x>0 ? mu : x<0 ? -mu : 0.0, A_adj)
+
+        # epsilon17 = all ones
+        epsilon3 = ones(eltype(epsilon_full), total, total)
+
+        return A3, epsilon3
+    else
+        error("Unknown ladder step $step")
+    end
+end
 #########################################################################
 #########################################################################
 ######################### BUILD CALLBACKS ###############################
