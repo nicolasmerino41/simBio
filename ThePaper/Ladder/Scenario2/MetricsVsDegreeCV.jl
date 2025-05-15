@@ -18,7 +18,7 @@ function add_degree_cv!(df::DataFrame)
     return df
 end
 
-add_degree_cv!(A)
+add_degree_cv!(df)
 
 function plot_vs_degree_cv(
     df::DataFrame,
