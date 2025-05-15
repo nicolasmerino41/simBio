@@ -14,15 +14,15 @@ function plot_step_correlations(
     step_keys = [
         "S1","S2","S3","S4","S5","S6","S7","S8",
         "S9","S10","S11","S12","S13","S14","S15","S16",
-        "S17","S18","S19"
+        "S17","S18","S19", "S20"
     ]
     step_names = [
         "Full Model",
         "Full A (Species‐specific ϵ)",    "Full A (Global ϵ)",       "Full A (Re‐randomised ϵ)",
         "Global ±A (ϵ_full)",            "Global ±A (Species‐specific ϵ)", "Global ±A (Global ϵ)",  "Global ±A (Re‐randomised ϵ)",
-        "Uniform A (ϵ_full)",            "Uniform A (Species‐specific ϵ)", "Uniform A (Global ϵ)",    "Uniform A (Re‐randomised ϵ)",
+        "Global A (ϵ_full)",            "Global A (Species‐specific ϵ)", "Global A (Global ϵ)",    "Global A (Re‐randomised ϵ)",
         "Random A (ϵ_full)",             "Random A (Species‐specific ϵ)",  "Random A (Global ϵ)",     "Random A (Re‐randomised ϵ)",
-        "Randomize m_cons ↻",            "Randomize ξ̂ ↻",               "Randomize K_res ↻"
+        " Global AE", "Randomize m_cons ↻",            "Randomize ξ̂ ↻",               "Randomize K_res ↻"
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -103,6 +103,10 @@ A = deserialize("ThePaper/Ladder/Outputs/Truth_1000_th5.jls")
 A = deserialize("ThePaper/Ladder/Outputs/Truth_10000_th10.jls")
 A = deserialize("ThePaper/Ladder/Outputs/Truth_100000_th15.jls")
 A = deserialize("ThePaper/Ladder/Outputs/Truth_1000_th5_fixedRes_and_rerandom.jls")
+A = deserialize("ThePaper/Ladder/Outputs/Truth_100000_short.jls")
+A = deserialize("ThePaper/Ladder/Outputs/Truth_20000_short.jls")
+A = deserialize("ThePaper/Ladder/Outputs/Truth_50000_short_ony_eps1.jls")
+
 
 df = A
 # e.g. colour by connectance
@@ -121,7 +125,7 @@ plot_step_correlations(df, :rt_pulse; remove_unstable=false)
 plot_step_correlations(df, :collectivity; remove_unstable=false, color_by = :conn)
 
 # or by resilience
-plot_step_correlations(df, :resilience; remove_unstable=true, color_by = :resilience_full)
+plot_step_correlations(df, :resilience; remove_unstable=false, color_by = :conn)
 
 # or by reactivity
 plot_step_correlations(df, :reactivity; remove_unstable=false, color_by = :conn)
