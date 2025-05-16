@@ -7,11 +7,12 @@ function short_step_correlations(
     # ──────────────────────────────────────────────────────────────────────────
     # 1) define your 19 keys & titles
     step_keys = [
-        "S1","S2","S3","S4","S5","S6"
+        "S1","S2","S3","S4","S5","S6", "S7"
     ]
     step_names = [
         "Full Model", "Global A (Global ϵ)", " Global AE",
-        "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻"
+        "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
+        "Average Biomass"
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
