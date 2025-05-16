@@ -17,17 +17,6 @@ function add_degree_cv!(df::DataFrame)
     end
     return df
 end
-function add_abundance_cv!(df::DataFrame)
-    if :degree_cv ∉ names(df)
-        df.abundance_cv = [
-            begin
-                degs = vcat(row.R_eq, row.C_eq)  # abundance vector
-                std(degs) / mean(degs)
-            end for row in eachrow(df)
-        ]
-    end
-    return df
-end
 
 add_degree_cv!(A)
 
@@ -37,12 +26,22 @@ function plot_vs_degree_cv(
     facet_by::Union{Symbol,Nothing}=nothing,
     color_by::Union{Symbol,Nothing}=nothing,
     steps::UnitRange=1:6,
-    ncols::Int=4
+    ncols::Int=4,
+    remove_unstable::Bool=true
 )
     step_names = [
         "Full Model", "Global A (Global ϵ)", " Global AE",
         "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻"
     ]
+    step_keys = [
+        "S1","S2","S3","S4","S5","S6"
+    ]
+
+    if remove_unstable
+        res_cols = Symbol.("resilience_" .* step_keys)
+        df = filter(row -> all(row[c] < 0 for c in res_cols), df)
+        println("subset size: ", nrow(df))
+    end
 
     # 1) filter & augment
     df = filter(row -> row.before_persistence_full > 0.0, df)
@@ -119,18 +118,44 @@ function plot_vs_degree_cv(
     return nothing
 end
 
+for i in [:reactivity, :resilience, :rt_press, :rt_pulse, :after_persistence, :collectivity]
+    plot_vs_degree_cv(
+        A, i;
+        # facet_by = :scen,
+        color_by = :conn,
+    )
+end
 # Persistence vs degree_cv, coloured by connectance, faceted by scenario
+B = filter(row -> row.scen == :ER, A)
 plot_vs_degree_cv(
-    A, :rt_pulse;
-    # facet_by = :epsi,
-    color_by = :IS,
+    B, :collectivity;
+    # facet_by = :IS,
+    # color_by = :scen,
 )
 
-# Return‐time vs degree_cv, no facets, no colour
-step_keys  = ["S1","S2","S3","S4","S5","S6"]
-res_cols = Symbol.("resilience_" .* step_keys)
-B = filter(row -> all(row[c] < 0 for c in res_cols), A)
-    
+for i in [:reactivity, :resilience, :rt_press, :rt_pulse, :after_persistence, :collectivity]
+    plot_vs_degree_cv(
+        A, i;
+        # facet_by = :scen,
+        color_by = :conn,
+    )
+end
+###########################################################################
+###########################################################################
+########################### ABUNDANCE VS DEGREE CV ########################
+###########################################################################
+###########################################################################
+function add_abundance_cv!(df::DataFrame)
+    if :degree_cv ∉ names(df)
+        df.abundance_cv = [
+            begin
+                degs = vcat(row.R_eq, row.C_eq)  # abundance vector
+                std(degs) / mean(degs)
+            end for row in eachrow(df)
+        ]
+    end
+    return df
+end
 function plot_vs_abundance_cv(
     df::DataFrame,
     variable::Symbol;
