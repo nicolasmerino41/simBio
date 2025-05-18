@@ -13,16 +13,16 @@ function plot_step_correlations(
     # 1) define your 19 keys & titles
     step_keys = [
         "S1","S2","S3","S4","S5","S6","S7","S8",
-        "S9","S10","S11","S12","S13","S14","S15","S16",
-        "S17","S18","S19", "S20"
-    ]
+        "S9","S10","S11","S12","S13","S14","S15","S16"]
+        # "S17","S18","S19", "S20"
+    # ]
     step_names = [
         "Full Model",
         "Full A (Species‐specific ϵ)",    "Full A (Global ϵ)",       "Full A (Re‐randomised ϵ)",
         "Global ±A (ϵ_full)",            "Global ±A (Species‐specific ϵ)", "Global ±A (Global ϵ)",  "Global ±A (Re‐randomised ϵ)",
         "Global A (ϵ_full)",            "Global A (Species‐specific ϵ)", "Global A (Global ϵ)",    "Global A (Re‐randomised ϵ)",
         "Random A (ϵ_full)",             "Random A (Species‐specific ϵ)",  "Random A (Global ϵ)",     "Random A (Re‐randomised ϵ)",
-        " Global AE", "Randomize m_cons ↻",            "Randomize ξ̂ ↻",               "Randomize K_res ↻"
+        # " Global AE", "Randomize m_cons ↻",            "Randomize ξ̂ ↻",               "Randomize K_res ↻"
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -90,6 +90,7 @@ function plot_step_correlations(
     end
 
     display(fig)
+    return fig
 end
 
 A = deserialize("ThePaper/Ladder/Outputs/Final_results.jls")
@@ -110,8 +111,8 @@ A = deserialize("ThePaper/Ladder/Outputs/Truth_50000_short_ony_eps1.jls")
 
 df = A
 # e.g. colour by connectance
-plot_step_correlations(df, :rt_press;  color_by = :rt_press_full, remove_unstable=false)
-
+fig = plot_step_correlations(df, :rt_press;  color_by = :rt_press_full, remove_unstable=false)
+save("ThePaper/Ladder/Scenario2/figures/step_correlations.png", fig)
 # or colour by number of surviving species after full press
 # plot_step_correlations(df, :before_persistence; color_by = :conn, remove_unstable=false)
 
