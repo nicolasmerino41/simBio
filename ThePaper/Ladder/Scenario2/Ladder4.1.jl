@@ -329,8 +329,8 @@ function make_A(
     if B_term
         for i in (R+1):S, j in (R+1):S
             if i != j && rand() < conn
-                A[i,j] = abs(rand(Normal(0.0, IS)))
-                A[j,i] = -abs(rand(Normal(0.0, IS)))
+                A[i,j] = abs(rand(Normal(0.0, IS*0.1)))
+                A[j,i] = -abs(rand(Normal(0.0, IS*0.1)))
             end
         end
     end
