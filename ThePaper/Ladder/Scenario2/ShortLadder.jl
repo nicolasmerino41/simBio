@@ -35,7 +35,8 @@ function short_ComputingLadder(
     tspan=(0.,500.), tpert=250.0,
     number_of_combinations = 100,
     B_term = false,
-    iterations=1
+    iterations=1,
+    Rmed_iterations=200,
 )
     R = S - C
     # A = zeros(S,S)
@@ -119,7 +120,7 @@ function short_ComputingLadder(
         t0 = 1.0
 
         # full-model median return rate
-        # Rmed_full = median_return_rate(J, fixed; t=t0, n=20)
+        Rmed_full = median_return_rate(J, fixed; t=t0, n=Rmed_iterations)
         
         ############### TRYING SOMETHING NEW ################
         prob1 = ODEProblem(trophic_ode!, B0, (tspan[1], tpert), p)
@@ -159,17 +160,17 @@ function short_ComputingLadder(
         # tau_full = 1.0 ./ B0
 
         # 5) ladder persistence
-        before_persistence_S = Dict(i => NaN for i in 1:7)
-        after_persistence_S  = Dict(i => NaN for i in 1:7)
-        rt_press_S   = Dict(i => NaN for i in 1:7)
-        rt_pulse_S   = Dict(i => NaN for i in 1:7)
-        collectivity_S = Dict(i => NaN for i in 1:7)
-        resilience_S  = Dict(i=>NaN for i in 1:7)
-        reactivity_S  = Dict(i=>NaN for i in 1:7)
-        stable_S    = Dict(i=>NaN for i in 1:7)
-        # Rmed_s    = Dict(i=>NaN for i in 1:7)
-        # tau_S = Dict(i => Float64[] for i in 1:7)
-        K_Xi_S = Dict(i => Float64[] for i in 1:7)
+        before_persistence_S = Dict(i => NaN for i in 1:8)
+        after_persistence_S  = Dict(i => NaN for i in 1:8)
+        rt_press_S   = Dict(i => NaN for i in 1:8)
+        rt_pulse_S   = Dict(i => NaN for i in 1:8)
+        collectivity_S = Dict(i => NaN for i in 1:8)
+        resilience_S  = Dict(i=>NaN for i in 1:8)
+        reactivity_S  = Dict(i=>NaN for i in 1:8)
+        stable_S    = Dict(i=>NaN for i in 1:8)
+        Rmed_S    = Dict(i=>NaN for i in 1:8)
+        # tau_S = Dict(i => Float64[] for i in 1:8)
+        K_Xi_S = Dict(i => Float64[] for i in 1:8)
         @info "Running ladder"
 
         # original equilibrium abundances
@@ -257,11 +258,11 @@ function short_ComputingLadder(
             D_s, M_s = compute_jacobian(B0, p_s)
             J_s = D_s * M_s
             stable_S[step] = is_locally_stable(J_s)
-            # Rm_s = median_return_rate(J_s, B0; t=t0, n=20)
-            # Rmed_s[step] = Rm_s
+            Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+            Rmed_S[step] = Rm_s
         end
         
-        for step in 4:7
+        for step in 4:8
             # -------------------------------------------------------------------------
             # step 17: re-randomise m_cons
             # -------------------------------------------------------------------------
@@ -307,8 +308,8 @@ function short_ComputingLadder(
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
                 stable_S[step] = is_locally_stable(J_s)
-                # Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
-                # Rmed_s[step] = Rm_s
+                Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                Rmed_S[step] = Rm_s
 
             # -------------------------------------------------------------------------
             # step 18: re-randomise xi_cons
@@ -359,8 +360,8 @@ function short_ComputingLadder(
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
                 stable_S[step] = is_locally_stable(J_s)
-                # Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
-                # Rmed_s[step] = Rm_s
+                Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                Rmed_S[step] = Rm_s
 
             # -------------------------------------------------------------------------
             # step 19: re-randomise K_res
@@ -411,8 +412,9 @@ function short_ComputingLadder(
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
                 stable_S[step] = is_locally_stable(J_s)
-                # Rm_s = median_return_rate(J_s, B0; t=t0, n=2000)
-                # Rmed_s[step] = Rm_s
+                Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                Rmed_S[step] = Rm_s
+            
             elseif step == 7
                 
                 A_s, epsilon_s = short_transform_for_ladder_step(2, copy(A), copy(epsilon))
@@ -502,8 +504,100 @@ function short_ComputingLadder(
                 D_s, M_s = compute_jacobian(new_B0, p_s)
                 J_s = D_s * M_s
                 stable_S[step] = is_locally_stable(J_s)
-                # Rm_s = median_return_rate(J_s, B0; t=t0, n=20)
-                # Rmed_s[step] = Rm_s
+                Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                Rmed_S[step] = Rm_s
+
+            elseif step == 8
+                
+                A_s, epsilon_s = short_transform_for_ladder_step(3, copy(A), copy(epsilon))
+                psi_s = compute_collectivity(copy(A_s), copy(epsilon_s))
+                
+                if step == 1
+                    # 1) check that A, epsilon are unchanged
+                    @assert all(A_s .== A)             "A was mutated on step $step!"
+                    @assert all(epsilon_s .== epsilon) "epsilon was mutated on step $step!"
+                    @assert isapprox(psi_s, psi; atol=1e-12)  "collectivity mismatch at step $step: psi=$psi, psi_s=$(psi_s)"
+                end
+
+                meanR = mean(B0[1:R])
+                meanC = mean(B0[R+1:S])
+
+                C_eq_avg = fill(meanC, C)
+                R_eq_avg = fill(meanR, R)
+                new_B0 = vcat(R_eq_avg, C_eq_avg)
+                
+                # 5a) Recompute xi_hat
+                xi_hat = zeros(C)
+                for k in 1:C
+                    i = R + k
+                    # 1) feeding gains (A>0)
+                    gain = sum(epsilon_s[i,j]*A_s[i,j]*R_eq_avg[j] for j in 1:R if A_s[i,j] > 0; init=0.0 )
+                    # 2) predation losses: A_s[i,j]<0, but we need "+(-A)B"
+                    loss = sum(A_s[i,j]*C_eq_avg[j-R] for j in R+1:S if A_s[i,j] < 0; init=0.0 )
+                    # consumer eq: xi = B_i - gain - loss
+                    xi_hat[k] = -C_eq_avg[k] + gain + loss
+                end
+
+                # 5b) Recompute K_hat
+                K_hat = zeros(R)
+                for i in 1:R
+                    # resource eq uses A[i,j] (j consumer) directly:
+                    drain = sum(A_s[i,j]*C_eq_avg[j-R] for j in R+1:S if A_s[i,j] < 0; init=0.0)
+                    # K_i = B_i + ? A[i,j] B_j
+                    K_hat[i] = abs(-R_eq_avg[i] + drain)
+                end
+
+                # 5c) Solve for new equilibrium
+                eq = try
+                        calibrate_from_K_xi(xi_hat, K_hat, epsilon_s, A_s)
+                    catch err
+                        @warn "Step $step: equilibrium solve failed (singular or NaNs)" 
+                        continue
+                    end
+        
+                R_eq_s, C_eq_s = eq[1:R], eq[R+1:S]
+                # also guard against non-finite or non-positive solution
+                # if any(!isfinite, eq) || any(x->x<=0, eq)
+                #     @warn "Step $step: infeasible equilibrium (non-finite or =0)"
+                #     continue
+                # end
+                
+                # tau_S[step] = 1.0 ./ eq
+                K_Xi_S[step] = vcat(K_hat, xi_hat)
+                
+                # d_res_hat = r_res_full ./ K_hat
+
+                # 5d) simulate simplified model
+                p_s = (R, C, m_cons, xi_hat, r_res, K_hat, epsilon_s, A_s)
+                
+                rt_press2, _, _, before_s, after_s, _, _ = simulate_press_perturbation(
+                    new_B0, p_s, tspan, tpert, delta;
+                    solver=Tsit5(),
+                    plot=false,
+                    cb=cb,
+                    full_or_simple=false
+                )
+                rt_pulse3, _, _, _, _ = simulate_pulse_perturbation(
+                    new_B0, p_s, tspan, tpert, delta;
+                    solver=Tsit5(),
+                    plot=false,
+                    cb=cb,
+                    species_specific_perturbation=false
+                )
+                
+                before_persistence_S[step] = before_s
+                after_persistence_S[step]  = after_s
+                rt_press_S[step]   = mean(filter(!isnan, rt_press2))
+                rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+                collectivity_S[step] = psi_s
+                resilience_S[step] = compute_resilience(new_B0, p_s)
+                reactivity_S[step] = compute_reactivity(new_B0, p_s)
+
+                D_s, M_s = compute_jacobian(new_B0, p_s)
+                J_s = D_s * M_s
+                stable_S[step] = is_locally_stable(J_s)
+                Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                Rmed_S[step] = Rm_s
             end
         end
 
@@ -517,26 +611,26 @@ function short_ComputingLadder(
                 Symbol("resilience_S$i") => resilience_S[i],
                 Symbol("reactivity_S$i") => reactivity_S[i],
                 Symbol("stable_S$i") => stable_S[i],
-                # Symbol("Rmed_s$i") => Rmed_s[i],
+                Symbol("Rmed_S$i") => Rmed_S[i],
                 # Symbol("tau_S$i") => tau_S[i],
                 Symbol("K_Xi_S$i") => K_Xi_S[i],
-            ] for i in 1:7)
+            ] for i in 1:8)
         ))
 
         rec = (
             conn=conn, IS=IS, scen=scen, delta =delta, epsi=epsi, m_val=m_val, g_val=g_val, ite =ite,
-            m_cons = m_cons, r_res = r_res,
             before_persistence_full=before_full, after_persistence_full=after_persistence_full, rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
             collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
-            # Rmed_full=Rmed_full,
+            Rmed_full=Rmed_full,
             # tau_full=tau_full,
             rt_pulse_full_vector=rt_pulse_full_vector, rt_press_full_vector=rt_press_full_vector,
-            K_Xi_full=original_k_xi,
             step_pairs...,  # Properly flattened pairs
             p_final = p,
             R_eq = R_eq,
             C_eq = C_eq,
-            B0 = B0
+            B0 = B0,
+            m_cons = m_cons, r_res = r_res,
+            K_Xi_full=original_k_xi,
         )
 
         lock(locki) do
@@ -562,9 +656,12 @@ T = short_ComputingLadder(
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.), tpert=250.0,
     number_of_combinations = 100000,
-    B_term = false,
-    iterations=1
+    B_term = true,
+    iterations=1,
+    Rmed_iterations=200
 )
+
 @info "we reached here"
-serialize("ThePaper/Ladder/Outputs/T.jls", T)
+# serialize("ThePaper/Ladder/Outputs/T.jls", T)
+
 T = deserialize("ThePaper/Ladder/Outputs/T.jls")
