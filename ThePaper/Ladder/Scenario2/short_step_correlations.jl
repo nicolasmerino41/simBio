@@ -7,13 +7,13 @@ function short_step_correlations(
     # ──────────────────────────────────────────────────────────────────────────
     # 1) define your 19 keys & titles
     step_keys = [
-        # "S1","S2","S3","S4","S5","S6", "S7"
-        "S7"
-    ]
+        "S1","S2","S3","S4","S5","S6", "S7", "S8"]
+        # "S7"
+    # ]
     step_names = [
-        # "Full Model", "Global A (Global ϵ)", " Global AE",
-        # "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
-        "Most Simplified Model"
+        "Full Model", "Global A (Global ϵ)", " Global AE",
+        "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
+        "Global A (Global ϵ) Mean B", "Global AE Mean B"
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -39,9 +39,9 @@ function short_step_correlations(
     cols = 3
     rows = ceil(Int, ns/cols)
 
-    fig = Figure(; size=(1000, 700))
-    # Label(fig[0, 1:cols], uppercase(string(var, " correlations")); fontsize=18)
-    # Label(fig[0, 2:cols], "Remove unstable: $(remove_unstable)"; fontsize=10)
+    fig = Figure(; size=(1000, 570))
+    Label(fig[0, 1:cols], uppercase(string(var, " correlations")); fontsize=18)
+    Label(fig[0, 2:cols], "Remove unstable: $(remove_unstable)"; fontsize=10)
 
     # ──────────────────────────────────────────────────────────────────────────
     # 4) loop panels
@@ -50,9 +50,9 @@ function short_step_correlations(
         c = mod(idx-1, cols) + 1
 
         ax = Axis(fig[r, c];
-            # title     = step_names[idx],
-            # xlabel    = string(full_col),
-            # ylabel    = string(panel_cols[idx]),
+            title     = step_names[idx],
+            xlabel    = string(full_col),
+            ylabel    = string(panel_cols[idx]),
             titlesize = 20, xlabelsize = 10, ylabelsize = 10,
             xticksize = 15, yticksize = 15,
         )
@@ -63,7 +63,7 @@ function short_step_correlations(
             color       = color_vals,
             colormap    = :viridis,
             colorrange  = (cmin, cmax),
-            markersize  = 10,
+            markersize  = 6,
             alpha       = 0.8
         )
 
@@ -74,12 +74,12 @@ function short_step_correlations(
             linestyle = :dash
         )
 
-        # r_val = cor(full_vals, ys)
-        # text!(ax, "r=$(round(r_val, digits=3))";
-        #     position = (mx, mn),
-        #     align    = (:right, :bottom),
-        #     fontsize = 10
-        # )
+        r_val = cor(full_vals, ys)
+        text!(ax, "r=$(round(r_val, digits=5))";
+            position = (mx, mn),
+            align    = (:right, :bottom),
+            fontsize = 10
+        )
     end
 
     display(fig)
@@ -107,40 +107,41 @@ df.SL = mean.(vect)
 df.SL_consumers = mean.(vect_consumers)
 df.SL_resources = mean.(vect_resources)
 
+rt_med = short_step_correlations(df, :Rmed;  color_by = color_by, remove_unstable=false)
+
 begin
+    save_plot = false
     color_by = :conn
-    remove_it = true
+    remove_it = false
     rt_press = short_step_correlations(df, :rt_press;  color_by = color_by, remove_unstable=remove_it)
-    save("ThePaper/Ladder/Scenario2/figures/rt_press.png", rt_press)
-    short_step_correlations(df, :after_persistence;  color_by = color_by, remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/rt_press.png", rt_press)
+    end
+    
+    persistence = short_step_correlations(df, :after_persistence; remove_unstable=remove_it, color_by = color_by)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/persistence.png", persistence)
+    end
 
     rt_pulse = short_step_correlations(df, :rt_pulse; remove_unstable=remove_it, color_by = color_by)
-    save("ThePaper/Ladder/Scenario2/figures/rt_pulse.png", rt_pulse)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/rt_pulse.png", rt_pulse)
+    end
 
     collectivity = short_step_correlations(df, :collectivity; remove_unstable=remove_it, color_by = color_by)
-    save("ThePaper/Ladder/Scenario2/figures/collectivity.png", collectivity)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/collectivity.png", collectivity)
+    end
 
     resilience = short_step_correlations(df, :resilience; remove_unstable=remove_it, color_by = color_by)
-    save("ThePaper/Ladder/Scenario2/figures/resilience.png", resilience)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/resilience.png", resilience)
+    end
 
     reactivity = short_step_correlations(df, :reactivity; remove_unstable=remove_it, color_by = color_by)
-    save("ThePaper/Ladder/Scenario2/figures/reactivity.png", reactivity)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/reactivity.png", reactivity)
+    end
 
-    persistence = short_step_correlations(df, :after_persistence; remove_unstable=remove_it, color_by = color_by)
-    save("ThePaper/Ladder/Scenario2/figures/persistence.png", persistence)
+    rt_med = short_step_correlations(df, :Rmed; color_by = color_by, remove_unstable=remove_it)
 end
-
-res_df = hcat(A.resilience_S1, A.resilience_S2, A.resilience_S3, A.resilience_S4, A.resilience_S5, A.resilience_S6)
-
-A_matrix = A.p_final[1][8]
-epsilon_matrix = A.p_final[1][7]
-epsilon_matrix = fill(1.0, 50, 50)
-
-psi_full = compute_collectivity(A_matrix, epsilon_matrix)
-a1_A, a1_epsilon  = short_transform_for_ladder_step(1, copy(A_matrix), copy(epsilon_matrix))
-a2_A, a2_epsilon = short_transform_for_ladder_step(2, copy(A_matrix), copy(epsilon_matrix))
-a3_A, a3_epsilon = short_transform_for_ladder_step(3, copy(A_matrix), copy(epsilon_matrix))
-
-psi_a1 = compute_collectivity(a1_A, a1_epsilon)
-psi_a2 = compute_collectivity(a2_A, a2_epsilon) 
-psi_a3 = compute_collectivity(a3_A, a3_epsilon)
