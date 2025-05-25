@@ -1,6 +1,5 @@
 using EcologicalNetworksDynamics, DifferentialEquations, ForwardDiff
 
-
 function plot_simulation(sol)
     fig = Figure(; size = (600, 600))
     ax = Axis(fig[1, 1])
@@ -47,7 +46,5 @@ function compute_jacobian(m::Model, Bstar::AbstractVector)
 end
 
 Jfull = compute_jacobian(m, Bstar)
-
-
 
 # 4) run your short_transform_for_ladder_step  -> (A_s,ε_s) -> build a new `Model` and repeat...

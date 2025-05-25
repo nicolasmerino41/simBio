@@ -1,7 +1,7 @@
 using EcologicalNetworksDynamics, DifferentialEquations, ForwardDiff
 
 # 1) Build a niche food‐web and default model
-fw = Foodweb(:niche; S = 10, C = 0.3)
+fw = Foodweb(:niche; S = 50, C = 0.3)
 m  = default_model(fw)
 
 # 2) Extract parameters from m
@@ -73,14 +73,15 @@ function allo_ode!(du, u, p, t)
 end
 
 # 4) Solve our own ODE
-u0   = rand(S) * 10.0  # initial biomasses
+cb = build_callbacks(50, EXTINCTION_THRESHOLD)
+u0   = rand(S)  # initial biomasses
 prob = ODEProblem(allo_ode!, u0, (0.0, 500.0), p)
-sol1 = solve(prob, Tsit5(); callback = cb, abstol=1e-9, reltol=1e-9)
+sol1 = solve(prob, Tsit5(); callback = cb, abstol=1e-6, reltol=1e-6)
 
 plot_simulation(sol1)
 
 # 5) Solve via EcologicalNetworksDynamics.simulate
-sol2 = simulate(m, u0, 500.0; abstol=1e-9, reltol=1e-9)
+sol2 = simulate(m, u0, 500.0)
 plot_simulation(sol2)
 
 # 6) Compare final biomasses
@@ -88,3 +89,9 @@ B1 = sol1.u[end]
 B2 = sol2.u[end]
 
 @info "Maximum absolute difference: ", maximum(abs.(B1 .- B2))
+
+survival = sum(B1 .> 0.0) / S
+@info "Survival rate: ", survival
+
+survival2 = sum(B2 .> 0.0) / S
+@info "Survival rate (EcologicalNetworksDynamics): ", survival2

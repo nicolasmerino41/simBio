@@ -1,4 +1,5 @@
 using EcologicalNetworksDynamics, Plots
+
 fw = Foodweb([1 => 2, 2 => 3]) # 1 eats 2, and 2 eats 3.
 
 m = default_model(fw)
