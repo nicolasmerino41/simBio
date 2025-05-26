@@ -142,4 +142,8 @@ begin
     end
 
     rt_med = short_step_correlations(df, :Rmed; color_by = color_by, remove_unstable=remove_it)
+
+    tau = short_step_correlations(df, :tau; color_by = color_by, remove_unstable=remove_it)
+
+    J_diff = short_step_correlations(df, :J_diff; color_by = color_by, remove_unstable=remove_it)
 end
