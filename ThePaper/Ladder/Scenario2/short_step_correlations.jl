@@ -107,12 +107,10 @@ df.SL = mean.(vect)
 df.SL_consumers = mean.(vect_consumers)
 df.SL_resources = mean.(vect_resources)
 
-rt_med = short_step_correlations(df, :Rmed;  color_by = color_by, remove_unstable=false)
-
 begin
     save_plot = false
     color_by = :conn
-    remove_it = false
+    remove_it = true
     rt_press = short_step_correlations(df, :rt_press;  color_by = color_by, remove_unstable=remove_it)
     if save_plot
         save("ThePaper/Ladder/Scenario2/figures/rt_press.png", rt_press)

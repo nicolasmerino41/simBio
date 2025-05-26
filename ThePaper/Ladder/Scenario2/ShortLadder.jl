@@ -655,13 +655,13 @@ T = short_ComputingLadder(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 100000,
-    B_term = true,
+    number_of_combinations = 10000,
+    B_term = false,
     iterations=1,
     Rmed_iterations=200
 )
 
 @info "we reached here"
-# serialize("ThePaper/Ladder/Outputs/T.jls", T)
+serialize("ThePaper/Ladder/Outputs/T.jls", T)
 
 T = deserialize("ThePaper/Ladder/Outputs/T.jls")
