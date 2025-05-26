@@ -135,7 +135,8 @@ function plot_metrics_vs_structure(
     # determine facets
     facets = facet_by === nothing ? [nothing] : unique(df[!, facet_by])
     step_names = ["Full Model","Global A (Global ϵ)","Global AE",
-                  "Randomize m_cons","Randomize ξ","Randomize K_res"]
+                  "Randomize m_cons","Randomize ξ","Randomize K_res",
+                  "Global A (Global ϵ) Mean B","Global AE Mean B"]
 
     for f in facets
         sub = facet_by === nothing ? df : filter(r -> r[facet_by] == f, df)
@@ -205,7 +206,7 @@ for metric in [:rt_pulse]
         plot_metrics_vs_structure(
             A, metric, biomass;
             color_by=:IS,
-            facet_by=:scen,
+            # facet_by=:scen,
             remove_unstable=true
         )
     end

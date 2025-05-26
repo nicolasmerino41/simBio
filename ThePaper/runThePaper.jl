@@ -1,5 +1,5 @@
 @time begin
-    PC = "nicol"
+    PC = "MM-1"
     const EXTINCTION_THRESHOLD = 1e-6
     using Pkg
     Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\ThePaper"))
@@ -8,7 +8,7 @@
     # using ArchGDAL #, Shapefile, NCDatasets
     using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs
     import Base.Threads: @threads
-    include("Ladder/Scenario2/Ladder4.1.jl")
+    # include("Ladder/Scenario2/Ladder4.1.jl")
     # using CSV, DataFrames
     # using NamedArrays, StaticArrays, OrderedCollections
     # # using Rasters, RasterDataSources #, DimensionalData
