@@ -4,8 +4,8 @@
 # ───────────────────────────────────────────────────────────────────────────────
 function step_correlations_END(df::DataFrame, var::Symbol; color_by::Symbol = :conn, remove_unstable = false)
     # We only have steps 2 and 3 (step1 is the full model itself)
-    step_keys   = ["S1", "S2", "S3"]
-    step_titles = ["Full Model", "Global A (Global ϵ)", "Global AE"]
+    step_keys   = ["S1", "S2"]#, "S3"]
+    step_titles = ["Full Model", "Global A (Global ϵ)"]#, "Global AE"]
 
     # ──────────────────────────────────────────────────────────────────────────
     # 1b) optionally filter out any run that went unstable
@@ -28,7 +28,7 @@ function step_correlations_END(df::DataFrame, var::Symbol; color_by::Symbol = :c
     fig = Figure(size=(900, 400))
     Label(fig[0, 1:2], uppercase(string(var, " correlations")), fontsize=18)
 
-    for idx in 1:3
+    for idx in 1:2
         ax = Axis(fig[1, idx];
             title     = step_titles[idx],
             # xlabel    = full_col,
@@ -62,8 +62,8 @@ function step_correlations_END(df::DataFrame, var::Symbol; color_by::Symbol = :c
     display(fig)
 end
 # ───────────────────────────────────────────────────────────────────────────────
-
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder.jls")
+A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade.jls")
 # And when you call it, do so *after* this file has been included:
 begin 
     color_by = :conn
@@ -71,7 +71,11 @@ begin
     step_correlations_END(A, :resilience; color_by = color_by, remove_unstable = remove_it)
     step_correlations_END(A, :reactivity; color_by = color_by, remove_unstable = remove_it)
     step_correlations_END(A, :Rmed; color_by = color_by, remove_unstable = remove_it)
-    step_correlations_END(A, :rt; color_by = color_by, remove_unstable = remove_it)
+    step_correlations_END(A, :rt_press; color_by = color_by, remove_unstable = remove_it)
+    step_correlations_END(A, :rt_pulse; color_by = color_by, remove_unstable = remove_it)
     step_correlations_END(A, :before; color_by = color_by, remove_unstable = remove_it)
     step_correlations_END(A, :after; color_by = color_by, remove_unstable = remove_it)
+    step_correlations_END(A, :after_pulse; color_by = color_by, remove_unstable = remove_it)
 end
+
+F = A[: , [:resilience_full, :resilience_S1, :resilience_S2, :resilience_S3]]
