@@ -2,7 +2,12 @@ using CairoMakie
 
 # Replace this with your actual DataFrame variable
 # df = DataFrame(...) 
-
+dff = copy(df)  # Assuming df is your DataFrame
+res_cols = Symbol.("resilience_" .* step_keys)
+dff = filter(row -> all(row[c] < 0 for c in res_cols), dff)
+res_cols = Symbol.("after_pulse_" .* step_keys)
+dff = filter(row -> all(row[c] .> 0.9 for c in res_cols), dff)
+println("subset size: ", nrow(dff))
 # Prepare arrays for plotting
 rt_resources = Float64[]
 rt_consumers = Float64[]
@@ -14,7 +19,7 @@ for i in 1:10
     rt_consumers = Float64[]
     x_resources = Float64[]
     x_consumers = Float64[]
-    for row in eachrow(df)[i:i]  # Assuming df is a DataFrame
+    for row in eachrow(dff)[i:i]  # Assuming dff is a DataFrame
         rt_vec = row[:rt_pulse_full_vector]
         k_xi   = row[:K_Xi_full]
         R_eq   = row[:R_eq]
@@ -44,7 +49,7 @@ for i in 1:10
     end
 
     begin
-        fig = Figure(resolution = (800, 500))
+        fig = Figure(; size = (800, 500))
         ax = Axis(fig[1, 1];
             xlabel = "Self-Regulation Loss (rB/K for resources, mB/xi for consumers)",
             ylabel = "Return Time",
