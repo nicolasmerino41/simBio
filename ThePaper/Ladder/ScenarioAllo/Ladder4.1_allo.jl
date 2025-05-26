@@ -1,15 +1,16 @@
+println("Ladder4.1_allo.jl: Running the Ladder of Allo‐ecological models.")
 using Pkg
 cd(pwd())
 
 dir = pwd()
-
+@info "Got to the first three lines of Ladder4.1_allo.jl"
 # Packages
 using CSV, DataFrames
 using NamedArrays, StaticArrays, OrderedCollections
 using Dates, Distributions, Serialization, StatsBase, Random
 using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
 using GLM, Graphs
-
+@info "Loaded packages."
 const DF = DataFrames
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
 const EXTINCTION_THRESHOLD = 1e-6
@@ -108,7 +109,6 @@ function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, 
 
     return xi_cons, K_res
 end
-
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 2) Given Xi and K build & solve M B_eq = b, check positivity
@@ -441,7 +441,7 @@ function simulate_press_perturbation_allo!(
     K2 = K .* (1 .- delta)
     p2 = merge(p, (K = K2,))
     prob2 = ODEProblem(allo_ode!, pre, (tpert, tspan[2]), p2)
-    sol2  = solve(prob2, solver; callback=cb, abstol=1e-8, reltol=1e-8)
+    sol2  = solve(prob2, solver; callback=cb, abstol=1e-6, reltol=1e-6)
     post  = sol2.u[end]
     after = count(>(EXTINCTION_THRESHOLD), post)/S
 
@@ -449,7 +449,7 @@ function simulate_press_perturbation_allo!(
     for i in 1:S
         tgt = post[i]
         for (t, st) in zip(sol2.t, sol2.u)
-            if abs(st[i] - tgt)/(abs(tgt)+1e-8) < 0.10
+            if abs(st[i] - tgt)/(abs(tgt)+1e-6) < 0.10
                 rtn[i] = t - tpert
                 break
             end
@@ -465,106 +465,65 @@ end
 #############################################################################
 #############################################################################
 """
-    simulate_pulse_perturbation(
-        u0, p, tspan, t_pulse, delt;
-        solver=Tsit5(),
-        plot=false,
-        cb=nothing,
-        species_specific_perturbation=false
-    ) -> (return_times, before_persist, after_persist, eq_state, species_rt)
+    simulate_pulse_perturbation_allo!(
+      u0, p, tspan, t_pulse, delta;
+      solver=Tsit5(),
+      cb=nothing
+    ) -> (return_times, before_persist, after_persist, eq_state)
 
-- `u0` : initial abundances (length S)
-- `p`  : parameters tuple `(R, C, m_cons, xi_cons, r_res, K_res, epsilon, A)`
+- `u0` : initial biomasses (length S)
+- `p`  : named‐tuple `(S, r, K, x, d, attack, epsilon, B0_ref, i0, h)`
 - `tspan` : `(t0, tfinal)`
-- `t_pulse` : time at which to apply the pulse
-- `delt`  : fractional pulse (e.g. 0.2 knocks everyone up by +20%; use `-0.5` to reduce by 50%)
-- `cb` : a `CallbackSet` for extinction, defaults to none
-- `species_specific_perturbation` : if `true`, also gives per-consumer pulse return-times
+- `t_pulse` : time to apply the pulse
+- `delta`  : fractional pulse (e.g. `0.2` → +20%, `-0.5` → -50%)
+- `cb` : optional `CallbackSet` for extinctions
 
 Returns:
-1. `return_times::Vector{Float64}` - time for each of the S species to return within 10% of equilibrium  
+1. `return_times::Vector{Float64}` - time for each species to return within 10% of its post-pulse equilibrium  
 2. `before_persist::Float64` - fraction of species alive just before the pulse  
-3. `after_persist::Float64`  - fraction of species alive at the end  
-4. `eq_state::Vector{Float64}` - the asymptotic state after the pulse  
-5. `species_rt::Vector{Float64}` (length C) - if `species_specific_perturbation`, return-times for each consumer pulse
+3. `after_persist::Float64` - fraction of species alive at the end  
+4. `eq_state::Vector{Float64}` - final state after the pulse  
 """
-function simulate_pulse_perturbation(
-    u0, p, tspan, t_pulse, delt;
+function simulate_pulse_perturbation_allo!(
+    u0::AbstractVector,
+    p,
+    tspan::Tuple{<:Real,<:Real},
+    t_pulse::Real,
+    delta::Real;
     solver=Tsit5(),
-    plot=false,
-    cb=nothing,
-    species_specific_perturbation=false
+    cb = nothing,
 )
-    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
-    S = R + C
+    # unpack
+    S        = p.S
+    # note: allo_ode! expects du,u,p,t
+    # phase 1: run up to t_pulse
+    prob1 = ODEProblem(allo_ode!, u0, (tspan[1], t_pulse), p)
+    sol1  = solve(prob1, solver; callback=cb, abstol=1e-8, reltol=1e-8)
+    pre   = sol1.u[end]
+    before = count(>(EXTINCTION_THRESHOLD), pre) / S
 
-    # 1) Integrate up to the pulse
-    prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], t_pulse), p)
-    sol1 = solve(prob1, solver; callback=cb, reltol=1e-8, abstol=1e-8)
-    pre_state = sol1.u[end]
-    before_persist = count(x->x>EXTINCTION_THRESHOLD, pre_state) / S
+    # phase 2: apply pulse
+    pulsed = pre .* (1 + delta)
 
-    # 2) Apply the pulse: fractional change delt
-    pulsed = pre_state .* (1 + delt)
+    # phase 3: integrate to tfinal
+    prob2 = ODEProblem(allo_ode!, pulsed, (t_pulse, tspan[2]), p)
+    sol2  = solve(prob2, solver; callback=cb, abstol=1e-8, reltol=1e-8)
+    post  = sol2.u[end]
+    after = count(>(EXTINCTION_THRESHOLD), post) / S
 
-    # 3) Integrate from t_pulse to tfinal with same parameters
-    prob2 = ODEProblem(trophic_ode!, pulsed, (t_pulse, tspan[2]), p)
-    sol2 = solve(prob2, solver; callback=cb, reltol=1e-8, abstol=1e-8)
-
-    # equilibrium after pulse (assumed to be sol2.u[end])
-    eq_state = sol2.u[end]
-    after_persist = count(x->x>EXTINCTION_THRESHOLD, eq_state) / S
-
-    # 4) Return times: when each species returns within 10% of eq_state
-    return_times = fill(NaN, S)
+    # phase 4: return times to within 10% of post-state
+    rtn = fill(NaN, S)
     for i in 1:S
-        target = eq_state[i]
-        for (t, u) in zip(sol2.t, sol2.u)
-            if abs(u[i] - target) / (abs(target) + 1e-8) < 0.10
-                return_times[i] = t - t_pulse
+        target = post[i]
+        for (t,u) in zip(sol2.t, sol2.u)
+            if abs(u[i] - target)/(abs(target)+1e-8) < 0.10
+                rtn[i] = t - t_pulse
                 break
             end
         end
     end
 
-    # 5) Species‐specific pulse (only consumers) if requested
-    species_rt = fill(NaN, C)
-    if species_specific_perturbation
-        for k in 1:C
-            i = R + k
-            # perturb only consumer k
-            u_k = copy(pre_state)
-            u_k[i] *= (1 + delt)
-            prob_k = ODEProblem(trophic_ode!, u_k, (t_pulse, tspan[2]), p)
-            sol_k  = solve(prob_k, solver; callback=cb, reltol=1e-8, abstol=1e-8)
-            final = sol_k.u[end][i]
-            # find return time for species i
-            for (t, u) in zip(sol_k.t, sol_k.u)
-                if abs(u[i] - final) / (abs(final) + 1e-8) < 0.10
-                    species_rt[k] = t - t_pulse
-                    break
-                end
-            end
-        end
-    end
-
-    # 6) Optional plotting
-    if plot
-        fig = Figure(resolution=(1200,600))
-        ax1 = Axis(fig[1,1], title="Pre-Pulse Dynamics", xlabel="Time", ylabel="Biomass")
-        ax2 = Axis(fig[1,2], title="Post-Pulse Dynamics", xlabel="Time", ylabel="Biomass")
-        for i in 1:R
-            lines!(ax1, sol1.t, [u[i] for u in sol1.u], color=:blue)
-            lines!(ax2, sol2.t, [u[i] for u in sol2.u], color=:blue)
-        end
-        for i in R+1:S
-            lines!(ax1, sol1.t, [u[i] for u in sol1.u], color=:red)
-            lines!(ax2, sol2.t, [u[i] for u in sol2.u], color=:red)
-        end
-        display(fig)
-    end
-
-    return return_times, before_persist, after_persist, eq_state, species_rt
+    return rtn, before, after, post
 end
 
 ##########################################################################
