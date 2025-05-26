@@ -60,31 +60,31 @@ where
 - \(a_{ij}\) are the raw interaction coefficients.
 
 We introduce the following definitions:
-\[
+$$
 K_i = \frac{r_i}{d_i} \quad \text{(Carrying Capacity)},
-\]
-\[
+$$
+$$
 \xi_i = \frac{m_i}{d_i} \quad \text{(Overpopulation Threshold)},
-\]
-\[
+$$
+$$
 \varepsilon = \epsilon\,\frac{d_j}{d_i} \quad \text{(Conversion Efficiency)},
-\]
+$$
 and define the scaled loss interaction as
-\[
+$$
 A_{ji} = \frac{a_{ji}}{d_i}\,.
-\]
+$$
 
 Thus, the consumer dynamics can be rewritten as
-\[
+$$
 \frac{1}{B_i}\frac{dB_i}{dt} \;=\; \frac{m_i}{\xi_i}\Biggl[ -\xi_i - B_i + \sum_{j \in \text{preys of } i} \varepsilon\,A_{ij}\,B_j - \sum_{j \in \text{predators of } i} A_{ji}\,B_j \Biggr] \,. 
-\]
+$$
 
 ## Calibration to Fix Equilibrium Abundances
 
 In a mean‐field scenario, to force the model to reproduce observed equilibrium abundances \(B_i^* \), we determine the effective threshold \(\xi_i^*\) such that
-\[
+$$
 \xi_i^* \;=\; -B_i^* \;+\; \varepsilon\,A\,B_{\text{preys of } i} \;-\; A\,B_{\text{predators of } i} \,. 
-\]
+$$
 
 This balance ensures that the net growth of each consumer is zero at the prescribed equilibrium.
 
@@ -151,9 +151,9 @@ $$
 \text{err}_{T} \;=\; \frac{|T_{\text{sim}} - T_{\text{pred}}|}{\frac{T_{\text{sim}} + T_{\text{pred}}}{2}}\,,
 $$
 and for overshoot and recovery error we assume the ideal is zero so that their observed values are directly the errors. A compound error can then be defined by averaging these three:
-\[
+$$
 \text{Compound Error} \;=\; \frac{\text{err}_{T} + \text{err}_{OS} + \text{err}_{I_{RE}}}{3}\,.
-\]
+$$
 
 We can compute these errors for a basic prediction as well as for an extended prediction that incorporates additional structural information (e.g., the coefficient of variation of the degree).
 
