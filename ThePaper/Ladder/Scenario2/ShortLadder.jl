@@ -157,7 +157,8 @@ function short_ComputingLadder(
         rt_pulse_full_vector = rt_pulse
         rt_press_full_vector = rt_press
         collectivity_full = psi 
-        tau_full = mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons).*B0./vcat(K_res,xi_cons))))
+        tau_full = -1 ./ diag(J_full)
+        mean_tau_full = mean(tau_full)
         
         J_diff_full = norm(J_full - J_full)
         J_full_norm = norm(J_full)
@@ -173,7 +174,8 @@ function short_ComputingLadder(
         reactivity_S  = Dict(i=>NaN for i in 1:8)
         stable_S    = Dict(i=>NaN for i in 1:8)
         Rmed_S    = Dict(i=>NaN for i in 1:8)
-        tau_S = Dict(i => NaN[] for i in 1:8)
+        tau_S = Dict(i => Float64[] for i in 1:8)
+        mean_tau_S = Dict(i => NaN for i in 1:8)
         K_Xi_S = Dict(i => Float64[] for i in 1:8)
         J_diff_S = Dict(i => NaN for i in 1:8)
         @info "Running ladder"
@@ -271,14 +273,15 @@ function short_ComputingLadder(
             # @show maximum(abs, B0 - fixed)
             # @info "tau full is $(tau_full) and tau short is $(mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons).*B0./vcat(K_hat,xi_hat)))))"
 
-            tau_S[step] = mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons).*B0./vcat(K_hat,xi_hat))))
-
             D_s, M_s = compute_jacobian(B0, p_s)
             J_s = D_s * M_s
             J_diff_S[step] = norm(J_s - J_full)
             stable_S[step] = is_locally_stable(J_s)
             Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
             Rmed_S[step] = Rm_s
+
+            tau_S[step] = -1 ./ diag(J_s)
+            mean_tau_S[step] = mean(-1 ./ diag(J_s))
         end
         
         for step in 4:8
@@ -324,7 +327,6 @@ function short_ComputingLadder(
                 collectivity_S[step] = psi_s
                 resilience_S[step] = compute_resilience(B0, p_s)
                 reactivity_S[step] = compute_reactivity(B0, p_s)
-                tau_S[step] = mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons_s).*B0./vcat(K_res,xi_cons))))
 
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
@@ -333,6 +335,8 @@ function short_ComputingLadder(
                 Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
                 Rmed_S[step] = Rm_s
 
+                tau_S[step] = -1 ./ diag(J_s)
+                mean_tau_S[step] = mean(-1 ./ diag(J_s)) 
             # -------------------------------------------------------------------------
             # step 18: re-randomise xi_cons
             # -------------------------------------------------------------------------
@@ -380,14 +384,15 @@ function short_ComputingLadder(
                 resilience_S[step] = compute_resilience(B0, p_s)
                 reactivity_S[step] = compute_reactivity(B0, p_s)
 
-                tau_S[step] = mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons).*B0./vcat(K_res,xi_cons_s))))
-
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
                 Rmed_S[step] = Rm_s
+
+                tau_S[step] = -1 ./ diag(J_s)
+                mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
             # -------------------------------------------------------------------------
             # step 19: re-randomise K_res
@@ -436,14 +441,15 @@ function short_ComputingLadder(
                 resilience_S[step] = compute_resilience(B0, p_s)
                 reactivity_S[step] = compute_reactivity(B0, p_s)
 
-                tau_S[step] = mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons).*B0./vcat(K_res_s,xi_cons))))
-
                 D_s, M_s = compute_jacobian(B0, p_s)
                 J_s = D_s * M_s
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
                 Rmed_S[step] = Rm_s
+
+                tau_S[step] = -1 ./ diag(J_s)
+                mean_tau_S[step] = mean(-1 ./ diag(J_s))
             
             elseif step == 7
                 
@@ -532,14 +538,15 @@ function short_ComputingLadder(
                 resilience_S[step] = compute_resilience(new_B0, p_s)
                 reactivity_S[step] = compute_reactivity(new_B0, p_s)
 
-                tau_S[step] = mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons).*new_B0./vcat(K_hat,xi_hat))))
-
                 D_s, M_s = compute_jacobian(new_B0, p_s)
                 J_s = D_s * M_s
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
                 Rmed_S[step] = Rm_s
+
+                tau_S[step] = -1 ./ diag(J_s)
+                mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
             elseif step == 8
                 
@@ -627,15 +634,16 @@ function short_ComputingLadder(
                 resilience_S[step] = compute_resilience(new_B0, p_s)
                 reactivity_S[step] = compute_reactivity(new_B0, p_s)
 
-                tau_S[step] = mean(filter(!isnan, 1.0 ./ (vcat(r_res,m_cons).*new_B0./vcat(K_hat,xi_hat))))
-
                 D_s, M_s = compute_jacobian(new_B0, p_s)
                 J_s = D_s * M_s
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 Rm_s = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
                 Rmed_S[step] = Rm_s
-                Jacob_diff = norm(A_s - A)
+                J_diff_S[step] = norm(J_s - J_full)
+
+                tau_S[step] = -1 ./ diag(J_s)
+                mean_tau_S[step] = mean(-1 ./ diag(J_s))
             end
         end
 
@@ -652,6 +660,7 @@ function short_ComputingLadder(
                 Symbol("stable_S$i") => stable_S[i],
                 Symbol("Rmed_S$i") => Rmed_S[i],
                 Symbol("tau_S$i") => tau_S[i],
+                Symbol("mean_tau_S$i") => mean_tau_S[i],
                 Symbol("K_Xi_S$i") => K_Xi_S[i],
                 Symbol("J_diff_S$i") => J_diff_S[i],
             ] for i in 1:8)
@@ -663,7 +672,8 @@ function short_ComputingLadder(
             rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
             collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
             Rmed_full=Rmed_full,
-            tau_full=tau_full, J_diff_full=J_diff_full, J_full_norm=J_full_norm,
+            mean_tau_full=mean_tau_full, tau_full=tau_full,
+            J_diff_full=J_diff_full, J_full_norm=J_full_norm,
             rt_pulse_full_vector=rt_pulse_full_vector, rt_press_full_vector=rt_press_full_vector,
             step_pairs...,  # Properly flattened pairs
             p_final = p,
@@ -696,7 +706,7 @@ R = short_ComputingLadder(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.), tpert=250.0,
-    number_of_combinations = 1000,
+    number_of_combinations = 10000,
     B_term = false,
     iterations=1,
     Rmed_iterations=20
