@@ -37,6 +37,18 @@ function step_correlations_END(df::DataFrame, var::Symbol; color_by::Symbol = :c
         )
 
         ys = df[!, panel_cols[idx]]
+
+        if var in (:rt_press, :rt_pulse)
+            mask = .!ismissing.(full_vals) .&& .!ismissing.(ys) .&& (full_vals .> 0) .&& (ys .> 0)
+            xv = full_vals[mask]
+            yv = ys[mask]
+            cv = color_vals[mask]
+        else
+            xv = full_vals
+            yv = ys
+            cv = color_vals
+        end
+        
         scatter!(ax, full_vals, ys;
             colormap   = :viridis,
             color      = color_vals,
@@ -64,6 +76,12 @@ end
 # ───────────────────────────────────────────────────────────────────────────────
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder.jls")
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade.jls")
+A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade276.jls")
+A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade768.jls")
+A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade1440.jls")
+A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade348.jls")
+A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade2880.jls")
+
 # And when you call it, do so *after* this file has been included:
 begin 
     color_by = :conn
