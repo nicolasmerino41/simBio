@@ -449,7 +449,7 @@ function simulate_press_perturbation_allo!(
     for i in 1:S
         tgt = post[i]
         for (t, st) in zip(sol2.t, sol2.u)
-            if abs(st[i] - tgt)/(abs(tgt)+1e-6) < 0.10
+            if abs(st[i] - tgt)/(abs(tgt)+1e-6) < 0.05
                 rtn[i] = t - tpert
                 break
             end
@@ -516,7 +516,7 @@ function simulate_pulse_perturbation_allo!(
     for i in 1:S
         target = post[i]
         for (t,u) in zip(sol2.t, sol2.u)
-            if abs(u[i] - target)/(abs(target)+1e-8) < 0.10
+            if abs(u[i] - target)/(abs(target)+1e-8) < 0.05
                 rtn[i] = t - t_pulse
                 break
             end
