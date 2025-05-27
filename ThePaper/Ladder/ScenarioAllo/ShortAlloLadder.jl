@@ -10,8 +10,8 @@ import Base.Threads: @threads
 # -----------------------
 # 1) Builder from END
 # -----------------------
-function build_from_scenario(S::Int, C::Int, conn::Real, IS_scale::Real)
-    fw = Foodweb(:cascade; S=S, C=conn, reject_if_disconnected=false)
+function build_from_scenario(S::Int, conn::Real; model_type = :cascade, reject_if_disconnected=true)
+    fw = Foodweb(model_type; S=S, C=conn, reject_if_disconnected=reject_if_disconnected)
     m  = default_model(fw)
 
     # pull out everything
@@ -55,8 +55,9 @@ end
 function short_ComputingLadder_END(
     S::Int=50, C::Int=20;
     conn_vals=[0.05, 0.1, 0.2],
-    IS_vals=[0.1, 1.0],
     deltas=[0.1, 0.5, 1.0],
+    model_types = [:cascade, :niche],
+    reject_if_disconnected = [true, false],
     number_of_combinations=100,
     iterations=100,
     steps=3
@@ -65,12 +66,12 @@ function short_ComputingLadder_END(
     locki = ReentrantLock()
     cb = build_callbacks(S, EXTINCTION_THRESHOLD)
 
-    combos = collect(Iterators.product(conn_vals, IS_vals, deltas, 1:iterations))
+    combos = collect(Iterators.product(conn_vals, model_types, reject_if_disconnected, deltas, 1:iterations))
     @info "Running short ladder with $(length(combos)) combinations but only $(min(length(combos), number_of_combinations)) will be sampled."
-    @threads for (conn, IS_scale, delta, ite) in sample(combos, min(length(combos), number_of_combinations); replace=false)
-        # @info "Running iteration $(ite) with conn=$(conn), IS_scale=$(IS_scale), delta=$(delta)"
+    @threads for (conn, model_type, descon, delta, ite) in sample(combos, min(length(combos), number_of_combinations); replace=false)
+        @info "Running iteration $(ite) with conn=$(conn), delta=$(delta) and model_type=$(model_type), descon=$(descon)"
         # build
-        local m, p, attack, epsilon = build_from_scenario(S, C, conn, IS_scale)
+        local m, p, attack, epsilon = build_from_scenario(S, conn; model_type=model_type, reject_if_disconnected=descon)
         p = (S = p.S, r = p.r, K = p.K, x = p.x, d = p.d, attack = p.attack, epsilon = epsilon, B0_ref = p.B0_ref, i0 = p.i0, h = p.h)
         # full-model simulation
         u0 = rand(S)
@@ -92,21 +93,31 @@ function short_ComputingLadder_END(
         # end
 
         # metrics full
-        res_f = compute_resilience(Bstar, p)
+        res_full = compute_resilience(Bstar, p)
         # println("breaokpoint 1.5")
-        rea_f = compute_reactivity(Bstar, p)
+        rea_full = compute_reactivity(Bstar, p)
         # println("breakpoint 1.75")
-        Rm_f  = median_return_rate(J_full, Bstar; t=1.0, n=20)
+        Rm_full  = median_return_rate(J_full, Bstar; t=1.0, n=80)
         # println("breakpoint 2")
         # - full model press -
-        rt_press_full, before_full, after_full, _ = simulate_press_perturbation_allo!(Bstar, p, (0.,500.), 250.0, delta; cb=cb)
-        rt_pulse_full, _, after_pulse_full, _ = simulate_pulse_perturbation_allo!(Bstar, p, (0.,500.), 250.0, delta; cb=cb)
-        # println("breakpoint 3")
+        rt_press_full, before_full, after_full, B_post_press_full = simulate_press_perturbation_allo!(Bstar, p, (0.,500.), 250.0, delta; cb=cb)
+        rt_pulse_full, _, after_pulse_full, B_post_pulse_full = simulate_pulse_perturbation_allo!(Bstar, p, (0.,500.), 250.0, delta; cb=cb)
+        
+        # filter out NaNs and zeros
+        valid_press = filter(x -> !isnan(x) && x != 0.0, rt_press_full)
+        valid_pulse = filter(x -> !isnan(x) && x != 0.0, rt_pulse_full)
+
+        # take mean or zero if nothing left
+        mean_rt_press_full = isempty(valid_press) ? 0.0 : mean(valid_press)
+        mean_rt_pulse_full = isempty(valid_pulse) ? 0.0 : mean(valid_pulse)
+
+        tau_full = -1 ./ diag(J_full)
+        mean_tau_full = mean(tau_full)
+        
         # - simplified model press at each step -
         before_S = Dict(i => NaN for i in 1:steps)
         after_S  = Dict(i => NaN for i in 1:steps)
         after_pulse_S = Dict(i => NaN for i in 1:steps)
-        
         rea_S  = Dict(i=>NaN for i in 1:steps)
         res_S  = Dict(i=>NaN for i in 1:steps)
         st_S    = Dict(i=>NaN for i in 1:steps)
@@ -114,6 +125,8 @@ function short_ComputingLadder_END(
         rt_press_S    = Dict(i=>NaN for i in 1:steps)
         rt_pulse_S    = Dict(i=>NaN for i in 1:steps)
         J_diff_S = Dict(i=>NaN for i in 1:steps)
+        mean_tau_S = Dict(i => NaN for i in 1:steps)
+        tau_S = Dict(i => Float64[] for i in 1:steps)
         
         @info "Running ladder"
         for step in 1:steps
@@ -138,15 +151,25 @@ function short_ComputingLadder_END(
             after_S[step]  = after_s
             after_pulse_S[step] = after_pulse_s
             # println("breakpoint 6")
-            rt_press_S[step] = mean(filter(!isnan, rt_press_s))
+
+            # filter out NaNs and zeros
+            valid_press = filter(x -> !isnan(x) && x != 0.0, rt_press_s)
+            valid_pulse = filter(x -> !isnan(x) && x != 0.0, rt_pulse_s)
+
+            # take mean or zero if nothing left
+            rt_press_S[step] = isempty(valid_press) ? 0.0 : mean(valid_press)
+            rt_pulse_S[step] = isempty(valid_pulse) ? 0.0 : mean(valid_pulse)
 
             J_s = compute_jacobian_allo(B_s, p_s)
             # println("breakpoint 7")
             st_S[step]  = is_locally_stable(J_s)
             res_S[step] = compute_resilience(B_s, p_s)
             rea_S[step] = compute_reactivity(B_s, p_s)
-            Rm_S[step]  = median_return_rate(J_s, B_s; t=1.0, n=20)
+            Rm_S[step]  = median_return_rate(J_s, B_s; t=1.0, n=80)
             J_diff_S[step] = norm(J_s - J_full)
+
+            mean_tau_S[step] = mean(-1 ./ diag(J_s))
+            tau_S[step] = -1 ./ diag(J_s)
         end
 
         # flatten the step‐dicts into pairs
@@ -162,19 +185,29 @@ function short_ComputingLadder_END(
                 Symbol("Rmed_S$i")  => Rm_S[i],
                 Symbol("is_stable_S$i") => st_S[i],
                 Symbol("J_diff_S$i") => J_diff_S[i],
+                Symbol("mean_tau_S$i") => mean_tau_S[i],
+                Symbol("tau_S$i") => tau_S[i]
             ] for i in 1:steps)
         ))
 
         rec = merge(
             (
-            conn=conn, IS=IS_scale, delta=delta, J_diff_full=J_diff_full, J_full_norm=J_full_norm,
-            before_full=before_full,
-            after_full=after_full, after_pulse_full=after_pulse_full,
-            rt_press_full=mean(filter(!isnan, rt_press_full)),
-            rt_pulse_full=mean(filter(!isnan, rt_pulse_full)),
-            resilience_full=res_f,
-            reactivity_full=rea_f,
-            Rmed_full=Rm_f,
+                conn=conn, delta=delta, descon=descon, model_type=model_type,
+                J_diff_full=J_diff_full, J_full_norm=J_full_norm,
+                before_full=before_full,
+                after_full=after_full, after_pulse_full=after_pulse_full,
+                rt_press_full=mean_rt_press_full,
+                rt_pulse_full=mean_rt_pulse_full,
+                rt_press_full_vector=rt_press_full,
+                rt_pulse_full_vector=rt_pulse_full,
+                resilience_full=res_full,
+                reactivity_full=rea_full,
+                Rmed_full=Rm_full,
+                mean_tau_full=mean_tau_full,
+                tau_full=tau_full,
+                # Bstar=Bstar,
+                # B_post_press=B_post_press_full,
+                # B_post_pulse=B_post_pulse_full
             ),
             Dict(step_pairs...)
         )
@@ -192,22 +225,23 @@ end
 # -----------------------
 T = short_ComputingLadder_END(
     50, 20;
-    conn_vals=0.01:0.025:0.5,
-    IS_vals=[1.0],
+    conn_vals=0.02:0.025:0.5,
     deltas=[0.1, 0.01],
+    model_types = [:cascade, :niche],
+    reject_if_disconnected = [true],
     iterations=200,
-    number_of_combinations=48*16,
+    number_of_combinations=48*8,
     steps=2
 )
 
 desired = [
   :conn, :IS, :delta, :J_diff_full, :J_full_norm,
-  :before_full, :after_full, :after_pulse_full, :rt_press_full, rt_pulse_full, :resilience_full, :reactivity_full, :Rmed_full, 
-  :before_S1, :after_S1, :after_pulse_S1, :rt_press_S1, rt_pulse_S1, :resilience_S1, :reactivity_S1, :Rmed_S1,
-  :before_S2, :after_S2, :after_pulse_S2, :rt_press_S2, rt_pulse_S2, :resilience_S2, :reactivity_S2, :Rmed_S2,
-#   :before_S3, :after_S3, :after_pulse_S3, :rt_press_S3, rt_pulse_S3, :resilience_S3, :reactivity_S3, :Rmed_S3,
+  :before_full, :after_full, :after_pulse_full, :rt_press_full, :rt_pulse_full, :resilience_full, :reactivity_full, :Rmed_full, :mean_tau_full, :tau_full, 
+  :before_S1, :after_S1, :after_pulse_S1, :rt_press_S1, :rt_pulse_S1, :resilience_S1, :reactivity_S1, :Rmed_S1, :mean_tau_S1, :tau_S1,
+  :before_S2, :after_S2, :after_pulse_S2, :rt_press_S2, :rt_pulse_S2, :resilience_S2, :reactivity_S2, :Rmed_S2, :mean_tau_S2, :tau_S2,
+#   :before_S3, :after_S3, :after_pulse_S3, :rt_press_S3, rt_pulse_S3, :resilience_S3, :reactivity_S3, :Rmed_S3, :mean_tau_S3, :tau_S3
 ]
 
 A = T[:, desired]
 
-serialize("ShortAlloLadderCascade.jls", A)
+serialize("ShortAlloLadderCascade384_reject.jls", A)
