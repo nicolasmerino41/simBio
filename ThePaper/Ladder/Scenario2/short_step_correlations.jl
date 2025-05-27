@@ -111,6 +111,21 @@ df.SL_resources = mean.(vect_resources)
 begin
     save_plot = false
     color_by = :conn
+    remove_it = false
+
+    mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_K.png", mean_min_delta_K)
+    end
+    mean_min_delta_xi = short_step_correlations(df, :mean_min_delta_xi; color_by = color_by, remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_C.png", mean_min_delta_C)
+    end
+end
+
+begin
+    save_plot = false
+    color_by = :conn
     remove_it = true
     rt_press = short_step_correlations(df, :rt_press;  color_by = color_by, remove_unstable=remove_it)
     if save_plot
@@ -147,4 +162,13 @@ begin
     tau = short_step_correlations(df, :tau; color_by = color_by, remove_unstable=remove_it)
 
     J_diff = short_step_correlations(df, :J_diff; color_by = color_by, remove_unstable=remove_it)
+
+    mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_K.png", mean_min_delta_K)
+    end
+    mean_min_delta_xi = short_step_correlations(df, :mean_min_delta_xi; color_by = color_by, remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_C.png", mean_min_delta_C)
+    end
 end
