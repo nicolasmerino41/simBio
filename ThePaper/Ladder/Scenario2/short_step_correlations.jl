@@ -86,15 +86,15 @@ function short_step_correlations(
     return fig
 end
 
-df = T
+df = R
 df.avg_xi = mean.(df.K_Xi_full)
 
 vect = Vector{Vector}()
 vect_consumers = Vector{Vector}()
 vect_resources = Vector{Vector}()
 for i in 1:nrow(df)
-    g_vecs = fill(df.g_val[i], 30)
-    m_vecs = fill(df.m_val[i], 20)
+    g_vecs = df.r_res[i]
+    m_vecs = df.m_cons[i]
     SL = vcat(g_vecs, m_vecs) .* vcat(df.R_eq[i], df.C_eq[i]) ./ df.K_Xi_full[i]
     SL_cons = m_vecs .* df.C_eq[i] ./ df.K_Xi_full[i][31:50]
     SL_resources = g_vecs .* df.R_eq[i] ./ df.K_Xi_full[i][1:30]
@@ -104,6 +104,7 @@ for i in 1:nrow(df)
     push!(vect_resources, SL_resources)
 end
 df.SL = mean.(vect)
+df.SL_vect = vect
 df.SL_consumers = mean.(vect_consumers)
 df.SL_resources = mean.(vect_resources)
 
