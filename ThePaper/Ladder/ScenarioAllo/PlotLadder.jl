@@ -81,6 +81,7 @@ A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade768.
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade1440.jls")
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade348.jls")
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade2880.jls")
+A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade768_reject.jls")
 
 # And when you call it, do so *after* this file has been included:
 begin 
