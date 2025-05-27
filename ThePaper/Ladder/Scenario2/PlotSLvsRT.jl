@@ -21,6 +21,7 @@ for i in 1:10
     x_consumers = Float64[]
     for row in eachrow(dff)[i:i]  # Assuming dff is a DataFrame
         rt_vec = row[:rt_pulse_full_vector]
+        tau_full = row[:tau_full]
         k_xi   = row[:K_Xi_full]
         R_eq   = row[:R_eq]
         C_eq   = row[:C_eq]
@@ -44,7 +45,7 @@ for i in 1:10
             Bi = C_eq[i]
             xval = m_val[i] * Bi / xi
             push!(x_consumers, xval)
-            push!(rt_consumers, rt_vec[30+i])
+            push!(rt_consumers, 1/tau_full[30+i])
         end
     end
 
@@ -52,7 +53,7 @@ for i in 1:10
         fig = Figure(; size = (800, 500))
         ax = Axis(fig[1, 1];
             xlabel = "Self-Regulation Loss (rB/K for resources, mB/xi for consumers)",
-            ylabel = "Return Time",
+            ylabel = "1/Return Time (1/tau)",
             title = "Self-Regulation Loss vs Return Time",
             titlealign = :center,
             ylabelsize = 18,
