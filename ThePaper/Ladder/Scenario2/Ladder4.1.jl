@@ -495,8 +495,12 @@ function simulate_press_perturbation(
     ########## FIRST PART: WHOLE COMMUNITY PERTURBATION ##########
     # --- Phase 2: apply press (reduce thresholds by delta) ---
     xi_press = xi_cons .* (1 + delta)  # perturb all species
-    K_press = K_res .* (delta)  # perturb all species
-    # r_press = r_res .- delta
+    K_press = K_res .* (1 - delta)  # perturb all species
+    
+    # xi_press = copy(xi_cons)     
+    # K_press = copy(K_res)
+    # K_press[1] = K_press[1] * (1 - delta)  # perturb only resource 1
+    
     p_press  = (R, C, m_cons, xi_press, r_res, K_press, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2     = solve(prob2, solver; callback = cb, reltol=1e-8, abstol=1e-8)
@@ -554,14 +558,14 @@ function simulate_press_perturbation(
 
     # --- Optional plotting ---
     if plot && sol1.t[end] == t_perturb && all(isfinite, pre_state)
-        fig = Figure(; size=(1600,800))
+        fig = Figure(; size=(1600,650))
         ax1 = Axis(fig[1,1];
                    xlabel="Time", ylabel="Biomass",
                    title= full_or_simple ? "Before Press (Full Model)" :
                                            "Before Press (Simplified)")
         ax2 = Axis(fig[1,2];
                    xlabel="Time", ylabel="Biomass",
-                   title= full_or_simple ? "After Press (Full Model)" :
+                   title= full_or_simple ? "After Press (Full Model) delta=$(delta)" :
                                            "After Press (Simplified)")
         for i in 1:R
             lines!(ax1, sol1.t[1:end-1], sol1[i, 1:end-1], color=:blue)
@@ -684,6 +688,131 @@ function simulate_pulse_perturbation(
     end
 
     return return_times, before_persist, after_persist, eq_state, species_rt
+end
+
+##########################################################################
+##########################################################################
+##########################################################################
+################## TARGETTED PERTURBATIONS ###############################
+##########################################################################
+##########################################################################
+const TOL = 1e-3    # precision on δK/K or δxi/xi
+const MAX_DELTA = 0.99999999999999999 # search up to 100% change
+
+"""
+    find_min_K_reduction(i, u0, p, tspan, tpert; cb)
+
+For resource **i** (1 ≤ i ≤ R), finds the smallest δ∈[0,MAX_DELTA] such that reducing K_res[i] by
+(i.e. K_res[i]→K_res[i]*(1-δ)) causes species i to go extinct (below EXTINCTION_THRESHOLD) by tspan[2].
+Returns δ_crit (or `nothing` if even δ=MAX_DELTA does not kill it).
+"""
+function find_min_K_reduction(
+    i::Int,
+    u0::AbstractVector,
+    p,
+    tspan::Tuple{<:Real,<:Real},
+    tpert::Real;
+    cb
+)
+
+    ##################################################################################
+    # Unpack parameters
+    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
+
+    # --- Phase 1: run up to t_perturb ---
+    prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], tpert), p)
+    sol1 = solve(prob1, Tsit5(); callback = cb, reltol=1e-6, abstol=1e-6)
+    pre_state = sol1.u[end]
+    
+    ########## CHECKING MAXIMUM PERTURBATION ##########
+    lo, hi = 0.0, MAX_DELTA
+
+    # --- Phase 2: apply press (reduce thresholds by delta) ---
+    xi_press = copy(xi_cons)     
+    K_press = copy(K_res)
+    K_press[i] = K_press[i] * (1 - hi)  # perturb only resource 1
+    
+    p_press  = (R, C, m_cons, xi_press, r_res, K_press, epsilon, A)
+    prob2    = ODEProblem(trophic_ode!, pre_state, (tpert, tspan[2]), p_press)
+    sol2     = solve(prob2, Tsit5(); callback = cb, reltol=1e-8, abstol=1e-8)
+    new_equil = sol2.u[end]
+    if new_equil[i] > EXTINCTION_THRESHOLD
+        error("Resource $i does not go extinct even with maximum K reduction.")
+        return 0.0  # already extinct
+    end
+    
+    # bisection:
+    while hi - lo > TOL
+        mid = (lo+hi)/2
+        # --- Phase 2: apply press (reduce thresholds by delta) ---
+        xi_press = copy(xi_cons)     
+        K_press = copy(K_res)
+        K_press[i] = K_press[i] * (1 - mid)  # perturb only resource 1
+        p_press  = (R, C, m_cons, xi_press, r_res, K_press, epsilon, A)
+        # integrate:
+        # --- Phase 1: run up to t_perturb ---
+        prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], tpert), p)
+        sol1 = solve(prob1, Tsit5(); callback = cb, reltol=1e-6, abstol=1e-6)
+        pre_state = sol1.u[end]
+        prob2    = ODEProblem(trophic_ode!, pre_state, (tpert, tspan[2]), p_press)
+        sol2     = solve(prob2, Tsit5(); callback = cb, reltol=1e-8, abstol=1e-8)
+        new_equil = sol2.u[end]
+        # --- Phase 2: apply press (reduce thresholds by delta) ---
+        if new_equil[i] <= EXTINCTION_THRESHOLD
+            hi = mid
+        else
+            lo = mid
+        end
+    end
+
+    return hi
+end
+
+
+"""
+    find_min_xi_increase(j, u0, p, tspan, tpert; cb)
+
+For **consumer** j (1 ≤ j ≤ C), finds the smallest δ∈[0,MAX_DELTA] such that increasing xi_cons[j] by
+(i.e. xi_cons[j]→xi_cons[j]*(1+δ)) drives species R+j extinct by tspan[2].  Returns δ_crit or `nothing`.
+"""
+function find_min_xi_increase(j::Int,
+                              u0::AbstractVector,
+                              p,
+                              tspan::Tuple{<:Real,<:Real},
+                              tpert::Real;
+                              cb)
+
+    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
+    
+    lo, hi = 0.0, MAX_DELTA
+
+    xi0 = copy(xi_cons)
+    xi0[j] = xi0[j] * (1 + hi)  # perturb only consumer j
+    # check if even max does not kill:
+    p_hi = (R, C, m_cons, xi0, r_res, K_res, epsilon, A)
+    sol = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
+    post_hi = solve(ODEProblem(trophic_ode!, sol.u[end], (tpert,tspan[2]), p_hi), Tsit5(); callback=cb).u[end]
+    if post_hi[R+j] > EXTINCTION_THRESHOLD
+        return 0.0
+    end
+
+    # bisection:
+    while hi - lo > TOL
+        mid = (lo+hi)/2
+        xi_mid = copy(xi0)
+        xi_mid[j] *= 1 + mid
+        p_mid = (R, C, m_cons, xi_mid, r_res, K_res, epsilon, A)
+        sol1 = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
+        post = solve(ODEProblem(trophic_ode!, sol1.u[end], (tpert,tspan[2]), p_mid),
+                     Tsit5(); callback=cb).u[end]
+        if post[R+j] <= EXTINCTION_THRESHOLD
+            hi = mid
+        else
+            lo = mid
+        end
+    end
+
+    return hi
 end
 
 ##########################################################################
