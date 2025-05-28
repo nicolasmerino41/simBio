@@ -53,13 +53,14 @@ end
 # 5) Short ladder pipeline
 # -----------------------
 function short_ComputingLadder_END(
-    S::Int=50, C::Int=20;
+    S::Int=50;
     conn_vals=[0.05, 0.1, 0.2],
     deltas=[0.1, 0.5, 1.0],
     model_types = [:cascade, :niche],
     reject_if_disconnected = [true, false],
     number_of_combinations=100,
     iterations=100,
+    median_rt_ite=10,
     steps=3
 )
     results = Vector{NamedTuple}()
@@ -74,11 +75,29 @@ function short_ComputingLadder_END(
             # build
             local m, p, attack, epsilon = build_from_scenario(S, conn; model_type=model_type, reject_if_disconnected=descon)
             p = (S = p.S, r = p.r, K = p.K, x = p.x, d = p.d, attack = p.attack, epsilon = epsilon, B0_ref = p.B0_ref, i0 = p.i0, h = p.h)
+            herbivore_indices = findall(p.K .> 0.0) # indices of herbivores
             # full-model simulation
             u0 = rand(S)
-            prob_full = ODEProblem(allo_ode!, u0, (0.,500.), p)
+            prob_full = ODEProblem(allo_ode!, u0, (0.,10000.), p)
             sol_full = solve(prob_full, Tsit5(); callback=cb, abstol=1e-6, reltol=1e-6)
             Bstar = sol_full.u[end]
+            
+            # pick how many of the final time‐points we'll inspect
+            ncheck = 5
+            if length(sol_full.u) >= ncheck+1
+                # collect the last ncheck+1 states
+                last_states = sol_full.u[end-ncheck:end]
+                # compute successive differences
+                deltas = [norm(last_states[i+1] .- last_states[i]) for i in 1:ncheck]
+                # if any of those deltas is still "large", assume not settled
+                if maximum(deltas) > 0.01   # you can tune this tolerance
+                    @warn "Trajectory hasn't converged (change > $(maximum(deltas))) - skipping."
+                    continue
+                end
+            else
+                @warn "Too few timesteps to check convergence - skipping."
+                continue
+            end
 
             # stability & survival
             J_full = compute_jacobian_allo(Bstar, p)
@@ -87,6 +106,8 @@ function short_ComputingLadder_END(
             if !is_locally_stable(J_full)
                 continue
             end
+            
+            # plot_simulation(sol_full)
             # println("breakpoint 1")
             # surv, Bchk = survives!(Bstar, p; cb=cb)
             # if !surv
@@ -98,11 +119,17 @@ function short_ComputingLadder_END(
             # println("breaokpoint 1.5")
             rea_full = compute_reactivity(Bstar, p)
             # println("breakpoint 1.75")
-            Rm_full  = median_return_rate(J_full, Bstar; t=1.0, n=80)
+            Rm_full  = median_return_rate(J_full, Bstar; t=1.0, n=median_rt_ite)
             # println("breakpoint 2")
             # - full model press -
-            rt_press_full, before_full, after_full, B_post_press_full = simulate_press_perturbation_allo!(Bstar, p, (0.,500.), 250.0, delta; cb=cb)
-            rt_pulse_full, _, after_pulse_full, B_post_pulse_full = simulate_pulse_perturbation_allo!(Bstar, p, (0.,500.), 250.0, delta; cb=cb)
+            rt_press_full, before_full, after_press_full, B_post_press_full = simulate_press_perturbation_allo!(
+                Bstar, p, (0.,500.), 250.0, delta;
+                cb=cb, plot=false, full_or_simple=true,
+                herbivore_indices=herbivore_indices
+                )
+            rt_pulse_full, _, after_pulse_full, B_post_pulse_full = simulate_pulse_perturbation_allo!(
+                Bstar, p, (0.,500.), 250.0, delta; cb=cb
+            )
             
             # filter out NaNs and zeros
             valid_press = filter(x -> !isnan(x) && x != 0.0, rt_press_full)
@@ -114,10 +141,19 @@ function short_ComputingLadder_END(
 
             tau_full = -1 ./ diag(J_full)
             mean_tau_full = mean(tau_full)
-            
+
+            min_delta_K_full = zeros(length(herbivore_indices))
+            for local_i in 1:length(herbivore_indices)
+                species_idx = herbivore_indices[local_i]
+                min_delta_K_full[local_i] = find_min_K_reduction_allo!(
+                    species_idx, Bstar, p, (0.,500.), 250.0; cb
+                )
+            end
+            mean_min_delta_K_full = mean(filter(!iszero, min_delta_K_full))
+                        
             # - simplified model press at each step -
             before_S = Dict(i => NaN for i in 1:steps)
-            after_S  = Dict(i => NaN for i in 1:steps)
+            after_press_S  = Dict(i => NaN for i in 1:steps)
             after_pulse_S = Dict(i => NaN for i in 1:steps)
             rea_S  = Dict(i=>NaN for i in 1:steps)
             res_S  = Dict(i=>NaN for i in 1:steps)
@@ -128,6 +164,8 @@ function short_ComputingLadder_END(
             J_diff_S = Dict(i=>NaN for i in 1:steps)
             mean_tau_S = Dict(i => NaN for i in 1:steps)
             tau_S = Dict(i => Float64[] for i in 1:steps)
+            min_delta_K_S = Dict(i => Float64[] for i in 1:steps)
+            mean_min_delta_K_S = Dict(i => NaN for i in 1:steps)
             
             @info "Running ladder"
             for step in 1:steps
@@ -144,12 +182,16 @@ function short_ComputingLadder_END(
                 B_s = sol_s.u[end]
                 # println("breakpoint 5")
 
-                rt_press_s, before_s, after_s, B_after_s =
-                    simulate_press_perturbation_allo!(Bstar, p_s, (0.,500.), 250.0, delta; cb=cb)
+                rt_press_s, before_s, after_press_s, B_after_s =
+                    simulate_press_perturbation_allo!(
+                        Bstar, p_s, (0.,500.), 250.0, delta;
+                        cb=cb, plot=false, full_or_simple=false,
+                        herbivore_indices=herbivore_indices
+                    )
                 rt_pulse_s, before_pulse_s, after_pulse_s, B_after_pulse_s =
                     simulate_pulse_perturbation_allo!(Bstar, p_s, (0.,500.), 250.0, delta; cb=cb)
                 before_S[step] = before_s
-                after_S[step]  = after_s
+                after_press_S[step]  = after_press_s
                 after_pulse_S[step] = after_pulse_s
                 # println("breakpoint 6")
 
@@ -166,18 +208,27 @@ function short_ComputingLadder_END(
                 st_S[step]  = is_locally_stable(J_s)
                 res_S[step] = compute_resilience(B_s, p_s)
                 rea_S[step] = compute_reactivity(B_s, p_s)
-                Rm_S[step]  = median_return_rate(J_s, B_s; t=1.0, n=80)
+                Rm_S[step]  = median_return_rate(J_s, B_s; t=1.0, n=median_rt_ite)
                 J_diff_S[step] = norm(J_s - J_full)
 
                 mean_tau_S[step] = mean(-1 ./ diag(J_s))
                 tau_S[step] = -1 ./ diag(J_s)
+
+                min_delta_K_S[step] = zeros(length(herbivore_indices))
+                for local_i in 1:length(herbivore_indices)
+                    species_idx = herbivore_indices[local_i]
+                    min_delta_K_S[step][local_i] = find_min_K_reduction_allo!(
+                        species_idx, B_s, p_s, (0.,500.), 250.0; cb
+                    )
+                end
+                mean_min_delta_K_S[step] = mean(filter(!iszero, min_delta_K_S[step]))
             end
 
             # flatten the step‐dicts into pairs
             step_pairs = collect(Iterators.flatten(
                 ([ 
                     Symbol("before_S$i") => before_S[i],
-                    Symbol("after_S$i")  => after_S[i],
+                    Symbol("after_press_S$i")  => after_press_S[i],
                     Symbol("after_pulse_S$i") => after_pulse_S[i],
                     Symbol("rt_press_S$i")     => rt_press_S[i],
                     Symbol("rt_pulse_S$i")     => rt_pulse_S[i],
@@ -187,7 +238,9 @@ function short_ComputingLadder_END(
                     Symbol("is_stable_S$i") => st_S[i],
                     Symbol("J_diff_S$i") => J_diff_S[i],
                     Symbol("mean_tau_S$i") => mean_tau_S[i],
-                    Symbol("tau_S$i") => tau_S[i]
+                    Symbol("tau_S$i") => tau_S[i],
+                    Symbol("min_delta_K_S$i") => min_delta_K_S[i],
+                    Symbol("mean_min_delta_K_S$i") => mean_min_delta_K_S[i]
                 ] for i in 1:steps)
             ))
 
@@ -196,7 +249,7 @@ function short_ComputingLadder_END(
                     conn=conn, delta=delta, descon=descon, model_type=model_type,
                     J_diff_full=J_diff_full, J_full_norm=J_full_norm,
                     before_full=before_full,
-                    after_full=after_full, after_pulse_full=after_pulse_full,
+                    after_press_full=after_press_full, after_pulse_full=after_pulse_full,
                     rt_press_full=mean_rt_press_full,
                     rt_pulse_full=mean_rt_pulse_full,
                     rt_press_full_vector=rt_press_full,
@@ -206,6 +259,8 @@ function short_ComputingLadder_END(
                     Rmed_full=Rm_full,
                     mean_tau_full=mean_tau_full,
                     tau_full=tau_full,
+                    min_delta_K_full=min_delta_K_full,
+                    mean_min_delta_K_full=mean_min_delta_K_full,
                     # Bstar=Bstar,
                     # B_post_press=B_post_press_full,
                     # B_post_pulse=B_post_pulse_full
@@ -229,25 +284,26 @@ end
 # 3) Run the pipeline
 # -----------------------
 T = short_ComputingLadder_END(
-    50, 20;
+    50;
     conn_vals=0.02:0.025:0.5,
     deltas=[0.1, 0.01],
     model_types = [:cascade, :niche],
     reject_if_disconnected = [true],
     iterations=200,
-    number_of_combinations=48*8,
+    number_of_combinations=7,
+    median_rt_ite=1,
     steps=2
 )
 
 desired = [
   :conn, :delta, :descon, :model_type,
   :J_diff_full, :J_full_norm,
-  :before_full, :after_full, :after_pulse_full, :rt_press_full, :rt_pulse_full, :resilience_full, :reactivity_full, :Rmed_full, :mean_tau_full, :tau_full, 
-  :before_S1, :after_S1, :after_pulse_S1, :rt_press_S1, :rt_pulse_S1, :resilience_S1, :reactivity_S1, :Rmed_S1, :mean_tau_S1, :tau_S1,
-  :before_S2, :after_S2, :after_pulse_S2, :rt_press_S2, :rt_pulse_S2, :resilience_S2, :reactivity_S2, :Rmed_S2, :mean_tau_S2, :tau_S2,
-#   :before_S3, :after_S3, :after_pulse_S3, :rt_press_S3, rt_pulse_S3, :resilience_S3, :reactivity_S3, :Rmed_S3, :mean_tau_S3, :tau_S3
+  :before_full, :after_press_full, :after_pulse_full, :rt_press_full, :rt_pulse_full, :resilience_full, :reactivity_full, :Rmed_full, :mean_tau_full, :tau_full, :min_delta_K_full, :mean_min_delta_K_full, 
+  :before_S1, :after_press_S1, :after_pulse_S1, :rt_press_S1, :rt_pulse_S1, :resilience_S1, :reactivity_S1, :Rmed_S1, :mean_tau_S1, :tau_S1, :min_delta_K_S1, :mean_min_delta_K_S1,
+  :before_S2, :after_press_S2, :after_pulse_S2, :rt_press_S2, :rt_pulse_S2, :resilience_S2, :reactivity_S2, :Rmed_S2, :mean_tau_S2, :tau_S2, :min_delta_K_S2, :mean_min_delta_K_S2,
+#   :before_S3, :after_press_S3, :after_pulse_S3, :rt_press_S3, rt_pulse_S3, :resilience_S3, :reactivity_S3, :Rmed_S3, :mean_tau_S3, :tau_S3, :min_delta_K_S3, :mean_min_delta_K_S3
 ]
 
 A = T[:, desired]
 
-serialize("ShortAlloLadderCascade384_reject.jls", A)
+serialize("ShortAlloLadder_withMinExtinction.jls", A)
