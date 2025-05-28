@@ -13,7 +13,7 @@ using GLM, Graphs
 @info "Loaded packages."
 const DF = DataFrames
 const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
-const EXTINCTION_THRESHOLD = 1e-6
+const EXTINCTION_THRESHOLD = 1e-2
 ################ INFORMATION #######################
 # a) Ladder1.jl is for all the functions
 # b) Ladder2.jl is for running the simulations
@@ -287,7 +287,7 @@ function make_A(
         error("Unknown scenario $scenario")
     end
 
-    # optionally sprinkle in consumer→consumer predation
+    # optionally sprinkle in consumerconsumer predation
     if B_term
         for i in (R+1):S, j in (R+1):S
             if i != j && rand() < conn
@@ -418,7 +418,9 @@ end
 function simulate_press_perturbation_allo!(
     u0, p, tspan, tpert, delta;
     solver = Tsit5(),
-    cb
+    cb, plot = false,
+    full_or_simple = true,
+    herbivore_indices = herbivore_indices
 )
     S       = p.S
     r       = p.r
@@ -439,11 +441,20 @@ function simulate_press_perturbation_allo!(
 
     # Phase 2: press on K
     K2 = K .* (1 .- delta)
+    # K2 = copy(p.K)
+    # K2[herbivore_indices[1]] *= 1 - 0.5
     p2 = merge(p, (K = K2,))
     prob2 = ODEProblem(allo_ode!, pre, (tpert, tspan[2]), p2)
     sol2  = solve(prob2, solver; callback=cb, abstol=1e-6, reltol=1e-6)
     post  = sol2.u[end]
     after = count(>(EXTINCTION_THRESHOLD), post)/S
+
+    # if post[herbivore_indices[1]] > EXTINCTION_THRESHOLD
+    #     @warn "Resource 1 did not go extinct after perturbation, but should have!. We're in simulate_press_perturbation, it's whole process is:"
+    #     @warn "$(sol2[herbivore_indices[1], :])"
+    #     # @warn "And delta was $(delta)"
+    #     error()
+    # end
 
     rtn = fill(NaN, S)
     for i in 1:S
@@ -454,6 +465,30 @@ function simulate_press_perturbation_allo!(
                 break
             end
         end
+    end
+
+    # --- Optional plotting ---
+    if plot && sol1.t[end] == tpert && all(isfinite, pre)
+        fig = Figure(; size=(1600,650))
+        ax1 = Axis(fig[1,1];
+                   xlabel="Time", ylabel="Biomass",
+                   title= full_or_simple ? "Before Press (Full Model)" :
+                                           "Before Press (Simplified)")
+        ax2 = Axis(fig[1,2];
+                   xlabel="Time", ylabel="Biomass",
+                   title= full_or_simple ? "After Press (Full Model)" :
+                                           "After Press (Simplified)")
+        for i in herbivore_indices
+            lines!(ax1, sol1.t[1:end-1], sol1[i, 1:end-1], color=:blue)
+            lines!(ax2, sol2.t, sol2[i, :], color=:blue)
+        end
+        for i in setdiff(1:50, herbivore_indices)
+            lines!(ax1, sol1.t[1:end-1], sol1[i, 1:end-1], color=:red)
+            lines!(ax2, sol2.t, sol2[i, :], color=:red)
+        end
+        lines!(ax1, sol1.t[1:end-1], fill(0.0, length(sol1[1, 1:end-1])), color = :black)
+        lines!(ax2, sol2.t, fill(0.0, length(sol2[1, :])), color = :black)
+        display(fig)
     end
 
     return rtn, before, after, post
@@ -475,7 +510,7 @@ end
 - `p`  : named‐tuple `(S, r, K, x, d, attack, epsilon, B0_ref, i0, h)`
 - `tspan` : `(t0, tfinal)`
 - `t_pulse` : time to apply the pulse
-- `delta`  : fractional pulse (e.g. `0.2` → +20%, `-0.5` → -50%)
+- `delta`  : fractional pulse (e.g. `0.2`  +20%, `-0.5`  -50%)
 - `cb` : optional `CallbackSet` for extinctions
 
 Returns:
@@ -525,6 +560,82 @@ function simulate_pulse_perturbation_allo!(
 
     return rtn, before, after, post
 end
+##########################################################################
+##########################################################################
+######################## find_min_K_reduction_allo! ######################
+##########################################################################
+##########################################################################
+const MAX_DELTA_ALL0 = 0.99   # you can adjust this
+const TOL_ALL0     = 1e-2    # bisection tolerance
+
+function find_min_K_reduction_allo!(
+    i::Int,
+    u0::AbstractVector,
+    p,
+    tspan::Tuple{<:Real,<:Real},
+    tpert::Real;
+    cb
+)
+    S = p.S
+
+    @info " species $i: starting change‐search in [0,$(MAX_DELTA_ALL0)]"
+
+    # 0) if species already extinct  0
+    if u0[i] <= EXTINCTION_THRESHOLD
+        @info "  already extinct at t=0 (u0[$i]=$(u0[i]))  return 0.0"
+        return 0.0
+    end
+
+    # 1) integrate up to tpert once
+    sol1 = solve(ODEProblem(allo_ode!, u0, (tspan[1], tpert), p),
+                 Tsit5(); callback=cb, abstol=1e-8, reltol=1e-8)
+    pre = sol1.u[end]
+    @info "  at tpert=$(tpert): pre[$i]=$(pre[i])"
+
+    # if already below half of u0  0
+    if pre[i] <= u0[i]/2
+        @info "  pre[$i]=$(pre[i]) <= u0[$i]/2=$(u0[i]/2)  return 0.0"
+        return 0.0
+    end
+
+    # 2) bracket [lo,hi]
+    lo, hi = 0.0, MAX_DELTA_ALL0
+
+    # test hi
+    p_hi   = merge(p, (K = p.K .* (1 .- hi),))
+    sol_hi = solve(ODEProblem(allo_ode!, pre, (tpert, tspan[2]), p_hi),
+                   Tsit5(); callback=cb, abstol=1e-8, reltol=1e-8)
+    post_hi = sol_hi.u[end]
+    @info "  change=hi=$(hi): post_hi[$i]=$(post_hi[i]) (target <= $(pre[i]/2))"
+
+    if post_hi[i] > pre[i]/2
+        @info "  even change=$(hi) fails to halve  returning nothing"
+        return 0.0
+    end
+
+    # 3) bisection loop
+    iter = 0
+    while hi - lo > TOL_ALL0
+        iter += 1
+        mid = (lo + hi)/2
+        p_mid = merge(p, (K = p.K .* (1 .- mid),))
+        sol_m  = solve(ODEProblem(allo_ode!, pre, (tpert, tspan[2]), p_mid),
+                       Tsit5(); callback=cb, abstol=1e-8, reltol=1e-8)
+        post   = sol_m.u[end]
+
+        # @info "  [it=$iter] lo=$(lo) mid=$(mid) hi=$(hi): post[$i]=$(post[i])"
+
+        if post[i] <= pre[i]/2
+            hi = mid
+        else
+            lo = mid
+        end
+    end
+
+    @info " species $i: change* approx $(hi)"
+    return hi
+end
+
 
 ##########################################################################
 ##########################################################################
