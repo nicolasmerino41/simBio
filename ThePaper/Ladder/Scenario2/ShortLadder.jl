@@ -170,7 +170,7 @@ function short_ComputingLadder(
                 i, B0, p, tspan, tpert; cb
             )
         end
-
+        
         min_delta_xi_full = fill(0.0, C)
         for i in 1:C
             min_delta_xi_full[i] = find_min_xi_increase(
@@ -199,6 +199,8 @@ function short_ComputingLadder(
         min_delta_xi_S = Dict(i => Float64[] for i in 1:8)
         mean_min_delta_K_S = Dict(i => NaN for i in 1:8)
         mean_min_delta_xi_S = Dict(i => NaN for i in 1:8)
+        rt_press_vector_S = Dict(i => Float64[] for i in 1:8)
+        rt_pulse_vector_S = Dict(i => Float64[] for i in 1:8)
         @info "Running ladder"
 
         # original equilibrium abundances
@@ -285,6 +287,8 @@ function short_ComputingLadder(
             after_pulse_S[step] = after_pulse3
             rt_press_S[step]   = mean(filter(!isnan, rt_press2))
             rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+            rt_press_vector_S[step] = rt_press2
+            rt_pulse_vector_S[step] = rt_pulse3
             collectivity_S[step] = psi_s
             resilience_S[step] = compute_resilience(B0, p_s)
             reactivity_S[step] = compute_reactivity(B0, p_s)
@@ -360,6 +364,8 @@ function short_ComputingLadder(
                 after_pulse_S[step] = after_pulse3
                 rt_press_S[step]   = mean(filter(!isnan, rt_press2))
                 rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+                rt_press_vector_S[step] = rt_press2
+                rt_pulse_vector_S[step] = rt_pulse3
                 collectivity_S[step] = psi_s
                 resilience_S[step] = compute_resilience(B0, p_s)
                 reactivity_S[step] = compute_reactivity(B0, p_s)
@@ -431,6 +437,8 @@ function short_ComputingLadder(
                 after_pulse_S[step] = after_pulse3
                 rt_press_S[step]   = mean(filter(!isnan, rt_press2))
                 rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+                rt_press_vector_S[step] = rt_press2
+                rt_pulse_vector_S[step] = rt_pulse3
                 collectivity_S[step] = psi_s
                 resilience_S[step] = compute_resilience(B0, p_s)
                 reactivity_S[step] = compute_reactivity(B0, p_s)
@@ -502,6 +510,8 @@ function short_ComputingLadder(
                 after_pulse_S[step] = after_pulse3
                 rt_press_S[step]   = mean(filter(!isnan, rt_press2))
                 rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+                rt_press_vector_S[step] = rt_press2
+                rt_pulse_vector_S[step] = rt_pulse3
                 collectivity_S[step] = psi_s
                 resilience_S[step] = compute_resilience(B0, p_s)
                 reactivity_S[step] = compute_reactivity(B0, p_s)
@@ -613,6 +623,8 @@ function short_ComputingLadder(
                 after_pulse_S[step] = after_pulse3
                 rt_press_S[step]   = mean(filter(!isnan, rt_press2))
                 rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+                rt_press_vector_S[step] = rt_press2
+                rt_pulse_vector_S[step] = rt_pulse3
                 collectivity_S[step] = psi_s
                 resilience_S[step] = compute_resilience(new_B0, p_s)
                 reactivity_S[step] = compute_reactivity(new_B0, p_s)
@@ -724,6 +736,8 @@ function short_ComputingLadder(
                 after_pulse_S[step] = after_pulse3
                 rt_press_S[step]   = mean(filter(!isnan, rt_press2))
                 rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+                rt_press_vector_S[step] = rt_press2
+                rt_pulse_vector_S[step] = rt_pulse3
                 collectivity_S[step] = psi_s
                 resilience_S[step] = compute_resilience(new_B0, p_s)
                 reactivity_S[step] = compute_reactivity(new_B0, p_s)
@@ -776,6 +790,8 @@ function short_ComputingLadder(
                 Symbol("min_delta_xi_S$i") => min_delta_xi_S[i],
                 Symbol("mean_min_delta_K_S$i") => mean_min_delta_K_S[i],
                 Symbol("mean_min_delta_xi_S$i") => mean_min_delta_xi_S[i],
+                Symbol("rt_press_vector_S$i") => rt_press_vector_S[i],
+                Symbol("rt_pulse_vector_S$i") => rt_pulse_vector_S[i]
             ] for i in 1:8)
         ))
 
@@ -787,7 +803,7 @@ function short_ComputingLadder(
             Rmed_full=Rmed_full,
             mean_tau_full=mean_tau_full, tau_full=tau_full,
             J_diff_full=J_diff_full, J_full_norm=J_full_norm,
-            rt_pulse_full_vector=rt_pulse_full_vector, rt_press_full_vector=rt_press_full_vector,
+            rt_pulse_vector_full=rt_pulse_full_vector, rt_press_vector_full=rt_press_full_vector,
             mean_min_delta_K_full = mean_min_delta_K_full, mean_min_delta_xi_full = mean_min_delta_xi_full,
             min_delta_K_full = min_delta_K_full, min_delta_xi_full = min_delta_xi_full,
             step_pairs...,  # Properly flattened pairs
@@ -816,12 +832,12 @@ R = short_ComputingLadder(
     IS_vals=[0.01, 0.1, 1.0, 2.0],
     IS_vals_B_term=[0.1, 1.0],
     scenarios=[:ER, :PL,:MOD],
-    delta_vals=[0.99],#[0.1, 0.3, 0.5, 0.75, 0.01],
+    delta_vals=[MAX_DELTA],#[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
     eps_scales=[1.0, 0.5, 0.1],
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
-    tspan=(0.,1000.), tpert=50.0,
-    number_of_combinations = 14,
+    tspan=(0.,500.0), tpert=250.0,
+    number_of_combinations = 7,
     B_term = false,
     iterations=1,
     Rmed_iterations=1
@@ -831,3 +847,4 @@ R = short_ComputingLadder(
 # serialize("Ladder/Outputs/T.jls", T)
 
 T = deserialize("ThePaper/Ladder/Outputs/T.jls")
+F = deserialize("ThePaper/Ladder/Outputs/exploring_min_extinction.jls")
