@@ -86,7 +86,7 @@ function short_step_correlations(
     return fig
 end
 
-df = R
+df = T
 df.avg_xi = mean.(df.K_Xi_full)
 
 vect = Vector{Vector}()
@@ -111,7 +111,7 @@ df.SL_resources = mean.(vect_resources)
 begin
     save_plot = false
     color_by = :conn
-    remove_it = false
+    remove_it = true
 
     mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
     if save_plot
@@ -159,7 +159,7 @@ begin
 
     rt_med = short_step_correlations(df, :Rmed; color_by = color_by, remove_unstable=remove_it)
 
-    tau = short_step_correlations(df, :tau; color_by = color_by, remove_unstable=remove_it)
+    tau = short_step_correlations(df, :mean_tau; color_by = color_by, remove_unstable=remove_it)
 
     J_diff = short_step_correlations(df, :J_diff; color_by = color_by, remove_unstable=remove_it)
 
