@@ -1,9 +1,12 @@
 function short_step_correlations_vectors(
     df::DataFrame,
-    var::Symbol;
+    varx::Symbol,
+    vary::Symbol;
+    compare_to_full = true,
     color_by::Symbol = :conn,
     remove_unstable::Bool = false
 )
+    # step identifiers & titles
     step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8"]
     step_names = [
       "Full Model", "Global A (Global ϵ)", "Global AE",
@@ -17,39 +20,43 @@ function short_step_correlations_vectors(
         @info "Filtered unstable: now $(nrow(df)) rows"
     end
 
-    full_col   = Symbol(string(var)*"_full")
-    panel_cols = Symbol.(string(var) .* "_" .* step_keys)
+    # build column symbols
+    full_xcol   = Symbol(string(varx)*"_full")
+    full_ycol   = Symbol(string(vary)*"_full")
+    step_xcols  = Symbol.(string(varx) .* "_" .* step_keys)
+    step_ycols  = Symbol.(string(vary) .* "_" .* step_keys)
 
-    full_vals  = df[!, full_col]    # Vector of Vector{Float64}
+    # color scale
     color_vals = df[!, color_by]
     cmin, cmax = extrema(color_vals)
 
-    ns   = length(panel_cols)
+    ns   = length(step_keys)
     cols = 3
-    rows = ceil(Int, ns/cols)
 
-    fig = Figure(; size=(1000, 600))
-    Label(fig[0, 1:cols], uppercase(string(var, " correlations")), fontsize=18)
+    fig = Figure(; size = (960, 640))
+    Label(fig[0, 1:cols], uppercase("$(varx) vs $(vary) correlations"), fontsize=18)
 
     for idx in 1:ns
         r = div(idx-1, cols) + 1
         c = mod(idx-1, cols) + 1
+
         ax = Axis(fig[r, c];
             title  = step_names[idx],
-            xlabel = string(full_col),
-            ylabel = string(panel_cols[idx]),
+            xlabel = string(compare_to_full ? full_xcol : step_xcols[idx]),
+            ylabel = string(step_ycols[idx]),
         )
 
         xs = Float64[]
         ys = Float64[]
         cs = Float64[]
 
-        for (i, fvvec) in enumerate(full_vals)
-            vec = df[i, panel_cols[idx]]
-            @assert length(fvvec) == length(vec) "length mismatch in row $i"
-            for j in eachindex(vec)
-                push!(xs, fvvec[j])
-                push!(ys,    vec[j])
+        for i in 1:nrow(df)
+            xvec = compare_to_full ? df[i, full_xcol] : df[i, step_xcols[idx]]
+            yvec = df[i, step_ycols[idx]]
+            # @assert length(xvec) == length(yvec) "length mismatch in row $i, step $idx"
+            for j in eachindex(xvec)
+                push!(xs, xvec[j])
+                push!(ys, yvec[j])
                 push!(cs, color_vals[i])
             end
         end
@@ -58,30 +65,46 @@ function short_step_correlations_vectors(
             colormap   = :inferno,
             color      = cs,
             colorrange = (cmin, cmax),
-            markersize = 8,
-            alpha      = 0.6
+            markersize = 6,
+            alpha      = 0.7
         )
 
-        mn = min(extrema(xs)..., extrema(ys)...)
-        mx = max(extrema(xs)..., extrema(ys)...)
-        lines!(ax, [mn, mx], [mn, mx]; color=:black, linestyle=:dash)
+        mn = min(minimum(xs), minimum(ys))
+        mx = max(maximum(xs), maximum(ys))
+        lines!(ax, [mn, mx], [mn, mx], color = :black, linestyle = :dash)
 
         r_val = cor(xs, ys)
         text!(ax, "r=$(round(r_val, digits=3))",
-            position=(mx, mn), align=(:right,:bottom), fontsize=10)
+            position = (mx, mn),
+            align    = (:right, :bottom),
+            fontsize = 10
+        )
     end
 
     display(fig)
 end
 
+#TODO You must load "exploring_min_extinction_100000.jls" once done from drago and run the following plots
+
 short_step_correlations_vectors(
-    R, :min_delta_K;
-    color_by=:conn, remove_unstable=false
+    df, :tau, :rt_press_vector;
+    compare_to_full=false,
+    color_by=:conn,
+    remove_unstable=true
 )
 
 short_step_correlations_vectors(
-    R, :min_delta_xi;
-    color_by=:conn, remove_unstable=false
+    df, :tau, :rt_pulse_vector;
+    compare_to_full=false,
+    color_by=:conn,
+    remove_unstable=false
+)
+
+short_step_correlations_vectors(
+    df, :rt_pulse_vector, :rt_pulse_vector;
+    compare_to_full=true,
+    color_by=:conn,
+    remove_unstable=true
 )
 
 
