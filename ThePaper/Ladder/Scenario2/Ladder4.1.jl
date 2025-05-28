@@ -491,7 +491,8 @@ function simulate_press_perturbation(
     pre_state = sol1.u[end]
     before_persistence = count(x -> x > EXTINCTION_THRESHOLD, pre_state) / length(pre_state)
     # pre_state[pre_state .> EXTINCTION_THRESHOLD] .= 0.0
-
+    
+    # @warn "Sol1 is $(sol1[:, :])"
     ########## FIRST PART: WHOLE COMMUNITY PERTURBATION ##########
     # --- Phase 2: apply press (reduce thresholds by delta) ---
     xi_press = xi_cons .* (1 + delta)  # perturb all species
@@ -499,7 +500,7 @@ function simulate_press_perturbation(
     
     # xi_press = copy(xi_cons)     
     # K_press = copy(K_res)
-    # K_press[1] = K_press[1] * (1 - delta)  # perturb only resource 1
+    # K_press[1] = K_press[1] * (1 - MAX_DELTA)  # perturb only resource 1
     
     p_press  = (R, C, m_cons, xi_press, r_res, K_press, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (t_perturb, tspan[2]), p_press)
@@ -507,6 +508,12 @@ function simulate_press_perturbation(
     new_equil = sol2.u[end]
     n = length(new_equil)
     after_persistence = count(x -> x > EXTINCTION_THRESHOLD, new_equil) / length(new_equil)
+    # if new_equil[1] > EXTINCTION_THRESHOLD
+    #     @warn "Resource 1 did not go extinct after perturbation, but should have!. We're in simulate_press_perturbation, it's whole process is:"
+    #     @warn "$(sol2[:, :])"
+    #     @warn "And delta was $(delta)"
+    #     error()
+    # end
 
     # --- Return Times ---
     return_times = fill(NaN, n)
@@ -696,8 +703,8 @@ end
 ################## TARGETTED PERTURBATIONS ###############################
 ##########################################################################
 ##########################################################################
-const TOL = 1e-3    # precision on δK/K or δxi/xi
-const MAX_DELTA = 0.99999999999999999 # search up to 100% change
+const TOL = 1e-2    # precision on δK/K or δxi/xi
+const MAX_DELTA = 0.99 # search up to 100% change
 
 """
     find_min_K_reduction(i, u0, p, tspan, tpert; cb)
@@ -737,7 +744,9 @@ function find_min_K_reduction(
     sol2     = solve(prob2, Tsit5(); callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
     if new_equil[i] > EXTINCTION_THRESHOLD
-        error("Resource $i does not go extinct even with maximum K reduction.")
+        # @warn "Resource $i does not go extinct even with maximum K reduction. Its final vector is:"
+        # @warn "$(sol2[i, :])"
+        # error()
         return 0.0  # already extinct
     end
     
@@ -768,6 +777,46 @@ function find_min_K_reduction(
     return hi
 end
 
+function find_min_K_reduction(i::Int,
+                              u0::AbstractVector,
+                              p::NamedTuple{(:R,:C,:m_cons,:xi_cons,:r_res,:K_res,:ε,:A),T},
+                              tspan::Tuple{<:Real,<:Real},
+                              tpert::Real;
+                              cb) where T
+
+    R, C, m_cons, xi_cons, r_res, K_res, epsilon, A = p
+       
+    lo, hi = 0.0, MAX_DELTA*2
+
+    K0 = copy(p.K_res)
+    K0[i] = K0[i] * (1 - hi)  # perturb only resource i
+
+    # check if even max does not kill:
+    p_hi = (R, C, m_cons, xi_cons, r_res, K0, epsilon, A)
+    sol = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
+    post_hi = solve(ODEProblem(trophic_ode!, sol.u[end], (tpert,tspan[2]), p_hi), Tsit5(); callback=cb).u[end]
+    if post_hi[i] > 0.01 #EXTINCTION_THRESHOLD
+        error("Resource $i does not go extinct even with maximum K reduction. Its final vector is: $(post_hi[i])")
+        return nothing
+    end
+
+    # bisection:
+    while hi - lo > TOL
+        mid = (lo+hi)/2
+        p_mid = merge(p, (; K_res = K0 .* (1 .- mid) ))
+        # integrate:
+        sol1 = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
+        post = solve(ODEProblem(trophic_ode!, sol1.u[end], (tpert,tspan[2]), p_mid),
+                     Tsit5(); callback=cb).u[end]
+        if post[i] <= 0.01 #EXTINCTION_THRESHOLD
+            hi = mid
+        else
+            lo = mid
+        end
+    end
+
+    return hi
+end
 
 """
     find_min_xi_increase(j, u0, p, tspan, tpert; cb)
@@ -793,6 +842,7 @@ function find_min_xi_increase(j::Int,
     sol = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
     post_hi = solve(ODEProblem(trophic_ode!, sol.u[end], (tpert,tspan[2]), p_hi), Tsit5(); callback=cb).u[end]
     if post_hi[R+j] > EXTINCTION_THRESHOLD
+        # @warn "Consumer $j does not go extinct even with maximum xi increase. Its final vector is: $(post_hi[R+j])"
         return 0.0
     end
 
