@@ -21,20 +21,20 @@ function stepwise_scatter(df::DataFrame; color_by=:conn, remove_unstable=false)
     ns = length(step_keys)
     rows = ceil(Int, ns / cols)
     fig = Figure(; size=(1000, 570))
-    Label(fig[0, 1:cols], "rt_press vs tau for each step"; fontsize=18)
+    Label(fig[0, 1:cols], "Rmed vs tau for each step"; fontsize=18)
     Label(fig[0, 2:cols], "Remove unstable: $(remove_unstable)"; fontsize=10)
 
     for idx in 1:ns
         r = div(idx-1, cols) + 1
         c = mod(idx-1, cols) + 1
 
-        rt_press_col = Symbol("rt_press_" * step_keys[idx])
-        tau_col = Symbol("tau_" * step_keys[idx])
+        rt_press_col = Symbol("Rmed_" * step_keys[idx])
+        tau_col = Symbol("mean_tau_" * step_keys[idx])
 
         ax = Axis(fig[r, c];
             title     = step_names[idx],
-            xlabel    = string("tau_", step_keys[idx]),
-            ylabel    = string("rt_press_", step_keys[idx]),
+            xlabel    = string("mean_tau_", step_keys[idx]),
+            ylabel    = string("Rmed_", step_keys[idx]),
             titlesize = 16, xlabelsize = 10, ylabelsize = 10,
             xticksize = 15, yticksize = 15,
         )
