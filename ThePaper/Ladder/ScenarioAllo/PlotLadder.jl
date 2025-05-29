@@ -14,6 +14,7 @@ function step_correlations_END(df::DataFrame, var::Symbol; color_by::Symbol = :c
         df = filter(row -> all(row[c] < 0 for c in res_cols), df)
         println("subset size: ", nrow(df))
     end
+    df = filter(row -> any(!isinf(row[c]) for c in eachindex(row)), df)
 
     # 1) determine which columns to plot
     full_col   = Symbol(string(var, "_full"))           # e.g. :resilience_full
@@ -83,7 +84,7 @@ A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade348.
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade2880.jls")
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade768_reject.jls")
 A = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadderCascade2880_reject.jls")
-
+A = df
 # And when you call it, do so *after* this file has been included:
 begin 
     color_by = :conn
@@ -96,6 +97,7 @@ begin
     step_correlations_END(A, :before; color_by = color_by, remove_unstable = remove_it)
     step_correlations_END(A, :after_press; color_by = color_by, remove_unstable = remove_it)
     step_correlations_END(A, :after_pulse; color_by = color_by, remove_unstable = remove_it)
+    step_correlations_END(A, :mean_tau; color_by = color_by, remove_unstable = remove_it)
 end
 
 F = A[: , [:resilience_full, :resilience_S1, :resilience_S2, :resilience_S3]]
