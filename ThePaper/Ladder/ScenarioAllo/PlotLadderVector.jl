@@ -1,11 +1,15 @@
-function short_step_correlations_vectors(
+function allo_step_correlations_vectors(
     df::DataFrame,
-    var::Symbol;
-    color_by::Symbol = :conn,
-    remove_unstable::Bool = false
+    varx::Symbol,
+    vary::Symbol;
+    compare_to_full::Bool    = true,
+    color_by::Symbol         = :conn,
+    remove_unstable::Bool    = false,
+    remove_zeros::Bool       = false,
+    equal_axes::Bool         = true
 )
-    step_keys   = ["S1", "S2"]#, "S3"]
-    step_names = ["Full Model", "Global A (Global ϵ)"]#, "Global AE"]
+    step_keys  = ["S1","S2"]
+    step_names = ["Full Model", "Global A (Global ϵ)"]
 
     if remove_unstable
         res_cols = Symbol.("resilience_" .* step_keys)
@@ -13,76 +17,115 @@ function short_step_correlations_vectors(
         @info "Filtered unstable: now $(nrow(df)) rows"
     end
 
-    full_col   = Symbol(string(var)*"_full")
-    panel_cols = Symbol.(string(var) .* "_" .* step_keys)
+    # build symbols for full and step‐columns
+    full_xcol   = Symbol(string(varx) * "_full")
+    full_ycol   = Symbol(string(vary) * "_full")    # <-- singular
+    step_xcols  = Symbol.(string(varx) .* "_" .* step_keys)
+    step_ycols  = Symbol.(string(vary) .* "_" .* step_keys)
 
-    full_vals  = df[!, full_col]    # Vector of Vector{Float64}
     color_vals = df[!, color_by]
     cmin, cmax = extrema(color_vals)
 
-    ns   = length(panel_cols)
-    cols = 3
-    rows = ceil(Int, ns/cols)
+    fig = Figure(size=(960, 480))
+    Label(fig[0, 1:2], uppercase("$(varx) vs $(vary) correlations"), fontsize=18)
 
-    fig = Figure(; size=(1000, 600))
-    Label(fig[0, 1:cols], uppercase(string(var, " correlations")), fontsize=18)
-
-    for idx in 1:ns
-        r = div(idx-1, cols) + 1
-        c = mod(idx-1, cols) + 1
-        ax = Axis(fig[r, c];
+    for idx in 1:2
+        ax = Axis(fig[1, idx];
             title  = step_names[idx],
-            xlabel = string(full_col),
-            ylabel = string(panel_cols[idx]),
+            xlabel = string(compare_to_full ? full_xcol   : step_xcols[idx]),
+            ylabel = string(step_ycols[idx]),
         )
 
         xs = Float64[]
         ys = Float64[]
         cs = Float64[]
 
-        for (i, fvvec) in enumerate(full_vals)
-            vec = df[i, panel_cols[idx]]
-            @assert length(fvvec) == length(vec) "length mismatch in row $i"
-            for j in eachindex(vec)
-                push!(xs, fvvec[j])
-                push!(ys,    vec[j])
+        for i in 1:nrow(df)
+            xvec = compare_to_full ? df[i, full_xcol]   : df[i, step_xcols[idx]]
+            yvec = df[i, step_ycols[idx]][1:length(xvec)]
+            @assert length(xvec) == length(yvec) "length mismatch at row $i, step $idx, 
+                xvec: $(length(xvec)), yvec: $(length(yvec))"
+
+            for j in eachindex(xvec)
+                xj, yj = xvec[j], yvec[j]
+                if remove_zeros && (xj == 0.0 || yj == 0.0)
+                    continue
+                end
+                push!(xs, xj)
+                push!(ys, yj)
                 push!(cs, color_vals[i])
             end
         end
 
         scatter!(ax, xs, ys;
-            colormap   = :inferno,
+            colormap   = :viridis,
             color      = cs,
             colorrange = (cmin, cmax),
-            markersize = 8,
-            alpha      = 0.6
+            markersize = 6,
+            alpha      = 0.7
         )
 
-        mn = min(extrema(xs)..., extrema(ys)...)
-        mx = max(extrema(xs)..., extrema(ys)...)
-        lines!(ax, [mn, mx], [mn, mx]; color=:black, linestyle=:dash)
+        xmin, xmax = minimum(xs), maximum(xs)
+        ymin, ymax = minimum(ys), maximum(ys)
+
+        if equal_axes
+            mn = min(xmin, ymin)
+            mx = max(xmax, ymax)
+            xlims!(ax, mn, mx)
+            ylims!(ax, mn, mx)
+            lines!(ax, [mn, mx], [mn, mx], color=:black, linestyle=:dash)
+        else
+            xlims!(ax, xmin, xmax)
+            ylims!(ax, ymin, ymax)
+            lines!(ax, [xmin, xmax], [xmin, xmax], color=:black, linestyle=:dash)
+        end
 
         r_val = cor(xs, ys)
         text!(ax, "r=$(round(r_val, digits=3))",
-            position=(mx, mn), align=(:right,:bottom), fontsize=10)
+            position = (xmax, ymin),
+            align    = (:right, :bottom),
+            fontsize = 10
+        )
     end
 
     display(fig)
+    return fig
 end
 
 #TODO once drago finishes ShortAlloLadder_withMinExtinction_768.jls re-run this again
-df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_48.jls")
-df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_768.jls")
-df = A
-short_step_correlations_vectors(
-    df, :min_delta_K;
-    color_by=:conn, remove_unstable=false
+# df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_48.jls")
+df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_96.jls")
+df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_96_20species.jls")
+df.model_type_n = map(df.model_type) do mt
+    if mt == :cascade
+        1
+    elseif mt == :niche
+        2
+    else
+        error("Unknown model_type: $mt")
+    end
+end
+# df = A
+
+allo_step_correlations_vectors(
+    df, :tau, :rt_pulse_vector;
+    color_by=:conn, 
+    compare_to_full=true,
+    remove_unstable=false,
+    remove_zeros=true,
+    equal_axes=false
 )
 
-short_step_correlations_vectors(
-    df, :min_delta_xi;
-    color_by=:conn, remove_unstable=false
+allo_step_correlations_vectors(
+    df, :min_delta_K, :min_delta_K;
+    color_by=:conn, 
+    remove_unstable=false,
+    compare_to_full=true,
+    remove_zeros=false,
+    equal_axes=true
 )
 
 
 
+
+U = df[:, [:min_delta_K_full, :min_delta_K_S1, :min_delta_K_S2]]
