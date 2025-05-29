@@ -86,7 +86,7 @@ function short_step_correlations(
     return fig
 end
 
-df = T
+df = F
 df.avg_xi = mean.(df.K_Xi_full)
 
 vect = Vector{Vector}()
