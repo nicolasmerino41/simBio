@@ -2,9 +2,11 @@ function short_step_correlations_vectors(
     df::DataFrame,
     varx::Symbol,
     vary::Symbol;
-    compare_to_full = true,
+    compare_to_full::Bool = true,
     color_by::Symbol = :conn,
-    remove_unstable::Bool = false
+    remove_unstable::Bool = false,
+    remove_zeros::Bool = false,
+    equal_axes::Bool = true
 )
     # step identifiers & titles
     step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8"]
@@ -21,10 +23,9 @@ function short_step_correlations_vectors(
     end
 
     # build column symbols
-    full_xcol   = Symbol(string(varx)*"_full")
-    full_ycol   = Symbol(string(vary)*"_full")
-    step_xcols  = Symbol.(string(varx) .* "_" .* step_keys)
-    step_ycols  = Symbol.(string(vary) .* "_" .* step_keys)
+    full_xcol  = Symbol(string(varx)*"_full")
+    step_xcols = Symbol.(string(varx) .* "_" .* step_keys)
+    step_ycols = Symbol.(string(vary) .* "_" .* step_keys)
 
     # color scale
     color_vals = df[!, color_by]
@@ -33,7 +34,7 @@ function short_step_correlations_vectors(
     ns   = length(step_keys)
     cols = 3
 
-    fig = Figure(; size = (960, 640))
+    fig = Figure(size=(960, 640))
     Label(fig[0, 1:cols], uppercase("$(varx) vs $(vary) correlations"), fontsize=18)
 
     for idx in 1:ns
@@ -53,29 +54,47 @@ function short_step_correlations_vectors(
         for i in 1:nrow(df)
             xvec = compare_to_full ? df[i, full_xcol] : df[i, step_xcols[idx]]
             yvec = df[i, step_ycols[idx]]
-            # @assert length(xvec) == length(yvec) "length mismatch in row $i, step $idx"
             for j in eachindex(xvec)
-                push!(xs, xvec[j])
-                push!(ys, yvec[j])
+                xj, yj = xvec[j], yvec[j]
+                if remove_zeros && (xj == 0.0 || yj == 0.0)
+                    continue
+                end
+                push!(xs, xj)
+                push!(ys, yj)
                 push!(cs, color_vals[i])
             end
         end
 
         scatter!(ax, xs, ys;
-            colormap   = :inferno,
+            colormap   = :viridis,
             color      = cs,
             colorrange = (cmin, cmax),
             markersize = 6,
             alpha      = 0.7
         )
 
-        mn = min(minimum(xs), minimum(ys))
-        mx = max(maximum(xs), maximum(ys))
-        lines!(ax, [mn, mx], [mn, mx], color = :black, linestyle = :dash)
+        # compute limits
+        xmin, xmax = minimum(xs), maximum(xs)
+        ymin, ymax = minimum(ys), maximum(ys)
 
+        if equal_axes
+            mn = min(xmin, ymin)
+            mx = max(xmax, ymax)
+            xlims!(ax, mn, mx)
+            ylims!(ax, mn, mx)
+            lines!(ax, [mn, mx], [mn, mx], color=:black, linestyle=:dash)
+        else
+            xlims!(ax, xmin, xmax)
+            ylims!(ax, ymin, ymax)
+            # still draw unity for reference
+            lines!(ax, [xmin, xmax], [xmin, xmax], color=:black, linestyle=:dash)
+        end
+
+        # Pearson r
         r_val = cor(xs, ys)
+        # r_val = corspearman(xs, ys)
         text!(ax, "r=$(round(r_val, digits=3))",
-            position = (mx, mn),
+            position = (xmax, ymin),
             align    = (:right, :bottom),
             fontsize = 10
         )
@@ -84,28 +103,75 @@ function short_step_correlations_vectors(
     display(fig)
 end
 
+
 #TODO You must load "exploring_min_extinction_100000.jls" once done from drago and run the following plots
+df = deserialize("ThePaper/Ladder/Outputs/exploring_min_extinction_5000_withsssp_rmed.jls")
+short_step_correlations_vectors(
+    df, :ssp_rmed, :rt_pulse_vector;
+    compare_to_full=true,
+    color_by=:conn,
+    remove_unstable=false,
+    remove_zeros=true,
+    equal_axes=false
+)
+##############################################################################
+##############################################################################
+############################ TAU #############################################
+##############################################################################
+short_step_correlations_vectors(
+    df, :ssp_rmed, :tau;
+    compare_to_full=true,
+    color_by=:conn,
+    remove_unstable=true,
+    remove_zeros=true,
+    equal_axes=false
+)
 
 short_step_correlations_vectors(
     df, :tau, :rt_press_vector;
     compare_to_full=false,
     color_by=:conn,
-    remove_unstable=true
+    remove_unstable=true,
+    remove_zeros=true,
+    equal_axes=false
 )
 
 short_step_correlations_vectors(
-    df, :tau, :rt_pulse_vector;
-    compare_to_full=false,
+    df, :ssp_rmed, :tau;
+    compare_to_full=true,
     color_by=:conn,
-    remove_unstable=false
+    remove_unstable=true,
+    remove_zeros=true,
+    equal_axes=true
 )
-
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
 short_step_correlations_vectors(
     df, :rt_pulse_vector, :rt_pulse_vector;
     compare_to_full=true,
     color_by=:conn,
-    remove_unstable=true
+    remove_unstable=true,
+    remove_zeros=true,
+    equal_axes=false
+)
+
+short_step_correlations_vectors(
+    df, :min_delta_K, :min_delta_K;
+    compare_to_full=true,
+    color_by=:conn,
+    remove_unstable=true,
+    remove_zeros=true,
+    equal_axes=true
 )
 
 
-
+short_step_correlations_vectors(
+    df, :ssp_rmed, :rt_pulse_vector;
+    compare_to_full=true,
+    color_by=:conn,
+    remove_unstable=true,
+    remove_zeros=true,
+    equal_axes=false
+)
