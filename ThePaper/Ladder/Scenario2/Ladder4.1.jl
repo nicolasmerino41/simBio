@@ -1088,3 +1088,25 @@ function median_return_rate(J, B; t=1.0, n=1000, rng=Random.GLOBAL_RNG)
 
     return -log(median(alpha)) / t
 end
+
+function species_return_rates(J::AbstractMatrix, B::AbstractVector; t=1.0, n=1000, rng=Random.GLOBAL_RNG)
+    S = length(B)
+    if any(!isfinite, J)
+        return fill(NaN, S)
+    end
+
+    E = exp(t*J)
+    
+    absV = Matrix{Float64}(undef, S, n)
+
+    for k in 1:n
+        u = randn(rng, S) .* (B .^ 2)
+        u ./= norm(u)
+        v = E * u
+        @inbounds absV[:, k] = abs.(v)
+    end
+
+    # now median over the 2nd dimension, and convert to rates
+    med = mapslices(median, absV; dims=2)[:, 1]
+    return @. -(1/t) * log(med)
+end
