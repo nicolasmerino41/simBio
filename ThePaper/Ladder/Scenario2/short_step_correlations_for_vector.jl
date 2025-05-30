@@ -106,6 +106,7 @@ end
 
 #TODO You must load "exploring_min_extinction_100000.jls" once done from drago and run the following plots
 df = deserialize("ThePaper/Ladder/Outputs/exploring_min_extinction_5000_withsssp_rmed.jls")
+df = deserialize("ThePaper/Ladder/Outputs/exploring_min_extinction_96_withsssp_rmed_tinyRmed.jls")
 short_step_correlations_vectors(
     df, :ssp_rmed, :rt_pulse_vector;
     compare_to_full=true,
@@ -140,9 +141,9 @@ short_step_correlations_vectors(
     df, :ssp_rmed, :tau;
     compare_to_full=true,
     color_by=:conn,
-    remove_unstable=true,
+    remove_unstable=false,
     remove_zeros=true,
-    equal_axes=true
+    equal_axes=false
 )
 ##############################################################################
 ##############################################################################
@@ -168,7 +169,7 @@ short_step_correlations_vectors(
 
 
 short_step_correlations_vectors(
-    df, :ssp_rmed, :rt_pulse_vector;
+    df, :ssp_rmed, :tau;
     compare_to_full=true,
     color_by=:conn,
     remove_unstable=true,
