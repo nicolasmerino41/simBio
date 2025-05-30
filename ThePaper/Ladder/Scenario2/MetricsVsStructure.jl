@@ -120,7 +120,7 @@ function plot_metrics_vs_structure(
     color_by::Union{Symbol,Nothing}=nothing,
     steps::UnitRange=1:6,
     ncols::Int=3,
-    remove_unstable::Bool=true
+    remove_unstable::Bool=false
 )
     # ensure all descriptors are present
     add_all_descriptors!(df)
@@ -189,7 +189,7 @@ add_all_descriptors!(A)
 add_biomass_aggregates!(A)
 
 # Plot resilience vs. biomass CR ratio, colored by connectance
-plot_metrics_vs_structure(A, :resilience, :biomass_CR_ratio; color_by = :connectance)
+plot_metrics_vs_structure(A, :Rmed, :mean_tau_full; color_by = :conn, remove_unstable=true)
 
 # -------------------------------------------------------------------
 # 3) Example usage
