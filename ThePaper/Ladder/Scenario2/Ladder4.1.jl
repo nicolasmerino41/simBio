@@ -1073,7 +1073,7 @@ end
 # alpha_k = |exp(t*J)*u[k]|.  Returns
 # R_med(t) = -(1/t) * log(median(alpha_k)).
 # """
-function median_return_rate(J, B; t=1.0, n=1000, rng=Random.GLOBAL_RNG)
+function median_return_rate(J, B; t=0.01, n=1000, rng=Random.GLOBAL_RNG)
     S = length(B)
     # precompute matrix exponential
     E = exp(t*J)
@@ -1081,7 +1081,7 @@ function median_return_rate(J, B; t=1.0, n=1000, rng=Random.GLOBAL_RNG)
 
     # draw pulses
     for k in 1:n
-        u = randn(rng, S) .* (B .^ 2)         # biomass-weighted
+        u = randn(rng, S)# .* (B .^ 2)         # biomass-weighted
         u ./= norm(u)                         # unit length
         alpha[k] = norm(E * u)                    # growth factor
     end
@@ -1089,24 +1089,52 @@ function median_return_rate(J, B; t=1.0, n=1000, rng=Random.GLOBAL_RNG)
     return -log(median(alpha)) / t
 end
 
-function species_return_rates(J::AbstractMatrix, B::AbstractVector; t=1.0, n=1000, rng=Random.GLOBAL_RNG)
+# function species_return_rates(J::AbstractMatrix, B::AbstractVector; t=0.01, n=1000, rng=Random.GLOBAL_RNG)
+#     S = length(B)
+#     if any(!isfinite, J)
+#         return fill(NaN, S)
+#     end
+
+#     E = exp(t*J)
+    
+#     absV = Matrix{Float64}(undef, S, n)
+
+#     for k in 1:n
+#         u = randn(rng, S)# .* (B .^ 2)
+#         u ./= norm(u)
+#         v = E * u
+#         @inbounds absV[:, k] = abs.(v)
+#     end
+
+#     # now median over the 2nd dimension, and convert to rates
+#     med = mapslices(median, absV; dims=2)[:, 1]
+#     return @. -(1/t) * log(med)
+# end
+
+function species_return_rates(J::AbstractMatrix, B::AbstractVector;
+                              t::Real=0.01, n::Int=1000,
+                              rng::AbstractRNG=Random.GLOBAL_RNG)
     S = length(B)
     if any(!isfinite, J)
         return fill(NaN, S)
     end
 
+    # precompute matrix exponential
     E = exp(t*J)
-    
-    absV = Matrix{Float64}(undef, S, n)
 
+    # store per‐species alpha values
+    alpha = Matrix{Float64}(undef, S, n)
     for k in 1:n
-        u = randn(rng, S) .* (B .^ 2)
+        # draw a random perturbation
+        u = randn(rng, S)# .* (B .^ 2)
         u ./= norm(u)
         v = E * u
-        @inbounds absV[:, k] = abs.(v)
+        @inbounds for i in 1:S
+            alpha[i,k] = abs(v[i] / u[i])
+        end
     end
 
-    # now median over the 2nd dimension, and convert to rates
-    med = mapslices(median, absV; dims=2)[:, 1]
-    return @. -(1/t) * log(med)
+    # median over trials, then convert to a rate
+    med = mapslices(median, alpha; dims=2)[:,1]
+    return -log(med) ./ t
 end
