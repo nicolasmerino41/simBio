@@ -1,12 +1,12 @@
 @time begin
-    PC = "MM-1"
+    PC = "nicol"
     const EXTINCTION_THRESHOLD = 1e-2
     using Pkg
     Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\ThePaper"))
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
     meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
     # using ArchGDAL #, Shapefile, NCDatasets
-    using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs
+    using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs, Serialization
     import Base.Threads: @threads
     # include("Ladder/Scenario2/Ladder4.1.jl")
     # using CSV, DataFrames
