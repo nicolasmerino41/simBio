@@ -37,14 +37,15 @@ function plot_tau_vs_Rmed(
     cs = Float64[]
 
     # gather data
-    for row in eachrow(df)
-        τ = row[:tau]                # Vector of length 50
-        Rmed = row[:Rmed_full]       # scalar
+    for row in eachrow(df)[4:4]
+        τ = row[:tau_full]                # Vector of length 50
+        # Rmed = row[:ssp_rmed_full]          # scalar median return rate
+        Rmed = row[:analytical_rmed_full]          # scalar median return rate
         clr = row[conn_col]          # e.g. connectivity
 
         for i in idxs
             push!(xs, 1/τ[i])        # 1/τᵢ
-            push!(ys, Rmed)          # same Rmed for all species
+            push!(ys, Rmed[i])          # same Rmed for all species
             push!(cs, clr)
         end
     end
@@ -53,25 +54,25 @@ function plot_tau_vs_Rmed(
     fig = Figure(resolution = (800, 400))
     ax = Axis(fig[1,1],
         xlabel = "1/τᵢ (species-level return rate)",
-        ylabel = "Rₘₑd (global)",
+        ylabel = "Analytical Rₘₑd (median return rate)",
         title  = which === :resources ? "Resources" :
                  which === :consumers ? "Consumers" :
                                          "All Species"
     )
 
     scatter!(ax, xs, ys;
-        color      = cs,
+        # color      = cs,
         colormap   = :viridis,
-        colorrange = extrema(cs),
+        # colorrange = extrema(cs),
         markersize = 6,
         alpha      = 0.8
     )
 
-    Colorbar(fig[1,2], ax.plots[1], label = string(conn_col))
+    # Colorbar(fig[1,2], ax.plots[1], label = string(conn_col))
     display(fig)
 end
 
 # Example usage:
-plot_species_tau_vs_Rmed(
-    df; which = :all, conn_col = :conn
+plot_tau_vs_Rmed(
+    df; which = :consumers, conn_col = :conn
 )
