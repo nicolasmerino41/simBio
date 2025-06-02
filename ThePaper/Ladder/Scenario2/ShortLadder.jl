@@ -117,11 +117,12 @@ function short_ComputingLadder(
         
         original_k_xi = vcat(K_res, xi_cons)
         # but you can also sweep t=0.1, 1, 10, etc.
-        t0 = 1.0
+        t0 = 0.01
 
         # full-model median return rate
         Rmed_full = median_return_rate(J_full, fixed; t=t0, n=Rmed_iterations)
         ssp_rmed_full = species_return_rates(J_full, fixed; t=t0, n=Rmed_iterations)
+        analytical_rmed_full = analytical_species_return_rates(J_full; t=0.001)
         ############### TRYING SOMETHING NEW ################
         prob1 = ODEProblem(trophic_ode!, B0, (tspan[1], tpert), p)
         sol1 = solve(prob1, Tsit5(); callback = cb, reltol=1e-8, abstol=1e-8)
@@ -800,7 +801,7 @@ function short_ComputingLadder(
             before_persistence_full=before_full, after_persistence_full=after_persistence_full, after_pulse_full=after_pulse_full,
             rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
             collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
-            Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full,
+            Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full, analytical_rmed_full=analytical_rmed_full,
             mean_tau_full=mean_tau_full, tau_full=tau_full,
             J_diff_full=J_diff_full, J_full_norm=J_full_norm,
             rt_pulse_vector_full=rt_pulse_full_vector, rt_press_vector_full=rt_press_full_vector,
@@ -837,7 +838,7 @@ R = short_ComputingLadder(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 14,
+    number_of_combinations = 28,
     B_term = false,
     iterations=1,
     Rmed_iterations=10
