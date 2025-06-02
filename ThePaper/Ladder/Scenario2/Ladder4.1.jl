@@ -1136,5 +1136,35 @@ function species_return_rates(J::AbstractMatrix, B::AbstractVector;
 
     # median over trials, then convert to a rate
     med = mapslices(median, alpha; dims=2)[:,1]
-    return -log(med) ./ t
+    return -log.(med) ./ t
+end
+
+"""
+    analytical_species_return_rates(J::AbstractMatrix; t::Real=0.01)
+
+Compute the exact, species-level return rate vector
+r_i(t) = [exp(t * J) * exp(t * J)']_{i,i} / (2 * t),
+for i = 1:S, where S = size(J,1).  Returns an S-element Vector{Float64}.
+
+In the short-time limit (t -> 0), this should approach -diag(J).
+"""
+function analytical_species_return_rates(J::AbstractMatrix; t::Real = 0.01)
+    S = size(J, 1)
+    # If J contains any non-finite values, return NaNs
+    if any(!isfinite, J)
+        return fill(NaN, S)
+    end
+
+    # Compute exp(t * J)
+    E = exp(t * J)
+
+    # Compute the product exp(tJ) * (exp(tJ))'
+    M = E * transpose(E)
+
+    # Extract the diagonal and divide by 2*t
+    rates = Vector{Float64}(undef, S)
+    for i in 1:S
+        rates[i] = M[i, i] / (2 * t)
+    end
+    return rates
 end
