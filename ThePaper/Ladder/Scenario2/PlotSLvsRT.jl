@@ -87,7 +87,7 @@ function plot_SLloss_vs(df::DataFrame, rowidx::Int;
 
     row = df[rowidx, :]
     SL       = row[:SL_vect]               # length R+C
-    yvec     = row[yvar]                   # length R+C
+    yvec     = 1 ./ row[yvar]                   # length R+C
     R_eq     = row[:R_eq]
     C_eq     = row[:C_eq]
     K_Xi     = row[:K_Xi_full]             # length R+C
@@ -145,9 +145,9 @@ function plot_SLloss_vs(df::DataFrame, rowidx::Int;
 end
 
 # Example usage:
-for i in 1:15
+for i in 1:1
     plot_SLloss_vs(
-        dff, 2; yvar=:ssp_rmed_full,
+        df, i; yvar=:tau_full,
         groups=[:resources, :consumers],
         R=0, C=20
     )
