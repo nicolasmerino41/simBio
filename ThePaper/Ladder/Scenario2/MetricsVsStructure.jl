@@ -1,9 +1,6 @@
-
-using DataFrames, Graphs, StatsBase, LinearAlgebra, CairoMakie
-
 # -------------------------------------------------------------------
 # 1) Network descriptors
-# -------------------------------------------------------------------
+# ------------------------------------------------------------------
 function add_degree_cv!(df::DataFrame)
     if :degree_cv ∉ names(df)
         df.degree_cv = [ begin
