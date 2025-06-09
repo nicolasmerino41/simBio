@@ -96,6 +96,7 @@ end
 # df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_48.jls")
 df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_96.jls")
 df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_withMinExtinction_96_20species.jls")
+df = deserialize("ThePaper/Ladder/ScenarioAllo/Outputs/ShortAlloLadder_100.jls")
 df.model_type_n = map(df.model_type) do mt
     if mt == :cascade
         1
@@ -108,7 +109,7 @@ end
 # df = A
 
 allo_step_correlations_vectors(
-    df, :tau, :rt_pulse_vector;
+    df, :tau, :analytical_rmed;
     color_by=:conn, 
     compare_to_full=true,
     remove_unstable=false,
@@ -121,7 +122,7 @@ allo_step_correlations_vectors(
     color_by=:conn, 
     remove_unstable=false,
     compare_to_full=true,
-    remove_zeros=false,
+    remove_zeros=true,
     equal_axes=true
 )
 

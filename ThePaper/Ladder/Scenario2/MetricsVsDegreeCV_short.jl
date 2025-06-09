@@ -123,6 +123,7 @@ for i in [:reactivity, :resilience, :rt_press, :rt_pulse, :after_persistence, :c
         A, i;
         # facet_by = :scen,
         color_by = :conn,
+        remove_unstable = false
     )
 end
 # Persistence vs degree_cv, coloured by connectance, faceted by scenario
