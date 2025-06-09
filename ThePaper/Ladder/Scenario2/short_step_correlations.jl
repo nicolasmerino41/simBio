@@ -7,13 +7,14 @@ function short_step_correlations(
     # ──────────────────────────────────────────────────────────────────────────
     # 1) define your 19 keys & titles
     step_keys = [
-        "S1","S2","S3","S4","S5","S6", "S7", "S8"]
+        "S1","S2","S3","S4","S5","S6", "S7", "S8", "S9", "S10", "S11"]
         # "S7"
     # ]
     step_names = [
         "Full Model", "Global A (Global ϵ)", " Global AE",
         "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
-        "Global A (Global ϵ) Mean B", "Global AE Mean B"
+        "Global A (Global ϵ) Mean B", "Global AE Mean B",
+        "Rewire network", "Rewire network Randomly", "Rewire network with diff C"
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -31,16 +32,16 @@ function short_step_correlations(
 
     full_vals  = df[!, full_col]
     color_vals = df[!, color_by]
-    cmin, cmax = minimum(color_vals), maximum(color_vals)
+    cmin, cmax = minimum(color_vals; init = 0.0), maximum(color_vals; init = 1.0)
 
     # ──────────────────────────────────────────────────────────────────────────
     # 3) grid: 19 panels → 5 rows × 4 cols
     ns   = length(panel_cols)
-    cols = 3
+    cols = 4 
     rows = ceil(Int, ns/cols)
 
-    fig = Figure(; size=(1000, 570))
-    Label(fig[0, 1:cols], uppercase(string(var, " correlations")); fontsize=18)
+    fig = Figure(; size=(900, 450))
+    Label(fig[0, 1:cols], uppercase(string(var, " correlations")); fontsize=12)
     Label(fig[0, 2:cols], "Remove unstable: $(remove_unstable)"; fontsize=10)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ function short_step_correlations(
             title     = step_names[idx],
             xlabel    = string(full_col),
             ylabel    = string(panel_cols[idx]),
-            titlesize = 20, xlabelsize = 10, ylabelsize = 10,
+            titlesize = 10, xlabelsize = 10, ylabelsize = 10,
             xticksize = 15, yticksize = 15,
         )
 
@@ -86,7 +87,8 @@ function short_step_correlations(
     return fig
 end
 
-df = F
+
+df = R
 df.avg_xi = mean.(df.K_Xi_full)
 
 vect = Vector{Vector}()
@@ -126,7 +128,7 @@ end
 begin
     save_plot = false
     color_by = :conn
-    remove_it = true
+    remove_it = false
     rt_press = short_step_correlations(df, :rt_press;  color_by = color_by, remove_unstable=remove_it)
     if save_plot
         save("ThePaper/Ladder/Scenario2/figures/rt_press.png", rt_press)
