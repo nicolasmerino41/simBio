@@ -60,7 +60,7 @@ function short_ComputingLadder_END(
     reject_if_disconnected = [true, false],
     number_of_combinations=100,
     iterations=100,
-    median_rt_ite=10,
+    Rmed_iterations=10,
     steps=3
 )
     results = Vector{NamedTuple}()
@@ -119,7 +119,11 @@ function short_ComputingLadder_END(
             # println("breaokpoint 1.5")
             rea_full = compute_reactivity(Bstar, p)
             # println("breakpoint 1.75")
-            Rm_full  = median_return_rate(J_full, Bstar; t=1.0, n=median_rt_ite)
+            
+            Rmed_full  = median_return_rate(J_full, Bstar; t=1.0, n=Rmed_iterations)
+            ssp_rmed_full = species_return_rates(J_full, Bstar; t=1.0, n=Rmed_iterations)
+            analytical_rmed_full = analytical_species_return_rates(J_full; t=0.001)
+            
             # println("breakpoint 2")
             # - full model press -
             rt_press_full, before_full, after_press_full, B_post_press_full = simulate_press_perturbation_allo!(
@@ -159,14 +163,21 @@ function short_ComputingLadder_END(
             rea_S  = Dict(i=>NaN for i in 1:steps)
             res_S  = Dict(i=>NaN for i in 1:steps)
             st_S    = Dict(i=>NaN for i in 1:steps)
-            Rm_S    = Dict(i=>NaN for i in 1:steps)
+
+            Rmed_S    = Dict(i=>NaN for i in 1:steps)
+            ssp_rmed_S = Dict(i=>Float64[] for i in 1:steps)
+            analytical_rmed_S = Dict(i=>Float64[] for i in 1:steps)
+            
             rt_press_S    = Dict(i=>NaN for i in 1:steps)
             rt_pulse_S    = Dict(i=>NaN for i in 1:steps)
             rt_press_vector_S = Dict(i=>Float64[] for i in 1:steps)
             rt_pulse_vector_S = Dict(i=>Float64[] for i in 1:steps)
+            
             J_diff_S = Dict(i=>NaN for i in 1:steps)
+            
             mean_tau_S = Dict(i => NaN for i in 1:steps)
             tau_S = Dict(i => Float64[] for i in 1:steps)
+            
             min_delta_K_S = Dict(i => Float64[] for i in 1:steps)
             mean_min_delta_K_S = Dict(i => NaN for i in 1:steps)
             
@@ -214,7 +225,11 @@ function short_ComputingLadder_END(
                 st_S[step]  = is_locally_stable(J_s)
                 res_S[step] = compute_resilience(B_s, p_s)
                 rea_S[step] = compute_reactivity(B_s, p_s)
-                Rm_S[step]  = median_return_rate(J_s, B_s; t=1.0, n=median_rt_ite)
+
+                Rmed_S[step]  = median_return_rate(J_s, B_s; t=1.0, n=Rmed_iterations)
+                ssp_rmed_S[step] = species_return_rates(J_s, B_s; t=1.0, n=Rmed_iterations)
+                analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
+
                 J_diff_S[step] = norm(J_s - J_full)
 
                 mean_tau_S[step] = mean(-1 ./ diag(J_s))
@@ -236,17 +251,26 @@ function short_ComputingLadder_END(
                     Symbol("before_S$i") => before_S[i],
                     Symbol("after_press_S$i")  => after_press_S[i],
                     Symbol("after_pulse_S$i") => after_pulse_S[i],
-                    Symbol("rt_press_S$i")     => rt_press_S[i],
-                    Symbol("rt_pulse_S$i")     => rt_pulse_S[i],
+                    
                     Symbol("resilience_S$i") => res_S[i],
                     Symbol("reactivity_S$i") => rea_S[i],
-                    Symbol("Rmed_S$i")  => Rm_S[i],
+
+                    Symbol("rt_press_S$i")     => rt_press_S[i],
+                    Symbol("rt_pulse_S$i")     => rt_pulse_S[i],
+
+                    Symbol("Rmed_S$i")  => Rmed_S[i],
+                    Symbol("ssp_rmed_S$i") => ssp_rmed_S[i],
+                    Symbol("analytical_rmed_S$i") => analytical_rmed_S[i],
+                    
                     Symbol("is_stable_S$i") => st_S[i],
                     Symbol("J_diff_S$i") => J_diff_S[i],
+                    
                     Symbol("mean_tau_S$i") => mean_tau_S[i],
                     Symbol("tau_S$i") => tau_S[i],
+                    
                     Symbol("min_delta_K_S$i") => min_delta_K_S[i],
                     Symbol("mean_min_delta_K_S$i") => mean_min_delta_K_S[i],
+                    
                     Symbol("rt_press_vector_S$i") => rt_press_vector_S[i],
                     Symbol("rt_pulse_vector_S$i") => rt_pulse_vector_S[i]
                 ] for i in 1:steps)
@@ -264,9 +288,12 @@ function short_ComputingLadder_END(
                     rt_pulse_vector_full=rt_pulse_full,
                     resilience_full=res_full,
                     reactivity_full=rea_full,
-                    Rmed_full=Rm_full,
+                    
+                    Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full, analytical_rmed_full=analytical_rmed_full,
+                    
                     mean_tau_full=mean_tau_full,
                     tau_full=tau_full,
+                    
                     min_delta_K_full=min_delta_K_full,
                     mean_min_delta_K_full=mean_min_delta_K_full,
                     # Bstar=Bstar,
@@ -299,19 +326,20 @@ T = short_ComputingLadder_END(
     reject_if_disconnected = [true],
     iterations=200,
     number_of_combinations=7,
-    median_rt_ite=1,
+    Rmed_iterations=10,
     steps=2
 )
 
 desired = [
   :conn, :delta, :descon, :model_type,
   :J_diff_full, :J_full_norm,
-  :before_full, :after_press_full, :after_pulse_full, :rt_press_full, :rt_pulse_full, :rt_press_vector_full, :rt_pulse_vector_full, :resilience_full, :reactivity_full, :Rmed_full, :mean_tau_full, :tau_full, :min_delta_K_full, :mean_min_delta_K_full, 
-  :before_S1, :after_press_S1, :after_pulse_S1, :rt_press_S1, :rt_pulse_S1, :rt_press_vector_S1, :rt_pulse_vector_S1, :resilience_S1, :reactivity_S1, :Rmed_S1, :mean_tau_S1, :tau_S1, :min_delta_K_S1, :mean_min_delta_K_S1,
-  :before_S2, :after_press_S2, :after_pulse_S2, :rt_press_S2, :rt_pulse_S2, :rt_press_vector_S2, :rt_pulse_vector_S2, :resilience_S2, :reactivity_S2, :Rmed_S2, :mean_tau_S2, :tau_S2, :min_delta_K_S2, :mean_min_delta_K_S2,
-#   :before_S3, :after_press_S3, :after_pulse_S3, :rt_press_S3, :rt_pulse_S3, :rt_press_vector_S3, :rt_pulse_vector_S3, :resilience_S3, :reactivity_S3, :Rmed_S3, :mean_tau_S3, :tau_S3, :min_delta_K_S3, :mean_min_delta_K_S3
+  :before_full, :after_press_full, :after_pulse_full, :rt_press_full, :rt_pulse_full, :rt_press_vector_full, :rt_pulse_vector_full, :resilience_full, :reactivity_full, :Rmed_full, :ssp_rmed_full, :analytical_rmed_full, :mean_tau_full, :tau_full, :min_delta_K_full, :mean_min_delta_K_full, 
+  :before_S1, :after_press_S1, :after_pulse_S1, :rt_press_S1, :rt_pulse_S1, :rt_press_vector_S1, :rt_pulse_vector_S1, :resilience_S1, :reactivity_S1, :Rmed_S1, :ssp_rmed_S1, :analytical_rmed_S1, :mean_tau_S1, :tau_S1, :min_delta_K_S1, :mean_min_delta_K_S1,
+  :before_S2, :after_press_S2, :after_pulse_S2, :rt_press_S2, :rt_pulse_S2, :rt_press_vector_S2, :rt_pulse_vector_S2, :resilience_S2, :reactivity_S2, :Rmed_S2, :ssp_rmed_S2, :analytical_rmed_S2, :mean_tau_S2, :tau_S2, :min_delta_K_S2, :mean_min_delta_K_S2,
+#   :before_S3, :after_press_S3, :after_pulse_S3, :rt_press_S3, :rt_pulse_S3, :rt_press_vector_S3, :rt_pulse_vector_S3, :resilience_S3, :reactivity_S3, :Rmed_S3, :ssp_rmed_S3, :analytical_rmed_S3, :mean_tau_S3, :tau_S3, :min_delta_K_S3, :mean_min_delta_K_S3
 ]
 
 A = T[:, desired]
 
-serialize("ShortAlloLadder_withMinExtinction_768.jls", A)
+serialize("ShortAlloLadder_240.jls", A)
+
