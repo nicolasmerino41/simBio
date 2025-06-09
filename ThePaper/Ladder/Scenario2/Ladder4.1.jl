@@ -208,6 +208,31 @@ function calibrate_from_K_xi(
     return M \ b
 end
 
+function sample_Xi_K_from_A(A::AbstractMatrix, epsilon::AbstractMatrix, R::Int;
+                            scale_factor::Float64=1.0)
+    S = size(A,1)
+    C = S - R
+
+    # for each resource i, base K_i = total drain by consumers
+    K = zeros(R)
+    for i in 1:R
+        # drain = sum(abs(A[i,j]) for j in 1:R; init = 0.0)
+        K[i]  = abs(rand(Normal(2.0, 2.0))) # drain * scale_factor * rand(Uniform(0.5, 1.5))
+    end
+
+    # for each consumer k, base Xi_k = total potential gain+loss
+    Xi = zeros(C)
+    for k in 1:C
+        i = R + k
+        # raw_gain  = sum(epsilon[i,j]*abs(A[i,j]) for j in R+1:S if A[i,j] > 0; init = 0.0)
+        # raw_loss  = sum(abs(A[i,j]) for j in R+1:S if A[i,j] < 0; init = 0.0)
+        # Xi[k] = (raw_gain + raw_loss) * scale_factor * rand(Uniform(0.5, 1.5))
+        Xi[k] = abs(rand(Normal(1.0, 1.0)))
+    end
+
+    return K, Xi
+end
+
 # ────────────────────────────────────────────────────────────────────────────────
 # 3) generate_feasible_thresholds
 # ────────────────────────────────────────────────────────────────────────────────
@@ -472,7 +497,7 @@ end
 #############################################################################
 function simulate_press_perturbation(
     u0, p, tspan, t_perturb, delta;
-    solver=Tsit5(),
+    solver=AutoTsit5(Rosenbrock23()),
     plot=false,
     show_warnings=true,
     full_or_simple=true,
@@ -597,7 +622,7 @@ end
 """
     simulate_pulse_perturbation(
         u0, p, tspan, t_pulse, delt;
-        solver=Tsit5(),
+        solver=AutoTsit5(Rosenbrock23()),
         plot=false,
         cb=nothing,
         species_specific_perturbation=false
@@ -620,7 +645,7 @@ Returns:
 """
 function simulate_pulse_perturbation(
     u0, p, tspan, t_pulse, delt;
-    solver=Tsit5(),
+    solver=AutoTsit5(Rosenbrock23()),
     plot=false,
     cb=nothing,
     species_specific_perturbation=false
@@ -680,7 +705,7 @@ function simulate_pulse_perturbation(
 
     # 6) Optional plotting
     if plot
-        fig = Figure(resolution=(1200,600))
+        fig = Figure(; size=(1200,600))
         ax1 = Axis(fig[1,1], title="Pre-Pulse Dynamics", xlabel="Time", ylabel="Biomass")
         ax2 = Axis(fig[1,2], title="Post-Pulse Dynamics", xlabel="Time", ylabel="Biomass")
         for i in 1:R
@@ -728,7 +753,7 @@ function find_min_K_reduction(
 
     # --- Phase 1: run up to t_perturb ---
     prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], tpert), p)
-    sol1 = solve(prob1, Tsit5(); callback = cb, reltol=1e-6, abstol=1e-6)
+    sol1 = solve(prob1, AutoTsit5(Rosenbrock23()); callback = cb, reltol=1e-6, abstol=1e-6)
     pre_state = sol1.u[end]
     
     ########## CHECKING MAXIMUM PERTURBATION ##########
@@ -741,7 +766,7 @@ function find_min_K_reduction(
     
     p_press  = (R, C, m_cons, xi_press, r_res, K_press, epsilon, A)
     prob2    = ODEProblem(trophic_ode!, pre_state, (tpert, tspan[2]), p_press)
-    sol2     = solve(prob2, Tsit5(); callback = cb, reltol=1e-8, abstol=1e-8)
+    sol2     = solve(prob2, AutoTsit5(Rosenbrock23()); callback = cb, reltol=1e-8, abstol=1e-8)
     new_equil = sol2.u[end]
     if new_equil[i] > EXTINCTION_THRESHOLD
         # @warn "Resource $i does not go extinct even with maximum K reduction. Its final vector is:"
@@ -761,10 +786,10 @@ function find_min_K_reduction(
         # integrate:
         # --- Phase 1: run up to t_perturb ---
         prob1 = ODEProblem(trophic_ode!, u0, (tspan[1], tpert), p)
-        sol1 = solve(prob1, Tsit5(); callback = cb, reltol=1e-6, abstol=1e-6)
+        sol1 = solve(prob1, AutoTsit5(Rosenbrock23()); callback = cb, reltol=1e-6, abstol=1e-6)
         pre_state = sol1.u[end]
         prob2    = ODEProblem(trophic_ode!, pre_state, (tpert, tspan[2]), p_press)
-        sol2     = solve(prob2, Tsit5(); callback = cb, reltol=1e-8, abstol=1e-8)
+        sol2     = solve(prob2, AutoTsit5(Rosenbrock23()); callback = cb, reltol=1e-8, abstol=1e-8)
         new_equil = sol2.u[end]
         # --- Phase 2: apply press (reduce thresholds by delta) ---
         if new_equil[i] <= EXTINCTION_THRESHOLD
@@ -779,7 +804,7 @@ end
 
 function find_min_K_reduction(i::Int,
                               u0::AbstractVector,
-                              p::NamedTuple{(:R,:C,:m_cons,:xi_cons,:r_res,:K_res,:ε,:A),T},
+                              p::NamedTuple{(:R,:C,:m_cons,:xi_cons,:r_res,:K_res,:epsilon,:A),T},
                               tspan::Tuple{<:Real,<:Real},
                               tpert::Real;
                               cb) where T
@@ -793,8 +818,8 @@ function find_min_K_reduction(i::Int,
 
     # check if even max does not kill:
     p_hi = (R, C, m_cons, xi_cons, r_res, K0, epsilon, A)
-    sol = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
-    post_hi = solve(ODEProblem(trophic_ode!, sol.u[end], (tpert,tspan[2]), p_hi), Tsit5(); callback=cb).u[end]
+    sol = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), AutoTsit5(Rosenbrock23()); callback=cb)
+    post_hi = solve(ODEProblem(trophic_ode!, sol.u[end], (tpert,tspan[2]), p_hi), AutoTsit5(Rosenbrock23()); callback=cb).u[end]
     if post_hi[i] > 0.01 #EXTINCTION_THRESHOLD
         error("Resource $i does not go extinct even with maximum K reduction. Its final vector is: $(post_hi[i])")
         return nothing
@@ -805,9 +830,9 @@ function find_min_K_reduction(i::Int,
         mid = (lo+hi)/2
         p_mid = merge(p, (; K_res = K0 .* (1 .- mid) ))
         # integrate:
-        sol1 = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
+        sol1 = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), AutoTsit5(Rosenbrock23()); callback=cb)
         post = solve(ODEProblem(trophic_ode!, sol1.u[end], (tpert,tspan[2]), p_mid),
-                     Tsit5(); callback=cb).u[end]
+                     AutoTsit5(Rosenbrock23()); callback=cb).u[end]
         if post[i] <= 0.01 #EXTINCTION_THRESHOLD
             hi = mid
         else
@@ -839,8 +864,8 @@ function find_min_xi_increase(j::Int,
     xi0[j] = xi0[j] * (1 + hi)  # perturb only consumer j
     # check if even max does not kill:
     p_hi = (R, C, m_cons, xi0, r_res, K_res, epsilon, A)
-    sol = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
-    post_hi = solve(ODEProblem(trophic_ode!, sol.u[end], (tpert,tspan[2]), p_hi), Tsit5(); callback=cb).u[end]
+    sol = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), AutoTsit5(Rosenbrock23()); callback=cb)
+    post_hi = solve(ODEProblem(trophic_ode!, sol.u[end], (tpert,tspan[2]), p_hi), AutoTsit5(Rosenbrock23()); callback=cb).u[end]
     if post_hi[R+j] > EXTINCTION_THRESHOLD
         # @warn "Consumer $j does not go extinct even with maximum xi increase. Its final vector is: $(post_hi[R+j])"
         return 0.0
@@ -852,9 +877,9 @@ function find_min_xi_increase(j::Int,
         xi_mid = copy(xi0)
         xi_mid[j] *= 1 + mid
         p_mid = (R, C, m_cons, xi_mid, r_res, K_res, epsilon, A)
-        sol1 = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), Tsit5(); callback=cb)
+        sol1 = solve(ODEProblem(trophic_ode!, u0, (tspan[1],tpert), p), AutoTsit5(Rosenbrock23()); callback=cb)
         post = solve(ODEProblem(trophic_ode!, sol1.u[end], (tpert,tspan[2]), p_mid),
-                     Tsit5(); callback=cb).u[end]
+                     AutoTsit5(Rosenbrock23()); callback=cb).u[end]
         if post[R+j] <= EXTINCTION_THRESHOLD
             hi = mid
         else
@@ -1164,7 +1189,8 @@ function analytical_species_return_rates(J::AbstractMatrix; t::Real = 0.01)
     # Extract the diagonal and divide by 2*t
     rates = Vector{Float64}(undef, S)
     for i in 1:S
-        rates[i] = M[i, i] / (2 * t)
+        rates[i] = (M[i,i] - 1.0) / (2*t)
     end
-    return rates
+    return -rates # flip the sign to make a positive return rate?? Is this correct?
 end
+
