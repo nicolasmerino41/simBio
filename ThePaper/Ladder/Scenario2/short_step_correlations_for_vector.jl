@@ -9,11 +9,12 @@ function short_step_correlations_vectors(
     equal_axes::Bool = true
 )
     # step identifiers & titles
-    step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8"]
+    step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8", "S9", "S10", "S11"]
     step_names = [
-      "Full Model", "Global A (Global ϵ)", "Global AE",
-      "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
-      "Global A (Global ϵ) Mean B", "Global AE Mean B"
+        "Full Model", "Global A (Global ϵ)", " Global AE",
+        "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
+        "Global A (Global ϵ) Mean B", "Global AE Mean B",
+        "Rewire network", "Rewire network Randomly", "Rewire network with diff C"
     ]
 
     if remove_unstable
@@ -32,9 +33,9 @@ function short_step_correlations_vectors(
     cmin, cmax = extrema(color_vals)
 
     ns   = length(step_keys)
-    cols = 3
+    cols = 4
 
-    fig = Figure(size=(960, 640))
+    fig = Figure(size=(960, 465))
     Label(fig[0, 1:cols], uppercase("$(varx) vs $(vary) correlations"), fontsize=18)
 
     for idx in 1:ns
@@ -107,6 +108,7 @@ end
 #TODO You must load "exploring_min_extinction_100000.jls" once done from drago and run the following plots
 df = deserialize("ThePaper/Ladder/Outputs/exploring_min_extinction_5000_withsssp_rmed.jls")
 df = deserialize("ThePaper/Ladder/Outputs/exploring_min_extinction_96_withsssp_rmed_tinyRmed.jls")
+
 short_step_correlations_vectors(
     df, :ssp_rmed, :rt_pulse_vector;
     compare_to_full=true,
@@ -120,19 +122,28 @@ short_step_correlations_vectors(
 ############################ TAU #############################################
 ##############################################################################
 short_step_correlations_vectors(
-    df, :ssp_rmed, :tau;
+    df, :ssp_rmed, :ssp_rmed;
     compare_to_full=true,
     color_by=:conn,
-    remove_unstable=true,
+    remove_unstable=false,
     remove_zeros=true,
-    equal_axes=false
+    equal_axes=true
 )
 
 short_step_correlations_vectors(
-    df, :tau, :rt_press_vector;
-    compare_to_full=false,
+    df, :rt_press_vector, :rt_press_vector;
+    compare_to_full=true,
     color_by=:conn,
-    remove_unstable=true,
+    remove_unstable=false,
+    remove_zeros=true,
+    equal_axes=true
+)
+
+short_step_correlations_vectors(
+    df, :rt_pulse_vector, :rt_pulse_vector;
+    compare_to_full=true,
+    color_by=:conn,
+    remove_unstable=false,
     remove_zeros=true,
     equal_axes=false
 )
@@ -162,11 +173,10 @@ short_step_correlations_vectors(
     df, :min_delta_K, :min_delta_K;
     compare_to_full=true,
     color_by=:conn,
-    remove_unstable=true,
+    remove_unstable=false,
     remove_zeros=true,
     equal_axes=true
 )
-
 
 short_step_correlations_vectors(
     df, :ssp_rmed, :tau;
