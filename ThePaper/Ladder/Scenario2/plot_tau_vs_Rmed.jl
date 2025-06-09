@@ -37,10 +37,10 @@ function plot_tau_vs_Rmed(
     cs = Float64[]
 
     # gather data
-    for row in eachrow(df)[4:4]
+    for row in eachrow(df)#[1:1]
         τ = row[:tau_full]                # Vector of length 50
-        # Rmed = row[:ssp_rmed_full]          # scalar median return rate
         Rmed = row[:analytical_rmed_full]          # scalar median return rate
+        # Rmed = row[:ssp_rmed_full]          # scalar median return rate
         clr = row[conn_col]          # e.g. connectivity
 
         for i in idxs
@@ -51,10 +51,11 @@ function plot_tau_vs_Rmed(
     end
 
     # make the scatter
-    fig = Figure(resolution = (800, 400))
+    fig = Figure(; size = (800, 400))
     ax = Axis(fig[1,1],
         xlabel = "1/τᵢ (species-level return rate)",
-        ylabel = "Analytical Rₘₑd (median return rate)",
+        # ylabel = "Analytical Rₘₑd (median return rate)",
+        ylabel = "Species-level Rₘₑd (median return rate)",
         title  = which === :resources ? "Resources" :
                  which === :consumers ? "Consumers" :
                                          "All Species"
@@ -74,5 +75,8 @@ end
 
 # Example usage:
 plot_tau_vs_Rmed(
-    df; which = :consumers, conn_col = :conn
+    df; which = :resources, conn_col = :conn
 )
+
+df = deserialize("ThePaper/Ladder/Outputs/R5000.jls")
+df = deserialize("ThePaper/Ladder/Outputs/NonFeasibility/R96.jls")
