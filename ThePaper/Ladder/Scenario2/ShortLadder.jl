@@ -934,7 +934,7 @@ function short_ComputingLadder(
             rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
             collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
             Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full, analytical_rmed_full=analytical_rmed_full,
-            mean_tau_full=mean_tau_full, tau_full=tau_full,
+            mean_tau_full=mean_tau_full, tau_full=tau_full, J_full = J_full,
             J_diff_full=J_diff_full, J_full_norm=J_full_norm,
             rt_pulse_vector_full=rt_pulse_full_vector, rt_press_vector_full=rt_press_full_vector,
             mean_min_delta_K_full = mean_min_delta_K_full, mean_min_delta_xi_full = mean_min_delta_xi_full,
