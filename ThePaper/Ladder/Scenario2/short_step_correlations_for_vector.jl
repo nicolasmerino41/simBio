@@ -9,13 +9,14 @@ function short_step_correlations_vectors(
     equal_axes::Bool = true
 )
     # step identifiers & titles
-    step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8", "S9", "S10", "S11"]
+    step_keys  = ["S1"]#,"S2","S3","S4","S5","S6","S7","S8", "S9", "S10"]#, "S11"]
     step_names = [
-        "Full Model", "Global A (Global ϵ)", " Global AE",
-        "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
-        "Global A (Global ϵ) Mean B", "Global AE Mean B",
-        "Rewire network", "Rewire network Randomly", "Rewire network with diff C"
-    ]
+        "Full Model"]    
+    # "Full Model", "Global A (Global ϵ)", " Global AE",
+    #     "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
+    #     "Global A (Global ϵ) Mean B", "Global AE Mean B",
+    #     "Rewire network", "Rewire network Randomly", "Rewire network with diff C"
+    # ]
 
     if remove_unstable
         res_cols = Symbol.("resilience_" .* step_keys)
@@ -100,6 +101,7 @@ function short_step_correlations_vectors(
             fontsize = 10
         )
     end
+    Colorbar(fig[4, 4], colormap=:viridis, colorrange=(cmin, cmax))
 
     display(fig)
 end
@@ -148,13 +150,24 @@ short_step_correlations_vectors(
     equal_axes=false
 )
 
+scen_value = Float64[]
+for i in 1:nrow(df)
+    if df[i, :scen] == :ER
+        push!(scen_value, 1)
+    elseif df[i, :scen] == :PL
+        push!(scen_value, 2)
+    else
+        push!(scen_value, 3)
+    end
+end
+df.scen_value = scen_value
 short_step_correlations_vectors(
-    df, :ssp_rmed, :tau;
+    df, :tau, :tau;
     compare_to_full=true,
-    color_by=:conn,
+    color_by=:scen_value,
     remove_unstable=false,
     remove_zeros=true,
-    equal_axes=false
+    equal_axes=true
 )
 ##############################################################################
 ##############################################################################
