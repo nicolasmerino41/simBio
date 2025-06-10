@@ -7,14 +7,14 @@ function short_step_correlations(
     # ──────────────────────────────────────────────────────────────────────────
     # 1) define your 19 keys & titles
     step_keys = [
-        "S1","S2","S3","S4","S5","S6", "S7", "S8", "S9", "S10", "S11"]
+        "S1","S2","S3","S4","S5","S6", "S7", "S8", "S9", "S10"]
         # "S7"
     # ]
     step_names = [
         "Full Model", "Global A (Global ϵ)", " Global AE",
         "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
         "Global A (Global ϵ) Mean B", "Global AE Mean B",
-        "Rewire network", "Rewire network Randomly", "Rewire network with diff C"
+        "Rewire network", "Rewire network Randomly"
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -113,21 +113,6 @@ df.SL_resources = mean.(vect_resources)
 begin
     save_plot = false
     color_by = :conn
-    remove_it = true
-
-    mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
-    if save_plot
-        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_K.png", mean_min_delta_K)
-    end
-    mean_min_delta_xi = short_step_correlations(df, :mean_min_delta_xi; color_by = color_by, remove_unstable=remove_it)
-    if save_plot
-        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_C.png", mean_min_delta_C)
-    end
-end
-
-begin
-    save_plot = false
-    color_by = :conn
     remove_it = false
     rt_press = short_step_correlations(df, :rt_press;  color_by = color_by, remove_unstable=remove_it)
     if save_plot
@@ -164,6 +149,21 @@ begin
     tau = short_step_correlations(df, :mean_tau; color_by = color_by, remove_unstable=remove_it)
 
     J_diff = short_step_correlations(df, :J_diff; color_by = color_by, remove_unstable=remove_it)
+
+    mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_K.png", mean_min_delta_K)
+    end
+    mean_min_delta_xi = short_step_correlations(df, :mean_min_delta_xi; color_by = color_by, remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_C.png", mean_min_delta_C)
+    end
+end
+
+begin
+    save_plot = false
+    color_by = :conn
+    remove_it = true
 
     mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
     if save_plot
