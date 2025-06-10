@@ -78,5 +78,5 @@ plot_tau_vs_Rmed(
     df; which = :resources, conn_col = :conn
 )
 
-df = deserialize("ThePaper/Ladder/Outputs/R5000.jls")
-df = deserialize("ThePaper/Ladder/Outputs/NonFeasibility/R96.jls")
+df = deserialize("ThePaper/Ladder/Outputs/R75000.jls")
+df = deserialize("ThePaper/Ladder/Outputs/NonFeasibility/NF240.jls")
