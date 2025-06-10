@@ -115,8 +115,8 @@ function plot_metrics_vs_structure(
     structure::Symbol;
     facet_by::Union{Symbol,Nothing}=nothing,
     color_by::Union{Symbol,Nothing}=nothing,
-    steps::UnitRange=1:6,
-    ncols::Int=3,
+    steps::UnitRange=1:10,
+    ncols::Int=4,
     remove_unstable::Bool=false
 )
     # ensure all descriptors are present
@@ -133,12 +133,13 @@ function plot_metrics_vs_structure(
     facets = facet_by === nothing ? [nothing] : unique(df[!, facet_by])
     step_names = ["Full Model","Global A (Global ϵ)","Global AE",
                   "Randomize m_cons","Randomize ξ","Randomize K_res",
-                  "Global A (Global ϵ) Mean B","Global AE Mean B"]
+                  "Global A (Global ϵ) Mean B","Global AE Mean B",
+                  "Rewire network","Rewire network Randomly"]
 
     for f in facets
         sub = facet_by === nothing ? df : filter(r -> r[facet_by] == f, df)
         rows = ceil(Int, length(steps)/ncols)
-        fig = Figure(; size = (ncols*300, rows*300 + (facet_by===nothing ? 0 : 40)))
+        fig = Figure(; size = (1000, 460))
         if facet_by !== nothing
             Label(fig[1,1:ncols], "$(facet_by) = $(f)"; fontsize=18)
         end
@@ -186,7 +187,7 @@ add_all_descriptors!(A)
 add_biomass_aggregates!(A)
 
 # Plot resilience vs. biomass CR ratio, colored by connectance
-plot_metrics_vs_structure(A, :Rmed, :mean_tau_full; color_by = :conn, remove_unstable=true)
+plot_metrics_vs_structure(A, :persistence, :collectivity_full; color_by = :conn, remove_unstable=true)
 
 # -------------------------------------------------------------------
 # 3) Example usage
