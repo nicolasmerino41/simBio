@@ -275,7 +275,8 @@ function short_ComputingLadder(
         # original equilibrium abundances
         # R_eq_full, C_eq_full = B0[1:R], B0[R+1:S] # B0 is the simulated equilibrium
         R_eq_full, C_eq_full = B0[1:R], B0[R+1:S] # B0 is the calibrated equilibrium
-
+        R_eq_full[R_eq_full .< EXTINCTION_THRESHOLD] .= 0.0
+        C_eq_full[C_eq_full .< EXTINCTION_THRESHOLD] .= 0.0
         ###########################################################################################
         ###########################################################################################
         ###########################################################################################
@@ -1035,8 +1036,8 @@ function short_ComputingLadder(
             min_delta_K_full = min_delta_K_full, min_delta_xi_full = min_delta_xi_full,
             step_pairs...,  # Properly flattened pairs
             p_final = p,
-            R_eq = R_eq,
-            C_eq = C_eq,
+            R_eq = R_eq_full,
+            C_eq = C_eq_full,
             B0 = B0,
             m_cons = m_cons, r_res = r_res,
             K_Xi_full=original_k_xi,
@@ -1054,7 +1055,7 @@ end
 # 9) Run it
 # --------------------------------------------------------------------------------
 R = short_ComputingLadder(
-    50, 20;
+    100, 40;
     conn_vals=0.01:0.04:0.9,
     IS_vals=[0.01, 0.1, 1.0, 2.0],
     IS_vals_B_term=[0.1, 1.0],
