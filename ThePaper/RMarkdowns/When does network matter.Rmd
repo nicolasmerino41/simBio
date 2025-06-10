@@ -1,0 +1,98 @@
+---
+title: "When does network matters?"
+author: "Nico, Núria & Jeff"
+date: "2025-04-15"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 5
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    number_sections: true
+    toc_float:
+      collapsed: false
+    highlight: tango
+  word_document:
+    toc: false
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Why we see these results?**  
+
+In our trophic model, the Jacobian at equilibrium splits neatly into a diagonal matrix **D** (encoding each species’ self‐regulation) and an off‐diagonal interaction part **M**:
+
+$$
+J \;=\; D\,M,
+\quad
+D = \mathrm{diag}(d_1,\dots,d_S),
+\quad
+M = -I + A^*,
+$$
+
+where for each species 
+
+$$
+d_i = 
+\begin{cases}
+\tfrac{r_i}{K_i}\,B_i^* & \text{(resource)}\\
+\tfrac{m_i}{\xi_i}\,B_i^* & \text{(consumer).}
+\end{cases}
+$$  
+
+When interaction strengths are moderate—so that the typical off‐diagonal magnitude $\sigma=\mathrm{std}(M_{ij})$ is much smaller than the smallest $d_i$—**first‐order perturbation theory** shows the leading eigenvalue of $J=-D+\sigma G$ shifts by
+
+$$
+\Delta\lambda \approx \sigma\,G_{ii} \approx 0
+$$
+
+in expectation.  Thus the most unstable eigenvalue (governing resilience, return‐times, reactivity, etc.) is set almost entirely by the **diagonals** $d_i$.  Randomizing or erasing $A$ (our ladder steps 9–11) leaves $D$ unchanged, so **community‐level metrics forget the network**.
+
+**When network structure does matter?**
+
+If interaction scale grows so that
+$$
+\sigma \sim \min_i d_i,
+$$
+
+the $O(\sigma)$ corrections no longer vanish and off‐diagonals begin to shift the leading eigenvalue.  Ecologically, **very strong** competition or predation restores a network imprint on resilience and return‐times.  Similarly, metrics probing non‐local dynamics (multistability, cycles, stochastic variance) will re‐inject network effects.
+
+**The special role of Self-Regulation Loss (SL)**  
+
+For each species,
+$$
+\mathrm{SL}_i \;=\; \frac{B^*_i}{K_i}
+$$
+
+measures its realized equilibrium relative to its monoculture carrying capacity.  Since
+
+$$
+\mathbf B^* = (I - A)^{-1}\,\mathbf K
+         = \bigl(I + A + A^2 + \cdots\bigr)\,\mathbf K,
+$$
+
+SL$_i$ depends on **all orders** of $A$.  Even after randomizing $A$, recalculating $B^*$ via the Neumann series ensures SL$_i$ remains **first‐order sensitive** to the exact interaction pattern.  In contrast, bulk metrics hinge only on $D$.
+
+**How to prove it formally**  
+
+1. **Eigenvalue perturbation**  
+  - Write $J=-D+\sigma G$, with $G$ zero‐mean.  Use standard matrix perturbation to show  
+     $$\lambda_{\max}(J) = -\min_i d_i + O(\sigma^2/\Delta d).$$  
+
+2. **Neumann‐series expansion**  
+  - Expand $(I-A)^{-1}=\sum_{n\ge0}A^n$ to express  
+     $$\frac{B^*_i}{K_i} = 1 + \sum_jA_{ij}\frac{K_j}{K_i} + O(\sigma^2).$$  
+  - Show that randomizing $A$ alters the first‐order term in SL$_i$ but only second‐order in resilience.  
+  
+**Implications**  
+  
+  - **Predicting return‐times**: measure each species’ demography ($r_i,K_i,m_i,\xi_i,B_i^*$) and you can forecast bulk stability without mapping the full network.  
+
+  - **Mapping coexistence**: to know *which* species are suppressed or facilitated, you must recover SL$_i$ via the full interaction matrix.  
+
+  - **Threshold of network relevance**: by tuning interaction strength or connectance until $\sigma\approx\min d_i$, you can pinpoint when network architecture reclaims control over community dynamics.
