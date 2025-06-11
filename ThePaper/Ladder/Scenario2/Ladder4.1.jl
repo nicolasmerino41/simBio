@@ -126,7 +126,7 @@ end
 #     return xi_cons, K_res
 # end
 
-function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, R::Int; margin::Float64=10.0)
+function compute_default_thresholds(A::AbstractMatrix, epsilon::AbstractMatrix, R::Int; margin::Float64=1.0)
     S = size(A,1)
     C = S - R
 
