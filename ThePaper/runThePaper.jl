@@ -6,7 +6,8 @@
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
     meta_path = joinpath("C:\\Users", PC, "OneDrive\\PhD\\Metaweb Modelling")
     # using ArchGDAL #, Shapefile, NCDatasets
-    using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs, Serialization
+    using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs
+    using Distributions, Serialization
     import Base.Threads: @threads
     # include("Ladder/Scenario2/Ladder4.1.jl")
     # using CSV, DataFrames
