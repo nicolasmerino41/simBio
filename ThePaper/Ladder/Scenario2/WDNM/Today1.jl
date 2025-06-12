@@ -1,5 +1,3 @@
-using Random, LinearAlgebra, Statistics, DataFrames, CairoMakie
-
 # --- Helper functions from pipeline ---
 function compute_jacobian(B, p)
     R, C, m_cons, xi_cons, r_res, K_res, ε, A = p
@@ -113,7 +111,7 @@ function test_rewiring_pipeline(; S=50, C=20, conn=0.1, σ=1.0, reps=100)
     end
 
     # Plot
-    fig = Figure(resolution=(800, 300))
+    fig = Figure(; size=(800, 300))
     # List of (column, label)
     metrics = [
         (:resilience, "Resilience"),
