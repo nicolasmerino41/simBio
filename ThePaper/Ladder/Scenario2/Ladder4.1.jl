@@ -304,8 +304,10 @@ function make_A(
     A::AbstractMatrix, R::Int, conn::Float64, scenario::Symbol;
     IS = 1.0,
     pareto_exponent::Float64=1.75,
+    pareto_minimum_degree=1.0,
     mod_gamma::Float64=5.0,
-    B_term::Bool=false
+    B_term::Bool=false,
+    B_term_IS::Float64=0.1
 )
     S = size(A,1)
     C = S - R
@@ -320,7 +322,7 @@ function make_A(
         end
         
     elseif scenario == :PL
-        raw = rand(Pareto(1.0, pareto_exponent), C)
+        raw = rand(Pareto(pareto_minimum_degree, pareto_exponent), C)
         ks  = clamp.(floor.(Int, raw), 1, R)
         for (idx,k) in enumerate(ks)
             i = R + idx
@@ -350,12 +352,12 @@ function make_A(
         error("Unknown scenario $scenario")
     end
 
-    # optionally sprinkle in consumer→consumer predation
+    # optionally sprinkle in consumer-consumer predation
     if B_term
         for i in (R+1):S, j in (R+1):S
             if i != j && rand() < conn
-                A[i,j] = abs(rand(Normal(0.0, IS*0.1)))
-                A[j,i] = -abs(rand(Normal(0.0, IS*0.1)))
+                A[i,j] = abs(rand(Normal(0.0, B_term_IS)))
+                A[j,i] = -abs(rand(Normal(0.0, B_term_IS)))
             end
         end
     end
@@ -1194,3 +1196,59 @@ function analytical_species_return_rates(J::AbstractMatrix; t::Real = 0.01)
     return -rates # flip the sign to make a positive return rate?? Is this correct?
 end
 
+"""
+    analytical_median_return_rate(J; t=0.01)
+
+Computes the median across species of your fully-analytical
+species-level return-rates, i.e. the direct analogue of
+median_return_rate but without Monte Carlo.
+"""
+function analytical_median_return_rate(J::AbstractMatrix; t::Real=0.01)
+    rates = analytical_species_return_rates(J; t=t)
+    return median(rates)
+end
+
+"""
+    degree_scaled_A(A, R, scen)
+
+If scen == :PL, rescales each consumer's outgoing links and each resource's incoming
+links by 1/degree, where "degree" is the number of non-zero links.  Otherwise returns A unchanged.
+"""
+function degree_scaled_A(A::Matrix{Float64}, R::Int, scen::Symbol)
+    S = size(A,1)
+    if scen != :PL
+        return A
+    end
+
+    A2 = copy(A)
+
+    # 1) Resources 1:R: count how many predators each has, then scale its column
+    for res in 1:R
+        deg = count(i -> A2[i,res] != 0.0, R+1:S)
+        if deg > 0
+            α = 1/deg
+            for i in R+1:S
+                if A2[i,res] != 0.0
+                    A2[i,res] *= α      # consumer resource gain
+                    A2[res,i] *= α      # resource consumer loss
+                end
+            end
+        end
+    end
+
+    # 2) Consumers R+1:S: count how many preys each has, then scale its row
+    for con in (R+1):S
+        deg = count(j -> A2[con,j] != 0.0, 1:R)
+        if deg > 0
+            α = 1/deg
+            for j in 1:R
+                if A2[con,j] != 0.0
+                    A2[con,j] *= α      # consumer resource gain
+                    A2[j,con] *= α      # resource consumer loss
+                end
+            end
+        end
+    end
+
+    return A2
+end
