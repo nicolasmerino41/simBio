@@ -398,7 +398,7 @@ function compute_jacobian(B, p)
             if A[i,j] > 0.0
                 Mstar[i,j] += epsilon[i,j] * A[i,j]
             elseif A[j,i] < 0.0
-                Mstar[i,j] += A[i,j]
+                Mstar[i,    j] += A[i,j]
             end
         end
     end
