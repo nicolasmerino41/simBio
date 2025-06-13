@@ -8,7 +8,7 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/checking_recalculating_demogra
 
 ################ CLEANING ################
 desired = [
-  :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite, :pex, :p_min_deg, :mod_gamma,
+  :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite,# :pex, :p_min_deg, :mod_gamma,
   :resilience_full, :reactivity_full, :tau_full, :mean_tau_full, :sigma_over_min_d_full, :SL_full, :mean_SL_full, :inverse_tau_full, :mean_inverse_tau_full, :analytical_rmed_full, :ssp_analytical_rmed_full,
   :resilience_S1, :reactivity_S1, :tau_S1, :mean_tau_S1, :sigma_over_min_d_S1, :SL_S1, :mean_SL_S1, :inverse_tau_S1, :mean_inverse_tau_S1, :analytical_rmed_S1, :ssp_analytical_rmed_S1,
   :resilience_S2, :reactivity_S2, :tau_S2, :mean_tau_S2, :sigma_over_min_d_S2, :SL_S2, :mean_SL_S2, :inverse_tau_S2, :mean_inverse_tau_S2, :analytical_rmed_S2, :ssp_analytical_rmed_S2,
@@ -18,7 +18,7 @@ desired = [
 
 G = R[!, desired]
 
-step_keys = ["_full","_S1","_S2","_S3","_S4"]
+step_keys = ["_full","_S1","_S2"] #,"_S3","_S4"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
