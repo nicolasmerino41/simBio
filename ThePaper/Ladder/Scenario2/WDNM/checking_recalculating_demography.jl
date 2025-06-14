@@ -83,7 +83,7 @@ function checking_recalculating_demography(
         local epsilon = clamp.(randn(S,S).*epsi,0,1)
 
         # --- NEW: compute collectivity phi ---
-        # local psi = compute_collectivity(copy(A), copy(epsilon))
+        local psi = compute_collectivity(copy(A), copy(epsilon))
         # backup_A = deepcopy(A)
         # backup_epsilon = deepcopy(epsilon)
         
@@ -183,7 +183,7 @@ function checking_recalculating_demography(
         rt_pulse_full = mean(filter(!isnan, rt_pulse))
         # rt_pulse_full_vector = rt_pulse
         # rt_press_full_vector = rt_press
-        # collectivity_full = psi 
+        collectivity_full = psi 
         tau_full = -1 ./ diag(J_full)
         mean_tau_full = mean(tau_full)
 
@@ -222,7 +222,7 @@ function checking_recalculating_demography(
         # after_pulse_S = Dict(i => NaN for i in 1:2)
         # rt_press_S   = Dict(i => NaN for i in 1:2)
         # rt_pulse_S   = Dict(i => NaN for i in 1:2)
-        # collectivity_S = Dict(i => NaN for i in 1:2)
+        collectivity_S = Dict(i => NaN for i in 1:2)
         resilience_S  = Dict(i=>NaN for i in 1:2)
         reactivity_S  = Dict(i=>NaN for i in 1:2)
         # stable_S    = Dict(i=>NaN for i in 1:2)
@@ -364,7 +364,7 @@ function checking_recalculating_demography(
             # rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
             # rt_press_vector_S[step] = rt_press2
             # rt_pulse_vector_S[step] = rt_pulse3
-            # collectivity_S[step] = 0.5
+            collectivity_S[step] = compute_collectivity(A_s, epsilon)
             resilience_S[step] = compute_resilience(new_B0, p_s)
             reactivity_S[step] = compute_reactivity(new_B0, p_s)
 
@@ -461,7 +461,7 @@ function checking_recalculating_demography(
             pex=pex, p_min_deg=p_min_deg, mod_gamma=mod_gamma,
             # before_persistence_full=before_full, after_persistence_full=after_persistence_full, after_pulse_full=after_pulse_full,
             # rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
-            # collectivity_full=collectivity_full, 
+            collectivity_full=collectivity_full, 
             resilience_full=resilience_full, reactivity_full=reactivity_full,
             # Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full, 
             analytical_rmed_full=analytical_rmed_full, ssp_analytical_rmed_full=ssp_analytical_rmed_full,
