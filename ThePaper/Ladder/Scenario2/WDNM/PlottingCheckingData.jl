@@ -5,6 +5,7 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/checking_recalculating_demogra
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_recalculating_demography400000PL.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_recalculating_demography100000MOD.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_recalculating_demography300000PL.jls")
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_recalculating_demography10000ER.jls")
 
 ################ CLEANING ################
 desired = [
