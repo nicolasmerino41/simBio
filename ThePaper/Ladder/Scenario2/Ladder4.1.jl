@@ -279,9 +279,12 @@ function generate_feasible_thresholds(
         p    = (R, C, xi_cons, xi_cons, K_res, ones(R), epsilon, A)
         D, M = compute_jacobian(vcat(R_eq, C_eq), p)
         J    = D*M
-        if any(x -> !isfinite(x), eq) || any(x -> x <= 0, eq)
+        if any(x -> !isfinite(x), eq)
             continue
         end
+        # if any(x -> x <= 0, eq)
+        #     continue
+        # end
 
         # 5) accept
         push!(out, (
@@ -407,17 +410,41 @@ function compute_jacobian(B, p)
 end
 
 # Resilience: negative of the largest real part of the Jacobian eigenvalues.
-function compute_resilience(B, p)
-    D, Mstar = compute_jacobian(B, p)
-    J = D * Mstar
-    ev = eigvals(J)
-    return maximum(real.(ev))
+function compute_resilience(B, p; extinct_species = false)
+    if !extinct_species
+        D, Mstar = compute_jacobian(B, p)
+        J = D * Mstar
+        ev = eigvals(J)
+        return maximum(real(ev))
+    else
+        extant = findall(bi -> bi > EXTINCTION_THRESHOLD, B)
+        D, Mstar = compute_jacobian(B, p)
+        J = D * Mstar
+        Jsub = J[extant, extant]
+        ev = eigvals(Jsub)
+        return maximum(real(ev))
+    end
 end
 
+
 # Reactivity: maximum eigenvalue of the symmetric part of the Jacobian.
-function compute_reactivity(B, p)
+function compute_reactivity(B, p; extinct_species = false)
+    # 1) build the full Jacobian
     D, Mstar = compute_jacobian(B, p)
     J = D * Mstar
+
+    if extinct_species
+        # 2) find which species are still extant
+        extant = findall(bi -> bi > EXTINCTION_THRESHOLD, B)
+        # if too few species remain, bail out
+        if length(extant) < 2
+            return NaN
+        end
+        # 3) restrict to the extant subcommunity
+        J = J[extant, extant]
+    end
+
+    # 4) compute the symmetric part and its top eigenvalue
     J_sym = (J + J') / 2
     ev_sym = eigvals(J_sym)
     return maximum(real.(ev_sym))
