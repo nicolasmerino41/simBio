@@ -132,7 +132,7 @@ function checking_recalculating_demography(
         D, M = compute_jacobian(B0, p)
         J_full = D * M
         !is_locally_stable(J_full) && continue
-        S_full = sum(B0 .> 0.0)
+        S_full = sum(B0 .> 0.0; init=0.0)
         # if S_full < 50 && is_locally_stable(J_full)
         #     @error("Hey, we got here!!")
         # end
@@ -322,7 +322,7 @@ function checking_recalculating_demography(
                 # consumer eq: xi = B_i - gain - loss
                 xi_hat[k] = -C_eq_full[k] + gain + loss
             end
-            # xi_hat = xi_cons
+            xi_hat = xi_cons
 
             # 5b) Recompute K_hat
             K_hat = zeros(R)
@@ -332,7 +332,7 @@ function checking_recalculating_demography(
                 # K_i = B_i + ? A[i,j] B_j
                 K_hat[i] = abs(-R_eq_full[i] + drain)
             end
-            # K_hat = K_res
+            K_hat = K_res
 
             # 5c) Solve for new equilibrium
             eq = try
@@ -347,7 +347,7 @@ function checking_recalculating_demography(
             p_s = (R, C, m_cons, xi_hat, r_res, K_hat, epsilon, A_s)
 
             ok, new_B0 = survives!(eq, p_s; cb=cb)
-            S_S[step] = sum(new_B0 .> 0.0)
+            S_S[step] = sum(new_B0 .> 0.0; init=0.0)
             rt_press2, _, _, before_s, after_s, _, _ = simulate_press_perturbation(
                 new_B0, p_s, tspan, tpert, delta;
                 solver=Tsit5(),
@@ -514,7 +514,7 @@ R = checking_recalculating_demography(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 5000,
+    number_of_combinations = 50000,
     B_term = false,
     iterations=3,
     Rmed_iterations=10,
@@ -534,4 +534,4 @@ desired = [
 
 G = R[!, desired]
 
-serialize("checking_yes_recalculating_5000ER.jls", R)
+serialize("checking_not_recalculating_50000ER.jls", R)
