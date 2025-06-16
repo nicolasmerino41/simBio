@@ -29,7 +29,7 @@ function is_locally_stable(J::AbstractMatrix)
         return false
     end
     lambda = eigvals(J)
-    maximum(real.(lambda)) < 0 
+    maximum(real.(lambda)) <= 0 
 end
 
 function survives!(fixed, p; tspan=(0.,500.), cb)
@@ -49,7 +49,7 @@ function checking_recalculating_demography(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     scenarios=[:ER,:PL,:MOD],
-    eps_scales=[0.1],
+    eps_scales=[1.0],
     delta_vals=[1.0,3.0],
     tspan=(0.,500.), tpert=250.0,
     number_of_combinations = 100,
@@ -124,20 +124,23 @@ function checking_recalculating_demography(
 
         # 3) stability & survival
         ok, B0 = survives!(fixed, p; cb=cb)
-        # !ok && continue
-        if !all(isapprox.(B0, fixed, atol=1e-3))
-            @warn "B0 is not close to fixed point: B0 =  $(B0), and fixed = $(fixed)"
-            continue
-        end
-        D, M = compute_jacobian(fixed, p)
+        !ok && continue
+        # if !all(isapprox.(B0, fixed, atol=1e-3))
+        #     @warn "B0 is not close to fixed point: B0 =  $(B0), and fixed = $(fixed)"
+        #     continue
+        # end
+        D, M = compute_jacobian(B0, p)
         J_full = D * M
         !is_locally_stable(J_full) && continue
-        
+        S_full = sum(B0 .> 0.0)
+        # if S_full < 50 && is_locally_stable(J_full)
+        #     @error("Hey, we got here!!")
+        # end
         # resilience_full is -max Re(eig(J)), but compute_resilience returns max Re
         old_epsilon = copy(epsilon)
-        resilience_full = compute_resilience(fixed, p)
+        resilience_full = compute_resilience(B0, p; extinct_species=false)
         @assert all(old_epsilon .== epsilon) "epsilon was mutated inside compute_resilience!"
-        reactivity_full =  compute_reactivity(fixed, p)
+        reactivity_full =  compute_reactivity(B0, p; extinct_species=false)
         
         original_k_xi = vcat(K_res, xi_cons)
         # but you can also sweep t=0.1, 1, 10, etc.
@@ -217,18 +220,19 @@ function checking_recalculating_demography(
         # mean_min_delta_xi_full = mean(min_delta_xi_full)
 
         # 5) ladder persistence
-        # before_persistence_S = Dict(i => NaN for i in 1:2)
-        # after_persistence_S  = Dict(i => NaN for i in 1:2)
-        # after_pulse_S = Dict(i => NaN for i in 1:2)
-        # rt_press_S   = Dict(i => NaN for i in 1:2)
-        # rt_pulse_S   = Dict(i => NaN for i in 1:2)
-        collectivity_S = Dict(i => NaN for i in 1:2)
-        resilience_S  = Dict(i=>NaN for i in 1:2)
-        reactivity_S  = Dict(i=>NaN for i in 1:2)
-        # stable_S    = Dict(i=>NaN for i in 1:2)
+        # before_persistence_S = Dict(i => NaN for i in 1:4)
+        # after_persistence_S  = Dict(i => NaN for i in 1:4)
+        # after_pulse_S = Dict(i => NaN for i in 1:4)
+        # rt_press_S   = Dict(i => NaN for i in 1:4)
+        # rt_pulse_S   = Dict(i => NaN for i in 1:4)
+        S_S = Dict(i => NaN for i in 1:4)
+        collectivity_S = Dict(i => NaN for i in 1:4)
+        resilience_S  = Dict(i=>NaN for i in 1:4)
+        reactivity_S  = Dict(i=>NaN for i in 1:4)
+        # stable_S    = Dict(i=>NaN for i in 1:4)
         
-        # Rmed_S    = Dict(i=>NaN for i in 1:2)
-        # ssp_rmed_S = Dict(i => Float64[] for i in 1:2)
+        # Rmed_S    = Dict(i=>NaN for i in 1:4)
+        # ssp_rmed_S = Dict(i => Float64[] for i in 1:4)
         analytical_rmed_S = Dict(i => NaN for i in 1:4)
         ssp_analytical_rmed_S = Dict(i => Float64[] for i in 1:4)
         
@@ -267,7 +271,7 @@ function checking_recalculating_demography(
             A_s = copy(A)
             if step==1
                 A_s = make_A(
-                    A_s,R,conn,scen;
+                    A_s,R,min(conn, 1.0),scen;
                     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
                     mod_gamma=mod_gamma,
                     B_term=B_term,B_term_IS=B_term_IS[1]
@@ -277,7 +281,7 @@ function checking_recalculating_demography(
                 # end
             elseif step==2
                 A_s = make_A(
-                    A_s,R,min(rand(), 1.0),scen;
+                    A_s,R,rand(),scen;
                     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
                     mod_gamma=mod_gamma,
                     B_term=B_term,B_term_IS=B_term_IS[1]
@@ -297,7 +301,7 @@ function checking_recalculating_demography(
                 # end
             elseif step==4
                 A_s = make_A(
-                    A_s,R,min(rand(), 1.0),scen;
+                    A_s,R,rand(),scen;
                     IS=IS*2,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
                     mod_gamma=mod_gamma,
                     B_term=B_term,B_term_IS=B_term_IS[1]
@@ -318,6 +322,7 @@ function checking_recalculating_demography(
                 # consumer eq: xi = B_i - gain - loss
                 xi_hat[k] = -C_eq_full[k] + gain + loss
             end
+            # xi_hat = xi_cons
 
             # 5b) Recompute K_hat
             K_hat = zeros(R)
@@ -327,6 +332,7 @@ function checking_recalculating_demography(
                 # K_i = B_i + ? A[i,j] B_j
                 K_hat[i] = abs(-R_eq_full[i] + drain)
             end
+            # K_hat = K_res
 
             # 5c) Solve for new equilibrium
             eq = try
@@ -341,7 +347,7 @@ function checking_recalculating_demography(
             p_s = (R, C, m_cons, xi_hat, r_res, K_hat, epsilon, A_s)
 
             ok, new_B0 = survives!(eq, p_s; cb=cb)
-              
+            S_S[step] = sum(new_B0 .> 0.0)
             rt_press2, _, _, before_s, after_s, _, _ = simulate_press_perturbation(
                 new_B0, p_s, tspan, tpert, delta;
                 solver=Tsit5(),
@@ -365,8 +371,8 @@ function checking_recalculating_demography(
             # rt_press_vector_S[step] = rt_press2
             # rt_pulse_vector_S[step] = rt_pulse3
             collectivity_S[step] = compute_collectivity(A_s, epsilon)
-            resilience_S[step] = compute_resilience(new_B0, p_s)
-            reactivity_S[step] = compute_reactivity(new_B0, p_s)
+            resilience_S[step] = compute_resilience(new_B0, p_s; extinct_species = true)
+            reactivity_S[step] = compute_reactivity(new_B0, p_s; extinct_species = true)
 
             # tau_S[step] = compute_SL(A_s, vcat(K_res,xi_cons))
             # mean_tau_S[step] = mean(compute_SL(A_s, vcat(K_res,xi_cons)))
@@ -379,18 +385,20 @@ function checking_recalculating_demography(
 
             D_s, M_s = compute_jacobian(new_B0, p_s)
             J_s = D_s * M_s
+            extant = findall(bi -> bi > EXTINCTION_THRESHOLD, new_B0)
+            J_s_sub = J_s[extant, extant]
             # J_diff_S[step] = norm(J_s - J_full)
             # stable_S[step] = is_locally_stable(J_s)
             
-            sigma_over_min_d_S[step] = sigma_over_min_d(A_s, J_s)
+            sigma_over_min_d_S[step] = sigma_over_min_d(A_s, J_s_sub)
 
             # Rmed_S[step] = median_return_rate(J_s, new_B0; t=t0, n=Rmed_iterations)
             # ssp_rmed_S[step] = species_return_rates(J_s, new_B0; t=t0, n=Rmed_iterations)
             ssp_analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
             analytical_rmed_S[step] = analytical_median_return_rate(J_s; t=0.001)
 
-            tau_S[step] = -1 ./ diag(J_s)
-            mean_tau_S[step] = mean(tau_S[step])
+            tau_S[step] = diag(J_s) .|> x -> x == 0.0 ? 0.0 : -1 / x
+            mean_tau_S[step] = mean(filter(!iszero, tau_S[step]))
 
             inverse_tau_S[step] = -diag(J_s)
             mean_inverse_tau_S[step] = mean(inverse_tau_S[step])
@@ -421,7 +429,8 @@ function checking_recalculating_demography(
                 # Symbol("after_pulse_S$i") => after_pulse_S[i],
                 # Symbol("rt_press_S$i") => rt_press_S[i],
                 # Symbol("rt_pulse_S$i") => rt_pulse_S[i],
-                # Symbol("collectivity_S$i") => collectivity_S[i],
+                Symbol("S_S$i") => S_S[i],
+                Symbol("collectivity_S$i") => collectivity_S[i],
                 Symbol("resilience_S$i") => resilience_S[i],
                 Symbol("reactivity_S$i") => reactivity_S[i],
 
@@ -461,7 +470,7 @@ function checking_recalculating_demography(
             pex=pex, p_min_deg=p_min_deg, mod_gamma=mod_gamma,
             # before_persistence_full=before_full, after_persistence_full=after_persistence_full, after_pulse_full=after_pulse_full,
             # rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
-            collectivity_full=collectivity_full, 
+            S_full=S_full, collectivity_full=collectivity_full, 
             resilience_full=resilience_full, reactivity_full=reactivity_full,
             # Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full, 
             analytical_rmed_full=analytical_rmed_full, ssp_analytical_rmed_full=ssp_analytical_rmed_full,
@@ -496,7 +505,7 @@ end
 # --------------------------------------------------------------------------------
 R = checking_recalculating_demography(
     50, 20;
-    conn_vals=0.01:0.02:0.5,
+    conn_vals=0.01:0.02:1.0,
     IS_vals=[0.001, 0.01, 0.1, 1.0, 2.0],
     IS_vals_B_term=[0.1, 1.0],
     scenarios=[:ER],
@@ -505,9 +514,9 @@ R = checking_recalculating_demography(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 10000,
+    number_of_combinations = 5000,
     B_term = false,
-    iterations=10,
+    iterations=3,
     Rmed_iterations=10,
     pareto_exponents=[1.25], #[1.25,1.75,2.0,3.0,4.0,5.0],
     pareto_minimum_degrees=[1.0], #[1.0,2.0,3.0,4.0,5.0,6.0],
@@ -516,13 +525,13 @@ R = checking_recalculating_demography(
 
 desired = [
   :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite, :pex, :p_min_deg, :mod_gamma,
-  :resilience_full, :reactivity_full, :tau_full, :mean_tau_full, :sigma_over_min_d_full, :SL_full, :mean_SL_full, :inverse_tau_full, :mean_inverse_tau_full, :analytical_rmed_full, :ssp_analytical_rmed_full,
-  :resilience_S1, :reactivity_S1, :tau_S1, :mean_tau_S1, :sigma_over_min_d_S1, :SL_S1, :mean_SL_S1, :inverse_tau_S1, :mean_inverse_tau_S1, :analytical_rmed_S1, :ssp_analytical_rmed_S1,
-  :resilience_S2, :reactivity_S2, :tau_S2, :mean_tau_S2, :sigma_over_min_d_S2, :SL_S2, :mean_SL_S2, :inverse_tau_S2, :mean_inverse_tau_S2, :analytical_rmed_S2, :ssp_analytical_rmed_S2,
-  :resilience_S3, :reactivity_S3, :tau_S3, :mean_tau_S3, :sigma_over_min_d_S3, :SL_S3, :mean_SL_S3, :inverse_tau_S3, :mean_inverse_tau_S3, :analytical_rmed_S3, :ssp_analytical_rmed_S3,
-  :resilience_S4, :reactivity_S4, :tau_S4, :mean_tau_S4, :sigma_over_min_d_S4, :SL_S4, :mean_SL_S4, :inverse_tau_S4, :mean_inverse_tau_S4, :analytical_rmed_S4, :ssp_analytical_rmed_S4
+  :S_full, :resilience_full, :reactivity_full, :collectivity_full, :tau_full, :mean_tau_full, :sigma_over_min_d_full, :SL_full, :mean_SL_full, :inverse_tau_full, :mean_inverse_tau_full, :analytical_rmed_full, :ssp_analytical_rmed_full,
+  :S_S1,:resilience_S1, :reactivity_S1, :collectivity_S1, :tau_S1, :mean_tau_S1, :sigma_over_min_d_S1, :SL_S1, :mean_SL_S1, :inverse_tau_S1, :mean_inverse_tau_S1, :analytical_rmed_S1, :ssp_analytical_rmed_S1,
+  :S_S2,:resilience_S2, :reactivity_S2, :collectivity_S2, :tau_S2, :mean_tau_S2, :sigma_over_min_d_S2, :SL_S2, :mean_SL_S2, :inverse_tau_S2, :mean_inverse_tau_S2, :analytical_rmed_S2, :ssp_analytical_rmed_S2,
+  :S_S3,:resilience_S3, :reactivity_S3, :collectivity_S3, :tau_S3, :mean_tau_S3, :sigma_over_min_d_S3, :SL_S3, :mean_SL_S3, :inverse_tau_S3, :mean_inverse_tau_S3, :analytical_rmed_S3, :ssp_analytical_rmed_S3,
+  :S_S4,:resilience_S4, :reactivity_S4, :collectivity_S4, :tau_S4, :mean_tau_S4, :sigma_over_min_d_S4, :SL_S4, :mean_SL_S4, :inverse_tau_S4, :mean_inverse_tau_S4, :analytical_rmed_S4, :ssp_analytical_rmed_S4
 ]
 
 G = R[!, desired]
 
-serialize("checking_recalculating_demography10000ER.jls", R)
+serialize("checking_yes_recalculating_5000ER.jls", R)
