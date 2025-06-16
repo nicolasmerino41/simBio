@@ -3,17 +3,19 @@ function plot_scalar_correlations(
     scenarios = [:ER, :PL, :MOD],
     metrics = [
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
-        # (:mean_tau, "Mean SL"), (:analytical_rmed, "Rmed"),
+        (:mean_tau, "Mean SL"), 
+        (:analytical_rmed, "Rmed"),
+        (:collectivity, "Collectivity"),
         (:sigma_over_min_d, "σ/min(d)")
     ],
     fit_to_1_1_line::Bool = true
 )
-    step_names = ["Rewiring", "Rewiring + ↻C"] #, "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS"]
+    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS"]
     for scen in scenarios
         df = G[G.scen .== scen, :]
         fig = Figure(; size=(900, 450))
         for (i, (sym, label)) in enumerate(metrics)
-            for (j, step) in enumerate((1, 2))
+            for (j, step) in enumerate((1, 2, 3, 4))
                 x = df[!, Symbol(string(sym, "_full"))]
                 y = df[!, Symbol(string(sym, "_S", step))]
 
