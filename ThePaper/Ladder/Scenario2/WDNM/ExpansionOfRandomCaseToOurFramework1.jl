@@ -1,5 +1,4 @@
 # ——— Core “random‐matrix” metrics ————————————————————————————————————————————
-
 # Compute resilience = –max Re(eig(J))
 function measure_resilience(J::Matrix{Float64})
     vals = eigvals(J)
