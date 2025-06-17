@@ -10,10 +10,16 @@ end
 # Extract sigma/min(d)
 function sigma_over_min_d(A, J)
     d = -diag(J)
+    if isempty(d)
+        return NaN
+    end
     min_d = minimum(d)
-    offs = [A[i,j] for i in 1:size(A,1), j in 1:size(A,1) if i!=j]
+    offs = [A[i,j] for i in 1:size(A,1), j in 1:size(A,1) if i != j]
+    if isempty(offs)
+        return NaN
+    end
     sigma = std(offs)
-    return sigma/min_d
+    return sigma / min_d
 end
 
 # rewire in place
@@ -514,7 +520,7 @@ R = checking_recalculating_demography(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 50000,
+    number_of_combinations = 100,
     B_term = false,
     iterations=3,
     Rmed_iterations=10,
