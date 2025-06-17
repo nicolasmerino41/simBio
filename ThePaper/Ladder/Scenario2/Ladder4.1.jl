@@ -422,6 +422,7 @@ function compute_resilience(B, p; extinct_species = false)
         J = D * Mstar
         Jsub = J[extant, extant]
         ev = eigvals(Jsub)
+        isempty(ev) && return NaN
         return maximum(real(ev))
     end
 end
@@ -443,10 +444,11 @@ function compute_reactivity(B, p; extinct_species = false)
         # 3) restrict to the extant subcommunity
         J = J[extant, extant]
     end
-
+    
     # 4) compute the symmetric part and its top eigenvalue
     J_sym = (J + J') / 2
     ev_sym = eigvals(J_sym)
+    isempty(ev_sym) && return NaN
     return maximum(real.(ev_sym))
 end
 
