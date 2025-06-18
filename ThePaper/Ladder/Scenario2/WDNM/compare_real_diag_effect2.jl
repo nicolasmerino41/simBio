@@ -39,7 +39,7 @@ function build_stable_J(R, C; conn, IS, scen, epsi, m_val, g_val, cb, MAX_TRIES=
         is_locally_stable(J) || continue
         return D, M, J, A
     end
-    return nothing, nothing, nothing
+    return nothing, nothing, nothing, nothing
     # error("Failed to build a stable J in $MAX_TRIES tries")
 end
 
