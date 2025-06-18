@@ -1,4 +1,3 @@
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 1) Core Δ‐metric functions
 # ─────────────────────────────────────────────────────────────────────────────
@@ -38,7 +37,7 @@ function build_stable_J(R, C; conn, IS, scen, epsi, m_val, g_val, cb, MAX_TRIES=
         D, M = compute_jacobian(B0, p)
         J = D*M
         is_locally_stable(J) || continue
-        return D, M, J
+        return D, M, J, A
     end
     return nothing, nothing, nothing
     # error("Failed to build a stable J in $MAX_TRIES tries")
@@ -84,14 +83,18 @@ function compare_real_diag_effect(
     cb = build_callbacks(S, EXTINCTION_THRESHOLD)
     locki = ReentrantLock()
 
-    raw = Vector{NamedTuple{(:IS, :sigma_md, :type, :metric, :Δ),
-                           Tuple{Float64,Float64,Symbol,Symbol,Float64}}}()
+    raw = Vector{NamedTuple{(:combo_id, :IS, :sigma_md, :type, :metric, :Δ, :degree_cv),
+                           Tuple{Int,Float64,Float64,Symbol,Symbol,Float64,Float64}}}()
 
     mets = [:Res, :Rea, :Rmed, :Pulse, :Pers, :Nonnorm]
 
+    # raw = NamedTuple[]  # or use your existing Vector{NamedTuple}
+    combo_id = 0
     # 2) threaded sweep
-    @threads for (conn, IS, scen, epsi, m_val, g_val, _) in combos
-        D0, M0, J0 = build_stable_J(R,C;
+    @threads for tup in combos
+        combo_id += 1
+        (conn, IS, scen, epsi, m_val, g_val, _) = tup
+        D0, M0, J0, A = build_stable_J(R,C;
             conn=conn, IS=IS, scen=scen,
             epsi=epsi, m_val=m_val, g_val=g_val, cb=cb)
 
@@ -100,7 +103,11 @@ function compare_real_diag_effect(
         # compute sigma/min d
         d0       = abs.(-diag(J0))
         sigma_md = IS / minimum(d0)
-
+        
+        g = SimpleGraph(A .!= 0)         # unweighted graph
+        degs = degree(g)
+        degree_cv = std(degs) / mean(degs)
+        
         # base metrics
         base = (
           Res    = measure_resilience(J0),
@@ -195,7 +202,7 @@ function compare_real_diag_effect(
             lock(locki) do
                 for typ in (:full,:offdiag,:diagonly), met in mets
                     Δ = abs(getfield(vals[typ],met) - getfield(base,met))
-                    push!(raw, (IS, sigma_md, typ, met, Δ))
+                    push!(raw, (combo_id, IS, sigma_md, typ, met, Δ, degree_cv))
                 end
             end
         end
@@ -204,7 +211,7 @@ function compare_real_diag_effect(
     # 3) build DataFrame & compute bin‐indices manually
     df = DataFrame(raw)
     # define the bin edges on the **log10** scale
-    is_edges = 10 .^ range(log10(minimum(df.IS)),  log10(maximum(df.IS)),  length=nbins+1)
+    is_edges = range(minimum(df.IS),  maximum(df.IS),  length=nbins+1)
     sm_edges = 10 .^ range(log10(minimum(df.sigma_md)), log10(maximum(df.sigma_md)), length=nbins+1)
     # for each row, find the bin (1…nbins)
     df.IS_bin  = [ clamp(searchsortedfirst(is_edges,  x) - 1, 1, nbins) for x in df.IS ]
@@ -242,19 +249,27 @@ function compare_real_diag_effect(
             lines!(ax, xx, diagonly,label="diag‐only")
             ax.xlabel = label
             ax.ylabel = titles[i]
-            # k==2 && (ax.xscale = log10)
+            k==2 && (ax.xscale = log10)
             # row==0 && col==0 && axislegend(ax)
         end
     end
     display(fig)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 7) RETURN the raw and pivoted tables so you can inspect counts, etc.
+    return (
+      raw     = df,        # every single Δ with its IS_bin & SM_bin
+      summary = (is=pivotIS, σmin=pivotSM),
+      bins    = (IS_edges=is_edges, SM_edges=sm_edges)
+    )
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7) Run it!
 # ─────────────────────────────────────────────────────────────────────────────
-compare_real_diag_effect(
+out1 = compare_real_diag_effect(
   S=50, C=20;
-  conn_vals=0.05:0.05:0.2,
+  conn_vals=0.01:0.02:1.0,
   IS_vals=0.01:0.01:2.0,
   scenarios=[:ER],
   eps_scales=[1.0],
@@ -265,3 +280,38 @@ compare_real_diag_effect(
   reps_shuffle=50,
   nbins=8
 )
+
+# how many Δ's fell in each IS‐bin?
+count_by_ISbin = combine(groupby(out.raw, :IS_bin), nrow => :count)
+# counts in each combination of IS‐bin × reshuffle‐type
+xt = combine(groupby(out.raw, [:IS_bin, :type]), :Δ => length => :n_obs)
+
+# How many Δ’s fell in each IS‐bin?
+count_by_ISbin = combine(groupby(outER.raw, :IS_bin),
+                        nrow => :n_obs)
+count_by_ISbin = combine(groupby(outPL.raw, :IS_bin),
+                        nrow => :n_obs)
+count_by_ISbin = combine(groupby(outMOD.raw, :IS_bin),
+                        nrow => :n_obs)
+count_by_ISbin = combine(groupby(outALL.raw, :IS_bin),
+                        nrow => :n_obs)
+
+# How many _distinct_ communities in each IS‐bin?
+uniq_by_ISbin  = combine(groupby(outER.raw, :IS_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
+uniq_by_ISbin  = combine(groupby(outPL.raw, :IS_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
+uniq_by_ISbin  = combine(groupby(outMOD.raw, :IS_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
+uniq_by_ISbin  = combine(groupby(outALL.raw, :IS_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
+
+# Similarly for σ/min d
+uniq_by_SMbin  = combine(groupby(outER.raw, :SM_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
+uniq_by_SMbin  = combine(groupby(outPL.raw, :SM_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
+uniq_by_SMbin  = combine(groupby(outMOD.raw, :SM_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
+uniq_by_SMbin  = combine(groupby(outALL.raw, :SM_bin),
+                         :combo_id => (x-> length(unique(x))) => :n_communities)
