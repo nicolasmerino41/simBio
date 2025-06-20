@@ -81,7 +81,10 @@ function build_and_test(Rb, Ri, Rt; conn_bi=0.3, conn_it=0.3, conn_bt=0.1, max_t
         sol = solve(prob, abstol=1e-6, reltol=1e-6)
         Bstar = sol.u[end]
         if all(x->x>1e-3, Bstar)
-            return r, K, A, Bstar
+            J = jacobian_glv(Bstar, (r=r,K=K,A=A))
+            if maximum(real(eigvals(J))) < 0
+                return r, K, A, Bstar
+            end
         end
     end
     return nothing
@@ -95,35 +98,46 @@ function reshuffle_matrix(A, levels, scheme::Symbol)
     B = copy(A)
     idxs = Tuple{Int,Int}[]
     for i in 1:S, j in 1:S
-        if i==j
+        if i == j
             continue
         end
-        same = levels[i]==levels[j]
-        if scheme==:full ||
-           (scheme==:inter && !same) ||
-           (scheme==:intra && same)
-            push!(idxs,(i,j))
+        same = levels[i] == levels[j]
+        if scheme == :full ||
+           (scheme == :inter && !same) ||
+           (scheme == :intra && same)
+            push!(idxs, (i,j))
         end
     end
-    vals = shuffle(A[i] for i in idxs)
-    for (k,(i,j)) in enumerate(idxs)
+
+    # collect the values into a concrete Vector and then shuffle
+    vals = shuffle([ A[i,j] for (i,j) in idxs ])
+
+    # re-assign them in shuffled order
+    for (k, (i,j)) in enumerate(idxs)
         B[i,j] = vals[k]
     end
+
     return B
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4) Experiment
 # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# 4) Experiment
+# ─────────────────────────────────────────────────────────────────────────────
 function experiment(Rb,Ri,Rt; nref=50, reps=20)
-    results = Dict(s=>Float64[] for s in (:full,:inter,:intra))
+    # now each entry holds a vector of NamedTuples {trim_persistence, trim_reactivity}
+    results = Dict(
+      :full   => NamedTuple{(:trim_persistence,:trim_reactivity),Tuple{Float64,Float64}}[],
+      :inter  => NamedTuple{(:trim_persistence,:trim_reactivity),Tuple{Float64,Float64}}[],
+      :intra  => NamedTuple{(:trim_persistence,:trim_reactivity),Tuple{Float64,Float64}}[],
+    )
     levels = vcat(fill(1,Rb), fill(2,Ri), fill(3,Rt))
-
-    for _ in 1:nref
+    locki = ReentrantLock()
+    @threads for _ in 1:nref
         got = build_and_test(Rb,Ri,Rt)
-        if isnothing(got)
-            continue
-        end
+        isnothing(got) && continue
         r,K,A,B0 = got
         p0 = (r=r,K=K,A=A)
         J0 = jacobian_glv(B0,p0)
@@ -146,7 +160,10 @@ function experiment(Rb,Ri,Rt; nref=50, reps=20)
             # trimmed‐mean
             sort!(Δp); trimp = mean(Δp[ceil(Int,0.05*reps)+1 : floor(Int,0.95*reps)])
             sort!(Δr); trimr = mean(Δr[ceil(Int,0.05*reps)+1 : floor(Int,0.95*reps)])
-            push!(results[scheme], (trim_persistence=trimp, trim_reactivity=trimr))
+            # push a NamedTuple, not a Float64
+            lock(locki) do
+                push!(results[scheme], (trim_persistence=trimp, trim_reactivity=trimr))
+            end
         end
     end
 
@@ -163,4 +180,48 @@ for s in (:full,:inter,:intra)
       mean(getfield.(arr, :trim_persistence)),
       "   Δ reactivity = ",
       mean(getfield.(arr, :trim_reactivity)))
+end
+
+begin
+    
+    # 1) build the summary DataFrame
+    schemes = (:full, :inter, :intra)
+    df = DataFrame(
+        scheme = String[], 
+        Δpersistence = Float64[], 
+        Δreactivity  = Float64[],
+    )
+    for s in schemes
+        arr = res[s]
+        push!(df, (
+        String(s),
+        mean(getfield.(arr, :trim_persistence)),
+        mean(getfield.(arr, :trim_reactivity)),
+        ))
+    end
+
+    # 2) numeric x‐positions
+    xs = 1:length(schemes)
+
+    # 3) plot
+    fig = Figure(resolution=(800,350))
+
+    # Δ persistence
+    ax1 = Axis(fig[1,1],
+        title="Δ persistence",
+        xticks=(xs, df.scheme),
+        ylabel="Δ fraction surviving",
+    )
+    barplot!(ax1, xs, df.Δpersistence)
+
+    # Δ reactivity (log‐scale)
+    ax2 = Axis(fig[1,2],
+        title="Δ reactivity",
+        xticks=(xs, df.scheme),
+        yscale=log10,
+        ylabel="Δ reactivity",
+    )
+    barplot!(ax2, xs, df.Δreactivity)
+
+    display(fig)
 end
