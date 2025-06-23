@@ -87,7 +87,6 @@ function short_step_correlations(
     return fig
 end
 
-
 df = R
 df.avg_xi = mean.(df.K_Xi_full)
 
