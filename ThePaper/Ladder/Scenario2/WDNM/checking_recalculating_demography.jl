@@ -7,6 +7,7 @@ function compute_SL(A::Matrix{Float64}, K::Vector{Float64})
     B = (I - A) \ K
     return B ./ K
 end
+
 # Extract sigma/min(d)
 function sigma_over_min_d(A, J)
     d = -diag(J)
@@ -226,44 +227,44 @@ function checking_recalculating_demography(
         # mean_min_delta_xi_full = mean(min_delta_xi_full)
 
         # 5) ladder persistence
-        # before_persistence_S = Dict(i => NaN for i in 1:4)
-        # after_persistence_S  = Dict(i => NaN for i in 1:4)
-        # after_pulse_S = Dict(i => NaN for i in 1:4)
-        # rt_press_S   = Dict(i => NaN for i in 1:4)
-        # rt_pulse_S   = Dict(i => NaN for i in 1:4)
-        S_S = Dict(i => NaN for i in 1:4)
-        collectivity_S = Dict(i => NaN for i in 1:4)
-        resilience_S  = Dict(i=>NaN for i in 1:4)
-        reactivity_S  = Dict(i=>NaN for i in 1:4)
-        # stable_S    = Dict(i=>NaN for i in 1:4)
+        # before_persistence_S = Dict(i => NaN for i in 1:5)
+        # after_persistence_S  = Dict(i => NaN for i in 1:5)
+        # after_pulse_S = Dict(i => NaN for i in 1:5)
+        # rt_press_S   = Dict(i => NaN for i in 1:5)
+        # rt_pulse_S   = Dict(i => NaN for i in 1:5)
+        S_S = Dict(i => NaN for i in 1:5)
+        collectivity_S = Dict(i => NaN for i in 1:5)
+        resilience_S  = Dict(i=>NaN for i in 1:5)
+        reactivity_S  = Dict(i=>NaN for i in 1:5)
+        # stable_S    = Dict(i=>NaN for i in 1:5)
         
-        # Rmed_S    = Dict(i=>NaN for i in 1:4)
-        # ssp_rmed_S = Dict(i => Float64[] for i in 1:4)
-        analytical_rmed_S = Dict(i => NaN for i in 1:4)
-        ssp_analytical_rmed_S = Dict(i => Float64[] for i in 1:4)
+        # Rmed_S    = Dict(i=>NaN for i in 1:5)
+        # ssp_rmed_S = Dict(i => Float65[] for i in 1:5)
+        analytical_rmed_S = Dict(i => NaN for i in 1:5)
+        ssp_analytical_rmed_S = Dict(i => Float64[] for i in 1:5)
         
-        tau_S = Dict(i => Float64[] for i in 1:4)
-        mean_tau_S = Dict(i => NaN for i in 1:4)
+        tau_S = Dict(i => Float64[] for i in 1:5)
+        mean_tau_S = Dict(i => NaN for i in 1:5)
 
-        inverse_tau_S = Dict(i => Float64[] for i in 1:4)
-        mean_inverse_tau_S = Dict(i => NaN for i in 1:4)
+        inverse_tau_S = Dict(i => Float64[] for i in 1:5)
+        mean_inverse_tau_S = Dict(i => NaN for i in 1:5)
 
-        SL_S = Dict(i => Float64[] for i in 1:4)
-        mean_SL_S = Dict(i => NaN for i in 1:4)
-        # K_Xi_S = Dict(i => Float64[] for i in 1:4)
-        # J_diff_S = Dict(i => NaN for i in 1:4)
-        # min_delta_K_S = Dict(i => Float64[] for i in 1:4)
-        # min_delta_xi_S = Dict(i => Float64[] for i in 1:4)
-        # mean_min_delta_K_S = Dict(i => NaN for i in 1:4)
-        # mean_min_delta_xi_S = Dict(i => NaN for i in 1:4)
-        # rt_press_vector_S = Dict(i => Float64[] for i in 1:4)
-        # rt_pulse_vector_S = Dict(i => Float64[] for i in 1:4)
-        sigma_over_min_d_S = Dict(i => NaN for i in 1:4)
+        SL_S = Dict(i => Float64[] for i in 1:5)
+        mean_SL_S = Dict(i => NaN for i in 1:5)
+        # K_Xi_S = Dict(i => Float64[] for i in 1:5)
+        # J_diff_S = Dict(i => NaN for i in 1:5)
+        # min_delta_K_S = Dict(i => Float64[] for i in 1:5)
+        # min_delta_xi_S = Dict(i => Float64[] for i in 1:5)
+        # mean_min_delta_K_S = Dict(i => NaN for i in 1:5)
+        # mean_min_delta_xi_S = Dict(i => NaN for i in 1:5)
+        # rt_press_vector_S = Dict(i => Float64[] for i in 1:5)
+        # rt_pulse_vector_S = Dict(i => Float64[] for i in 1:5)
+        sigma_over_min_d_S = Dict(i => NaN for i in 1:5)
         @info "Running ladder"
 
         # original equilibrium abundances
         # R_eq_full, C_eq_full = B0[1:R], B0[R+1:S] # B0 is the simulated equilibrium
-        R_eq_full, C_eq_full = B0[1:R], B0[R+1:S] # B0 is the calibrated equilibrium
+        local R_eq_full, C_eq_full = B0[1:R], B0[R+1:S] # B0 is the calibrated equilibrium
 
         ###########################################################################################
         ###########################################################################################
@@ -271,7 +272,7 @@ function checking_recalculating_demography(
         ########################## SIMPLIFIED MODEL STEPS #########################################
         ###########################################################################################
         ###########################################################################################
-        for step in 1:4
+        for step in 1:5
             
             # K_Xi_S[step] = vcat(K_res, xi_cons)
             A_s = copy(A)
@@ -285,6 +286,7 @@ function checking_recalculating_demography(
                 # if scen == :PL
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
+                # println("In step 1 C_eq_full has size $(size(C_eq_full))")
             elseif step==2
                 A_s = make_A(
                     A_s,R,rand(),scen;
@@ -295,6 +297,7 @@ function checking_recalculating_demography(
                 # if scen == :PL
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
+                # println("In step 2 C_eq_full has size $(size(C_eq_full))")
             elseif step==3
                 A_s = make_A(
                     A_s,R,conn,scen;
@@ -305,6 +308,7 @@ function checking_recalculating_demography(
                 # if scen == :PL
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
+                # println("In step 3 C_eq_full has size $(size(C_eq_full))")
             elseif step==4
                 A_s = make_A(
                     A_s,R,rand(),scen;
@@ -315,30 +319,47 @@ function checking_recalculating_demography(
                 # if scen == :PL
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
+                # println("In step 4 C_eq_full has size $(size(C_eq_full))")
+            elseif step==5
+                A_s = make_A(
+                    A_s,R+5,conn,scen;
+                    IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
+                    mod_gamma=mod_gamma,
+                    B_term=B_term,B_term_IS=B_term_IS[1]
+                )
+                # C = 15
+                # R = 35
+                R_eq_full = vcat(R_eq_full, C_eq_full[1:5])
+                C_eq_full = C_eq_full[6:end]
+                # println("LENGTH OF NEW C_eq_full: ", length(C_eq_full))
+                m_cons = m_cons[6:end]
+                r_res = vcat(r_res, r_res[1:5])
             end
-            
+            temp_C = step != 5 ? C : C-5
+            temp_R = step != 5 ? R : R+5
             # 5a) Recompute xi_hat
-            xi_hat = zeros(C)
-            for k in 1:C
+            xi_hat = zeros(temp_C)
+            for k in 1:temp_C
                 i = R + k
                 # 1) feeding gains (A>0)
-                gain = sum(epsilon[i,j]*A_s[i,j]*R_eq_full[j] for j in 1:R if A_s[i,j] > 0; init=0.0 )
+                gain = sum(epsilon[i,j]*A_s[i,j]*R_eq_full[j] for j in 1:temp_R if A_s[i,j] > 0; init=0.0)
                 # 2) predation losses: A_s[i,j]<0, but we need "+(-A)B"
-                loss = sum(A_s[i,j]*C_eq_full[j-R] for j in R+1:S if A_s[i,j] < 0; init=0.0 )
+                # println("size A: ", size(A_s), " R: ", R, " C: ", C, " S: ", S, "C_eq_full: ", size(C_eq_full))
+                loss = sum(A_s[i,j]*C_eq_full[j-temp_R] for j in temp_R+1:S if A_s[i,j] < 0; init=0.0 )
                 # consumer eq: xi = B_i - gain - loss
                 xi_hat[k] = -C_eq_full[k] + gain + loss
             end
-            xi_hat = xi_cons
+            # xi_hat = xi_cons
 
             # 5b) Recompute K_hat
-            K_hat = zeros(R)
-            for i in 1:R
+            K_hat = zeros(temp_R)
+            for i in 1:temp_R
                 # resource eq uses A[i,j] (j consumer) directly:
-                drain = sum(A_s[i,j]*C_eq_full[j-R] for j in R+1:S if A_s[i,j] < 0; init=0.0)
+                drain = sum(A_s[i,j]*C_eq_full[j-temp_R] for j in temp_R+1:S if A_s[i,j] < 0; init=0.0)
                 # K_i = B_i + ? A[i,j] B_j
                 K_hat[i] = abs(-R_eq_full[i] + drain)
             end
-            K_hat = K_res
+            # K_hat = K_res
 
             # 5c) Solve for new equilibrium
             eq = try
@@ -350,8 +371,12 @@ function checking_recalculating_demography(
     
             R_eq_s, C_eq_s = eq[1:R], eq[R+1:S]
             
-            p_s = (R, C, m_cons, xi_hat, r_res, K_hat, epsilon, A_s)
-
+            p_s = (temp_R, temp_C, m_cons, xi_hat, r_res, K_hat, epsilon, A_s)
+            # if step == 5
+            #     println(
+            #         "r_res: ", length(r_res), " m_cons: ", length(m_cons), " K_hat: ", length(K_hat), " xi_hat: ", length(xi_hat), " C: ", C, " R: ", R, "R_eq_full: ", length(R_eq_full), " C_eq_full: ", length(C_eq_full)
+            #     )
+            # end
             ok, new_B0 = survives!(eq, p_s; cb=cb)
             S_S[step] = sum(new_B0 .> 0.0; init=0.0)
             rt_press2, _, _, before_s, after_s, _, _ = simulate_press_perturbation(
@@ -468,7 +493,7 @@ function checking_recalculating_demography(
                 # Symbol("rt_pulse_vector_S$i") => rt_pulse_vector_S[i],
 
                 Symbol("sigma_over_min_d_S$i") => sigma_over_min_d_S[i]
-            ] for i in 1:4)
+            ] for i in 1:5)
         ))
 
         rec = (
@@ -520,9 +545,9 @@ R = checking_recalculating_demography(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 100,
+    number_of_combinations = 50000,
     B_term = false,
-    iterations=3,
+    iterations=8,
     Rmed_iterations=10,
     pareto_exponents=[1.25], #[1.25,1.75,2.0,3.0,4.0,5.0],
     pareto_minimum_degrees=[1.0], #[1.0,2.0,3.0,4.0,5.0,6.0],
@@ -535,9 +560,10 @@ desired = [
   :S_S1,:resilience_S1, :reactivity_S1, :collectivity_S1, :tau_S1, :mean_tau_S1, :sigma_over_min_d_S1, :SL_S1, :mean_SL_S1, :inverse_tau_S1, :mean_inverse_tau_S1, :analytical_rmed_S1, :ssp_analytical_rmed_S1,
   :S_S2,:resilience_S2, :reactivity_S2, :collectivity_S2, :tau_S2, :mean_tau_S2, :sigma_over_min_d_S2, :SL_S2, :mean_SL_S2, :inverse_tau_S2, :mean_inverse_tau_S2, :analytical_rmed_S2, :ssp_analytical_rmed_S2,
   :S_S3,:resilience_S3, :reactivity_S3, :collectivity_S3, :tau_S3, :mean_tau_S3, :sigma_over_min_d_S3, :SL_S3, :mean_SL_S3, :inverse_tau_S3, :mean_inverse_tau_S3, :analytical_rmed_S3, :ssp_analytical_rmed_S3,
-  :S_S4,:resilience_S4, :reactivity_S4, :collectivity_S4, :tau_S4, :mean_tau_S4, :sigma_over_min_d_S4, :SL_S4, :mean_SL_S4, :inverse_tau_S4, :mean_inverse_tau_S4, :analytical_rmed_S4, :ssp_analytical_rmed_S4
+  :S_S4,:resilience_S4, :reactivity_S4, :collectivity_S4, :tau_S4, :mean_tau_S4, :sigma_over_min_d_S4, :SL_S4, :mean_SL_S4, :inverse_tau_S4, :mean_inverse_tau_S4, :analytical_rmed_S4, :ssp_analytical_rmed_S4,
+  :S_S5,:resilience_S5, :reactivity_S5, :collectivity_S5, :tau_S5, :mean_tau_S5, :sigma_over_min_d_S5, :SL_S5, :mean_SL_S5, :inverse_tau_S5, :mean_inverse_tau_S5, :analytical_rmed_S5, :ssp_analytical_rmed_S5
 ]
 
 G = R[!, desired]
 
-serialize("checking_not_recalculating_50000ER.jls", R)
+serialize("checking_changing_groups_50000ER.jls", R)
