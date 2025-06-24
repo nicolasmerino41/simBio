@@ -82,9 +82,9 @@ function build_and_test(Rb, Ri, Rt; conn_bi=0.3, conn_it=0.3, conn_bt=0.1, max_t
         Bstar = sol.u[end]
         if all(x->x>1e-3, Bstar)
             J = jacobian_glv(Bstar, (r=r,K=K,A=A))
-            if maximum(real(eigvals(J))) < 0
-                return r, K, A, Bstar
-            end
+            # if maximum(real(eigvals(J))) < 0
+            return r, K, A, Bstar
+            # end
         end
     end
     return nothing
@@ -173,7 +173,7 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 # 5) Run & summarize
 # ─────────────────────────────────────────────────────────────────────────────
-res = experiment(20,15,10; nref=100, reps=30)
+res = experiment(20,15,10; nref=20, reps=30)
 for s in (:full,:inter,:intra)
     arr = res[s]
     println(s,": Δ persistence = ",
@@ -204,7 +204,7 @@ begin
     xs = 1:length(schemes)
 
     # 3) plot
-    fig = Figure(resolution=(800,350))
+    fig = Figure(; size=(800,350))
 
     # Δ persistence
     ax1 = Axis(fig[1,1],

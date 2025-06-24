@@ -1,5 +1,5 @@
 # — analytic resilience/reactivity (if not already in scope) —
-measure_resilience(J) = -maximum(real(eigvals(J)))
+measure_resilience(J) = maximum(real(eigvals(J)))
 measure_reactivity(J) = maximum(real(eigvals((J + J')/2)))
 
 # — simulated persistence —
@@ -106,7 +106,6 @@ function reshuffle_between_levels(A::AbstractMatrix, levels::AbstractVector{<:In
     end
     return B
 end
-
 
 function add_S1!(df::DataFrame)
     n = nrow(df)
@@ -314,11 +313,14 @@ end
 
 df3 = add_S2!(df2)
 
-Δres = df3.resilience - df3.resilience_S2
-Δrea = df3.reactivity - df3.reactivity_S2
-Δper = df3.persistence - df3.persistence_S2
+Δres2 = df3.resilience - df3.resilience_S2
+Δrea2 = df3.reactivity - df3.reactivity_S2
+Δper2 = df3.persistence - df3.persistence_S2
 
 df4 = filter(
-    row -> row.resilience_S1 .< 0 && row.resilience_S2 .< 0 && abs(row.resilience_S1) .< 5.0 && abs(row.resilience_S2) .< 5.0,
+    row -> row.resilience_S1 .< 0 &&
+    #  row.resilience_S2 .< 0 &&
+      abs(row.resilience_S1) .< 5.0,
+    #    abs(row.resilience_S2) .< 5.0,
     df3
 )
