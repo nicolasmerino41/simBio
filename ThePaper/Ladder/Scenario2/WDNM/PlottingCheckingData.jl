@@ -30,7 +30,7 @@ G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
 min_d_cols = Symbol.("sigma_over_min_d" .* step_keys)
 G = filter(row -> all(row[c] < 50.0 for c in min_d_cols), G)
-
+ 
 G = filter(row -> all(x -> !(x isa AbstractFloat) || (!isnan(x) && !isinf(x)), row), G)
 
 ################### FOR SCALAR COMPARISONS ###################
@@ -38,7 +38,7 @@ G = filter(row -> all(x -> !(x isa AbstractFloat) || (!isnan(x) && !isinf(x)), r
 plot_scalar_correlations(
     G;
     scenarios = [:ER],
-    fit_to_1_1_line=false
+    fit_to_1_1_line=true
 )
 
 # To show Pearson correlation r
