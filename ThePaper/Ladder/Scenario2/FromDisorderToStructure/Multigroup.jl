@@ -45,7 +45,7 @@ function analytical_phi_L(K0_vec::Vector{Float64}, ζ_vec::Vector{Float64},
                 (1 - cdf(std_norm, arg)) * pdf(std_norm, z)
             end
             # compute RHS_g
-            RHS_g, _ = quadgk(integrand, -Inf, Inf; rtol=1e-6)
+            RHS_g, _ = quadgk(integrand, -Inf, Inf; rtol=1e-3)
             Fout[g] = RHS_g - φg
         end
     end
@@ -177,7 +177,7 @@ end
 function simulate_phi_by_group(A::Matrix{Float64}, 
                                K0_vec::Vector{Float64}, ζ_vec::Vector{Float64},
                                group_labels::Vector{Int}, group_sizes::Vector{Int};
-                               t_end=200.0, rng=GLOBAL_RNG)
+                               t_end=50.0, rng=GLOBAL_RNG)
     S = size(A,1)
     L = length(group_sizes)
     # Draw K_i by group: K_i ~ Normal(K0_vec[g], ζ_vec[g]^2)
@@ -284,7 +284,7 @@ function experiment_partial_order_multigroup()
     # 7.1. Define groups
     # Example: L=3 (basal, intermediate, top), sizes:
     # You can generalize to more levels by changing group_sizes.
-    group_sizes = [80, 80, 40]  # sum = S = 200
+    group_sizes = [20, 20, 20]  # sum = S = 200
     L = length(group_sizes)
     S = sum(group_sizes)
     # Build group_labels: species 1..S, first group_sizes[1] in group 1, next in group 2, etc.
@@ -326,11 +326,11 @@ function experiment_partial_order_multigroup()
 
     # 7.4. Define connectance and sweep parameters
     C = 0.1  # connectance: probability of a link between any pair i<j
-    alpha_values = range(0.0, stop=1.0, length=6)  # e.g. [0,0.2,0.4,0.6,0.8,1.0]
+    alpha_values = range(0.0, stop=1.0, length=3)  # e.g. [0,0.2,0.4,0.6,0.8,1.0]
     mu_strengths = [1.0, 2.0, 5.0, 10.0]  # scale factor for μ_mat_base; you can also sweep more finely
     # μ0 in build_A will be μ_mat_base[g,h] * scale / S_g etc.
 
-    nrep = 10  # replicates per combination
+    nrep = 2  # replicates per combination
 
     # Storage: results[(alpha, mu_s)] = Dict with keys :φ_sim_mean, :φ_sim_std, :φ_glob_pred, :φ_glob_err, 
     #                                            :φ_vec_pred (mean), :φ_vec_err (e.g. norm difference)
