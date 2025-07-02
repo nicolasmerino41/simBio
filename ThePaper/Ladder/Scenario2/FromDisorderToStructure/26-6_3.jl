@@ -160,10 +160,10 @@ function plot_pred_vs_sim()
         sims = Float64[]
         preds = Float64[]
         for rep in 1:nrep
-            edges = gen_trophic_edges(60, 0.1, α, rng)
+            edges = gen_edges(60, 0.1, α, rng)
             A     = build_A(60, edges, μ0, 0.5, rng)
-            push!(sims, simulate_equilibrium_phi(A; K0=5.0, ζ=1.0, rng))
-            push!(preds, φ_pred_single(A; K0=5.0, ζ=1.0))
+            push!(sims, φ_sim(A; K0=5.0, ζ=1.0, rng))
+            push!(preds, φ_pred(A; K0=5.0, ζ=1.0))
         end
         φ_sim_mat[iα, iμ]  = mean(sims)
         φ_pred_mat[iα, iμ] = mean(preds)
