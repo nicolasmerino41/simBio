@@ -4,7 +4,8 @@ function plot_scalar_correlations(
     metrics = [
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
         # (:mean_tau, "Mean SL"), 
-        # (:analytical_rmed, "Rmed"),
+        (:analytical_rmed, "Rmed"),
+        (:after_persistence, "Persistence"),
         (:collectivity, "Collectivity"),
         (:sigma_over_min_d, "σ/min(d)")
     ],
@@ -13,7 +14,7 @@ function plot_scalar_correlations(
     step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Changing groups"]
     for scen in scenarios
         df = G[G.scen .== scen, :]
-        fig = Figure(; size=(900, 450))
+        fig = Figure(; size=(900, 650))
         for (i, (sym, label)) in enumerate(metrics)
             for (j, step) in enumerate((1, 2, 3, 4, 5))
                 x = df[!, Symbol(string(sym, "_full"))]
