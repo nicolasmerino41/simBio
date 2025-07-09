@@ -88,7 +88,7 @@ function sweep_alpha()
     end
 
     # plot
-    fig = Figure(resolution=(500,350))
+    fig = Figure(; size=(500,350))
     ax = Axis(fig[1,1],
         xlabel="Ordering α",
         ylabel="|φ_pred − φ_sim|",
