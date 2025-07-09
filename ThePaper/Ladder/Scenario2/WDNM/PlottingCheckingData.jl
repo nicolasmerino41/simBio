@@ -10,6 +10,7 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/NF_checking50000ER.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_yes_recalculating_50000ER.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_not_recalculating_50000ER.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_100000ER.jls")
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000ER_plusPersistence.jls")
 
 ################ CLEANING ################
 desired = [
@@ -24,7 +25,7 @@ desired = [
 G = R[!, desired]
 G = R
 
-step_keys = ["_full","_S1","_S2","_S3","_S4","_S5"]
+step_keys = ["_full","_S1","_S2","_S3","_S4"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
@@ -34,7 +35,7 @@ G = filter(row -> all(row[c] < 50.0 for c in min_d_cols), G)
 G = filter(row -> all(x -> !(x isa AbstractFloat) || (!isnan(x) && !isinf(x)), row), G)
 
 ################### FOR SCALAR COMPARISONS ###################
-# To show R² to 1:1 line
+# To show R² to 1:1 line  
 plot_scalar_correlations(
     G;
     scenarios = [:ER],
