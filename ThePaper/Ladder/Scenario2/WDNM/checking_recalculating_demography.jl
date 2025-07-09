@@ -228,7 +228,7 @@ function checking_recalculating_demography(
 
         # 5) ladder persistence
         # before_persistence_S = Dict(i => NaN for i in 1:5)
-        # after_persistence_S  = Dict(i => NaN for i in 1:5)
+        after_persistence_S  = Dict(i => NaN for i in 1:5)
         # after_pulse_S = Dict(i => NaN for i in 1:5)
         # rt_press_S   = Dict(i => NaN for i in 1:5)
         # rt_pulse_S   = Dict(i => NaN for i in 1:5)
@@ -395,7 +395,7 @@ function checking_recalculating_demography(
             )
             
             # before_persistence_S[step] = before_s
-            # after_persistence_S[step]  = after_s
+            after_persistence_S[step]  = after_s
             # after_pulse_S[step] = after_pulse3
             # rt_press_S[step]   = mean(filter(!isnan, rt_press2))
             # rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
@@ -456,7 +456,7 @@ function checking_recalculating_demography(
         step_pairs = collect(Iterators.flatten(
             ([
                 # Symbol("before_persistence_S$i") => before_persistence_S[i],
-                # Symbol("after_persistence_S$i") => after_persistence_S[i],
+                Symbol("after_persistence_S$i") => after_persistence_S[i],
                 # Symbol("after_pulse_S$i") => after_pulse_S[i],
                 # Symbol("rt_press_S$i") => rt_press_S[i],
                 # Symbol("rt_pulse_S$i") => rt_pulse_S[i],
@@ -499,6 +499,7 @@ function checking_recalculating_demography(
         rec = (
             conn=conn, IS=IS, scen=scen, delta =delta, epsi=epsi, m_val=m_val, g_val=g_val, ite =ite,
             pex=pex, p_min_deg=p_min_deg, mod_gamma=mod_gamma,
+            after_persistence_full=after_persistence_full,
             # before_persistence_full=before_full, after_persistence_full=after_persistence_full, after_pulse_full=after_pulse_full,
             # rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
             S_full=S_full, collectivity_full=collectivity_full, 
@@ -536,18 +537,18 @@ end
 # --------------------------------------------------------------------------------
 R = checking_recalculating_demography(
     50, 20;
-    conn_vals=0.01:0.02:1.0,
+    conn_vals=0.01:0.01:1.0,
     IS_vals=[0.001, 0.01, 0.1, 1.0, 2.0],
     IS_vals_B_term=[0.1, 1.0],
     scenarios=[:ER],
-    delta_vals=[MAX_DELTA], #[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
+    delta_vals=[0.5], #[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
     eps_scales=[1.0, 0.5, 0.1],
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 50000,
+    number_of_combinations = 937000,
     B_term = false,
-    iterations=8,
+    iterations=50,
     Rmed_iterations=10,
     pareto_exponents=[1.25], #[1.25,1.75,2.0,3.0,4.0,5.0],
     pareto_minimum_degrees=[1.0], #[1.0,2.0,3.0,4.0,5.0,6.0],
@@ -566,4 +567,4 @@ desired = [
 
 G = R[!, desired]
 
-serialize("checking_changing_groups_50000ER.jls", R)
+serialize("checking_changing_groups_937000ER_plusPersistence.jls", R)
