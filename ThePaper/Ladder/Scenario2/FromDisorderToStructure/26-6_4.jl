@@ -180,7 +180,7 @@ function main()
     end
 
     # plotting
-    fig = Figure(resolution=(900,350))
+    fig = Figure(; size=(900,350))
 
     ax1 = Axis(fig[1,1]; xlabel="α", ylabel="φ", title="φ vs ordering α")
     for iμ in 1:length(mu0s)
