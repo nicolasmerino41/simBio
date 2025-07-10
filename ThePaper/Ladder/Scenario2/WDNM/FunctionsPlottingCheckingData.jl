@@ -4,19 +4,21 @@ function plot_scalar_correlations(
     metrics = [
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
         # (:mean_tau, "Mean SL"), 
-        (:analytical_rmed, "Rmed"),
+        # (:analytical_rmed, "Rmed"),
         (:after_persistence, "Persistence"),
         (:collectivity, "Collectivity"),
         (:sigma_over_min_d, "σ/min(d)")
     ],
-    fit_to_1_1_line::Bool = true
+    fit_to_1_1_line::Bool = true,
+    save_plot::Bool = false,
+    resolution = (900, 650)
 )
-    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Changing groups"]
+    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS"]#, "Changing groups"]
     for scen in scenarios
         df = G[G.scen .== scen, :]
-        fig = Figure(; size=(900, 650))
+        fig = Figure(; size=resolution)
         for (i, (sym, label)) in enumerate(metrics)
-            for (j, step) in enumerate((1, 2, 3, 4, 5))
+            for (j, step) in enumerate((1, 2, 3, 4))
                 x = df[!, Symbol(string(sym, "_full"))]
                 y = df[!, Symbol(string(sym, "_S", step))]
 
@@ -68,6 +70,10 @@ function plot_scalar_correlations(
                 end
             end
         end
+        if save_plot
+            filename = "scalar_correlation_$(scen).png"
+            save(filename, fig; px_per_unit=6.0)
+        end
         display(fig)
     end
 end
@@ -77,7 +83,10 @@ function plot_vector_correlations(
     scenarios=[:ER], # [:ER,:PL,:MOD],
     color_by=:conn,
     variable::Symbol = :tau,
-    fit_to_1_1_line::Bool = true
+    fit_to_1_1_line::Bool = true,
+    save_plot::Bool = false,
+    resolution = (900, 650),
+    pixels_per_unit = 2.0
 )
     # mapping from variable name to the full‐and‐step column suffix
     suffix = Dict(
@@ -167,6 +176,10 @@ function plot_vector_correlations(
         # label = string(color_by),
         # limits=(minimum(cs), maximum(cs))
         # )
+        if save_plot
+            filename = string("vector_correlations_", variable, "_", scen, ".png")
+            save(filename, fig; px_per_unit=pixels_per_unit)
+        end
 
         display(fig)
     end
