@@ -11,6 +11,9 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/checking_yes_recalculating_500
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_not_recalculating_50000ER.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_100000ER.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000ER_plusPersistence.jls")
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000MOD_plusPersistence.jls")
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000PL_plusPersistence.jls")
+
 
 ################ CLEANING ################
 desired = [
@@ -33,13 +36,16 @@ min_d_cols = Symbol.("sigma_over_min_d" .* step_keys)
 G = filter(row -> all(row[c] < 50.0 for c in min_d_cols), G)
  
 G = filter(row -> all(x -> !(x isa AbstractFloat) || (!isnan(x) && !isinf(x)), row), G)
-
+sl_cols = Symbol.("SL" .* step_keys)
+G = filter(row -> all(all(x -> x < 1000, row[c]) for c in sl_cols), G)
 ################### FOR SCALAR COMPARISONS ###################
 # To show R² to 1:1 line  
 plot_scalar_correlations(
     G;
-    scenarios = [:ER],
-    fit_to_1_1_line=true
+    scenarios = [:PL],
+    fit_to_1_1_line=true,
+    save_plot = false,
+    resolution = (1000, 450)
 )
 
 # To show Pearson correlation r
@@ -53,14 +59,18 @@ plot_scalar_correlations(
 begin
     want_fit = true
     colorBy = :conn
-    scen = [:ER]
-    plot_vector_correlations(
+    scen = [:MOD]
+    plot_vector_correlations_glv(
         G;
-        variable=:tau, color_by=colorBy,
+        variable=:SL, color_by=colorBy,
         fit_to_1_1_line=want_fit,
-        scenarios=scen
+        scenarios=scen,
+        save_plot = true,
+        resolution = (1000, 600),
+        pixels_per_unit = 6.0
     )
-    
+end
+begin 
     plot_vector_correlations(
         G;
         variable=:inverse_tau, color_by=colorBy,
