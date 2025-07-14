@@ -9,7 +9,7 @@ G = filter(row -> all(row[c] < 10.0 for c in min_d_cols), G)
  
 G = filter(row -> all(x -> !(x isa AbstractFloat) || (!isnan(x) && !isinf(x)), row), G)
 sl_cols = Symbol.("SL" .* step_keys)
-G = filter(row -> all(all(x -> x < 1000, row[c]) for c in sl_cols), G)
+G = filter(row -> all(all(x -> x < 1000 && x > 0.0, row[c]) for c in sl_cols), G)
 ################### FOR SCALAR COMPARISONS ###################
 # To show R² to 1:1 line  
 for x in [:ER]
