@@ -227,39 +227,39 @@ function checking_recalculating_demography(
         # mean_min_delta_xi_full = mean(min_delta_xi_full)
 
         # 5) ladder persistence
-        # before_persistence_S = Dict(i => NaN for i in 1:5)
-        after_persistence_S  = Dict(i => NaN for i in 1:5)
-        # after_pulse_S = Dict(i => NaN for i in 1:5)
-        # rt_press_S   = Dict(i => NaN for i in 1:5)
-        # rt_pulse_S   = Dict(i => NaN for i in 1:5)
-        S_S = Dict(i => NaN for i in 1:5)
-        collectivity_S = Dict(i => NaN for i in 1:5)
-        resilience_S  = Dict(i=>NaN for i in 1:5)
-        reactivity_S  = Dict(i=>NaN for i in 1:5)
-        # stable_S    = Dict(i=>NaN for i in 1:5)
+        # before_persistence_S = Dict(i => NaN for i in 1:6)
+        after_persistence_S  = Dict(i => NaN for i in 1:6)
+        # after_pulse_S = Dict(i => NaN for i in 1:6)
+        # rt_press_S   = Dict(i => NaN for i in 1:6)
+        # rt_pulse_S   = Dict(i => NaN for i in 1:6)
+        S_S = Dict(i => NaN for i in 1:6)
+        collectivity_S = Dict(i => NaN for i in 1:6)
+        resilience_S  = Dict(i=>NaN for i in 1:6)
+        reactivity_S  = Dict(i=>NaN for i in 1:6)
+        # stable_S    = Dict(i=>NaN for i in 1:6)
         
-        # Rmed_S    = Dict(i=>NaN for i in 1:5)
-        # ssp_rmed_S = Dict(i => Float65[] for i in 1:5)
-        analytical_rmed_S = Dict(i => NaN for i in 1:5)
-        ssp_analytical_rmed_S = Dict(i => Float64[] for i in 1:5)
+        # Rmed_S    = Dict(i=>NaN for i in 1:6)
+        # ssp_rmed_S = Dict(i => Float66[] for i in 1:6)
+        analytical_rmed_S = Dict(i => NaN for i in 1:6)
+        ssp_analytical_rmed_S = Dict(i => Float64[] for i in 1:6)
         
-        tau_S = Dict(i => Float64[] for i in 1:5)
-        mean_tau_S = Dict(i => NaN for i in 1:5)
+        tau_S = Dict(i => Float64[] for i in 1:6)
+        mean_tau_S = Dict(i => NaN for i in 1:6)
 
-        inverse_tau_S = Dict(i => Float64[] for i in 1:5)
-        mean_inverse_tau_S = Dict(i => NaN for i in 1:5)
+        inverse_tau_S = Dict(i => Float64[] for i in 1:6)
+        mean_inverse_tau_S = Dict(i => NaN for i in 1:6)
 
-        SL_S = Dict(i => Float64[] for i in 1:5)
-        mean_SL_S = Dict(i => NaN for i in 1:5)
-        # K_Xi_S = Dict(i => Float64[] for i in 1:5)
-        # J_diff_S = Dict(i => NaN for i in 1:5)
-        # min_delta_K_S = Dict(i => Float64[] for i in 1:5)
-        # min_delta_xi_S = Dict(i => Float64[] for i in 1:5)
-        # mean_min_delta_K_S = Dict(i => NaN for i in 1:5)
-        # mean_min_delta_xi_S = Dict(i => NaN for i in 1:5)
-        # rt_press_vector_S = Dict(i => Float64[] for i in 1:5)
-        # rt_pulse_vector_S = Dict(i => Float64[] for i in 1:5)
-        sigma_over_min_d_S = Dict(i => NaN for i in 1:5)
+        SL_S = Dict(i => Float64[] for i in 1:6)
+        mean_SL_S = Dict(i => NaN for i in 1:6)
+        # K_Xi_S = Dict(i => Float64[] for i in 1:6)
+        # J_diff_S = Dict(i => NaN for i in 1:6)
+        # min_delta_K_S = Dict(i => Float64[] for i in 1:6)
+        # min_delta_xi_S = Dict(i => Float64[] for i in 1:6)
+        # mean_min_delta_K_S = Dict(i => NaN for i in 1:6)
+        # mean_min_delta_xi_S = Dict(i => NaN for i in 1:6)
+        # rt_press_vector_S = Dict(i => Float64[] for i in 1:6)
+        # rt_pulse_vector_S = Dict(i => Float64[] for i in 1:6)
+        sigma_over_min_d_S = Dict(i => NaN for i in 1:6)
         @info "Running ladder"
 
         # original equilibrium abundances
@@ -272,7 +272,7 @@ function checking_recalculating_demography(
         ########################## SIMPLIFIED MODEL STEPS #########################################
         ###########################################################################################
         ###########################################################################################
-        for step in 1:5
+        for step in 1:6
             
             # K_Xi_S[step] = vcat(K_res, xi_cons)
             A_s = copy(A)
@@ -321,6 +321,44 @@ function checking_recalculating_demography(
                 # end
                 # println("In step 4 C_eq_full has size $(size(C_eq_full))")
             elseif step==5
+                    # 1) compute undirected degrees
+                    n = size(A_s,1)
+                    degrees = [ count(!=(0.0), A_s[i, :]) + count(!=(0.0), A_s[:, i]) for i in 1:n ]
+                    mu = mean(degrees)
+
+                    # 2) split species
+                    high = findall(d -> d > mu, degrees)
+                    low  = findall(d -> d ≤ mu, degrees)
+
+                    # 3) helper to reshuffle all nonzeros in rows & columns of a group
+                    function reshuffle_group!(A, idxs)
+                        # gather positions (i,j) with
+                        pos = Set{Tuple{Int,Int}}()
+                        for i in idxs, j in 1:n
+                            if A[i,j] != 0.0
+                                push!(pos, (i,j))
+                            end
+                            if A[j,i] != 0.0
+                                push!(pos, (j,i))
+                            end
+                        end
+
+                        # extract & shuffle values
+                        vals = collect(A[i,j] for (i,j) in pos)
+                        shuffle!(vals)
+
+                        # reassign
+                        for ((i,j), v) in zip(pos, vals)
+                            A[i,j] = v
+                        end
+                    end
+
+                    # apply separately
+                    reshuffle_group!(A_s, high)
+                    reshuffle_group!(A_s, low)
+            # 6) preserve high/low‐degree species but reshuffle their weights
+            elseif step==6
+                
                 A_s = make_A(
                     A_s,R+5,conn,scen;
                     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
@@ -335,8 +373,8 @@ function checking_recalculating_demography(
                 m_cons = m_cons[6:end]
                 r_res = vcat(r_res, r_res[1:5])
             end
-            temp_C = step != 5 ? C : C-5
-            temp_R = step != 5 ? R : R+5
+            temp_C = step != 6 ? C : C-5
+            temp_R = step != 6 ? R : R+5
             # 5a) Recompute xi_hat
             xi_hat = zeros(temp_C)
             for k in 1:temp_C
@@ -493,7 +531,7 @@ function checking_recalculating_demography(
                 # Symbol("rt_pulse_vector_S$i") => rt_pulse_vector_S[i],
 
                 Symbol("sigma_over_min_d_S$i") => sigma_over_min_d_S[i]
-            ] for i in 1:5)
+            ] for i in 1:6)
         ))
 
         rec = (
@@ -538,7 +576,7 @@ end
 R = checking_recalculating_demography(
     50, 20;
     conn_vals=0.01:0.01:1.0,
-    IS_vals=[0.001, 0.01, 0.1, 1.0, 2.0],
+    IS_vals=[0.0001, 0.001, 0.01, 0.1, 1.0, 2.0],
     IS_vals_B_term=[0.1, 1.0],
     scenarios=[:ER],
     delta_vals=[0.5], #[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
@@ -546,11 +584,11 @@ R = checking_recalculating_demography(
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 937000,
+    number_of_combinations = 10000,
     B_term = false,
-    iterations=50,
+    iterations=5,
     Rmed_iterations=10,
-    pareto_exponents=[1.25], #[1.25,1.75,2.0,3.0,4.0,5.0],
+    pareto_exponents=[5.0],
     pareto_minimum_degrees=[1.0], #[1.0,2.0,3.0,4.0,5.0,6.0],
     mod_gammas=[1.0] #[1.0,2.0,3.0,5.0,10.0]
 )
@@ -567,4 +605,4 @@ desired = [
 
 G = R[!, desired]
 
-serialize("checking_changing_groups_937000ER_plusPersistence.jls", R)
+serialize("checking_changing_groups_100000ER_plusPersistence.jls", R)
