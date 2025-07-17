@@ -14,7 +14,6 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_93700
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000MOD_plusPersistence.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000PL_plusPersistence.jls")
 
-
 ################ CLEANING ################
 desired = [
   :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite, :pex, :p_min_deg, :mod_gamma,
@@ -28,7 +27,7 @@ desired = [
 G = R[!, desired]
 G = R
 
-step_keys = ["_full","_S1","_S2","_S3","_S4"]
+step_keys = ["_full","_S1","_S2","_S3","_S4", "_S5"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
@@ -42,31 +41,24 @@ G = filter(row -> all(all(x -> x < 1000, row[c]) for c in sl_cols), G)
 # To show R² to 1:1 line  
 plot_scalar_correlations(
     G;
-    scenarios = [:PL],
+    scenarios = [:ER],
     fit_to_1_1_line=true,
     save_plot = false,
-    resolution = (1000, 450)
-)
-
-# To show Pearson correlation r
-plot_scalar_correlations(
-    G;
-    scenarios = [:ER],
-    fit_to_1_1_line=false
+    resolution = (1100, 450)
 )
 
 ################### for vector correlations ###################
 begin
     want_fit = true
     colorBy = :conn
-    scen = [:MOD]
-    plot_vector_correlations_glv(
+    scen = [:ER]
+    plot_vector_correlations(
         G;
-        variable=:SL, color_by=colorBy,
+        variable=:tau, color_by=colorBy,
         fit_to_1_1_line=want_fit,
         scenarios=scen,
-        save_plot = true,
-        resolution = (1000, 600),
+        save_plot = false,
+        resolution = (1000, 450),
         pixels_per_unit = 6.0
     )
 end
