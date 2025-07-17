@@ -1,6 +1,6 @@
 @time begin
     PC = "nicol"
-    const EXTINCTION_THRESHOLD = 1e-2
+    const EXTINCTION_THRESHOLD = 1e-6
     using Pkg
     Pkg.activate(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio\\ThePaper"))
     cd(joinpath("C:\\Users", PC, "OneDrive\\PhD\\GitHub\\simBio"))
