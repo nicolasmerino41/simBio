@@ -14,12 +14,12 @@ function plot_scalar_correlations(
     save_plot::Bool = false,
     resolution = (900, 650)
 )
-    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Changing groups"]
+    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "sub_grouping", "Changing groups"]
     for scen in scenarios
         df = G[G.scen .== scen, :]
         fig = Figure(; size=resolution)
         for (i, (sym, label)) in enumerate(metrics)
-            for (j, step) in enumerate((1, 2, 3, 4, 5))
+            for (j, step) in enumerate((1, 2, 3, 4, 5, 6))
                 x = df[!, Symbol(string(sym, "_full"))]
                 y = df[!, Symbol(string(sym, "_S", step))]
 
@@ -105,12 +105,12 @@ function plot_vector_correlations(
 
     for scen in scenarios
         sub = df[df.scen .== scen, :]
-        fig = Figure(; size=(900,450))
+        fig = Figure(; size=resolution)
         Label(fig[0, 1:4], uppercase(string(variable, " correlations")); fontsize=12)
         for (i, step) in enumerate((1,2, 3, 4, 5, 6))
             col_full = Symbol(string(variable, suffix[1]))
             col_step = Symbol(string(variable, suffix[2], step))
-            ax = Axis(fig[1,i];
+            ax = Axis(fig[(i-1)÷3+1, (i-1)%3+1];
                 # title  = "$(scen) $(variable): full vs S$step",
                 title  = "Full vs $(step_names[step])",
                 xlabel = "full", ylabel = "S$step",
