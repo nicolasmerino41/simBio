@@ -13,6 +13,7 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_10000
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000ER_plusPersistence.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000MOD_plusPersistence.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000PL_plusPersistence.jls")
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_ALL1000000_plussubgroups.jls")
 
 ################ CLEANING ################
 desired = [
@@ -39,7 +40,7 @@ sl_cols = Symbol.("SL" .* step_keys)
 G = filter(row -> all(all(x -> x < 1000, row[c]) for c in sl_cols), G)
 ################### FOR SCALAR COMPARISONS ###################
 # To show R² to 1:1 line  
-plot_scalar_correlations(
+plot_scalar_correlations_D(
     G;
     scenarios = [:ER],
     fit_to_1_1_line=true,
@@ -58,7 +59,7 @@ begin
         fit_to_1_1_line=want_fit,
         scenarios=scen,
         save_plot = false,
-        resolution = (1000, 450),
+        resolution = (750, 450),
         pixels_per_unit = 6.0
     )
 end
