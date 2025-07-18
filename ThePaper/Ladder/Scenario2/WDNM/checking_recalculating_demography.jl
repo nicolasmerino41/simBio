@@ -227,39 +227,39 @@ function checking_recalculating_demography(
         # mean_min_delta_xi_full = mean(min_delta_xi_full)
 
         # 5) ladder persistence
-        # before_persistence_S = Dict(i => NaN for i in 1:6)
-        after_persistence_S  = Dict(i => NaN for i in 1:6)
-        # after_pulse_S = Dict(i => NaN for i in 1:6)
-        # rt_press_S   = Dict(i => NaN for i in 1:6)
-        # rt_pulse_S   = Dict(i => NaN for i in 1:6)
-        S_S = Dict(i => NaN for i in 1:6)
-        collectivity_S = Dict(i => NaN for i in 1:6)
-        resilience_S  = Dict(i=>NaN for i in 1:6)
-        reactivity_S  = Dict(i=>NaN for i in 1:6)
-        # stable_S    = Dict(i=>NaN for i in 1:6)
+        # before_persistence_S = Dict(i => NaN for i in 1:7)
+        after_persistence_S  = Dict(i => NaN for i in 1:7)
+        # after_pulse_S = Dict(i => NaN for i in 1:7)
+        # rt_press_S   = Dict(i => NaN for i in 1:7)
+        rt_pulse_S   = Dict(i => NaN for i in 1:7)
+        S_S = Dict(i => NaN for i in 1:7)
+        collectivity_S = Dict(i => NaN for i in 1:7)
+        resilience_S  = Dict(i=>NaN for i in 1:7)
+        reactivity_S  = Dict(i=>NaN for i in 1:7)
+        # stable_S    = Dict(i=>NaN for i in 1:7)
         
-        # Rmed_S    = Dict(i=>NaN for i in 1:6)
-        # ssp_rmed_S = Dict(i => Float66[] for i in 1:6)
-        analytical_rmed_S = Dict(i => NaN for i in 1:6)
-        ssp_analytical_rmed_S = Dict(i => Float64[] for i in 1:6)
+        # Rmed_S    = Dict(i=>NaN for i in 1:7)
+        # ssp_rmed_S = Dict(i => Float66[] for i in 1:7)
+        analytical_rmed_S = Dict(i => NaN for i in 1:7)
+        ssp_analytical_rmed_S = Dict(i => Float64[] for i in 1:7)
         
-        tau_S = Dict(i => Float64[] for i in 1:6)
-        mean_tau_S = Dict(i => NaN for i in 1:6)
+        tau_S = Dict(i => Float64[] for i in 1:7)
+        mean_tau_S = Dict(i => NaN for i in 1:7)
 
-        inverse_tau_S = Dict(i => Float64[] for i in 1:6)
-        mean_inverse_tau_S = Dict(i => NaN for i in 1:6)
+        inverse_tau_S = Dict(i => Float64[] for i in 1:7)
+        mean_inverse_tau_S = Dict(i => NaN for i in 1:7)
 
-        SL_S = Dict(i => Float64[] for i in 1:6)
-        mean_SL_S = Dict(i => NaN for i in 1:6)
-        # K_Xi_S = Dict(i => Float64[] for i in 1:6)
-        # J_diff_S = Dict(i => NaN for i in 1:6)
-        # min_delta_K_S = Dict(i => Float64[] for i in 1:6)
-        # min_delta_xi_S = Dict(i => Float64[] for i in 1:6)
-        # mean_min_delta_K_S = Dict(i => NaN for i in 1:6)
-        # mean_min_delta_xi_S = Dict(i => NaN for i in 1:6)
-        # rt_press_vector_S = Dict(i => Float64[] for i in 1:6)
-        # rt_pulse_vector_S = Dict(i => Float64[] for i in 1:6)
-        sigma_over_min_d_S = Dict(i => NaN for i in 1:6)
+        SL_S = Dict(i => Float64[] for i in 1:7)
+        mean_SL_S = Dict(i => NaN for i in 1:7)
+        # K_Xi_S = Dict(i => Float64[] for i in 1:7)
+        # J_diff_S = Dict(i => NaN for i in 1:7)
+        # min_delta_K_S = Dict(i => Float64[] for i in 1:7)
+        # min_delta_xi_S = Dict(i => Float64[] for i in 1:7)
+        # mean_min_delta_K_S = Dict(i => NaN for i in 1:7)
+        # mean_min_delta_xi_S = Dict(i => NaN for i in 1:7)
+        # rt_press_vector_S = Dict(i => Float64[] for i in 1:7)
+        # rt_pulse_vector_S = Dict(i => Float64[] for i in 1:7)
+        sigma_over_min_d_S = Dict(i => NaN for i in 1:7)
         @info "Running ladder"
 
         # original equilibrium abundances
@@ -272,11 +272,56 @@ function checking_recalculating_demography(
         ########################## SIMPLIFIED MODEL STEPS #########################################
         ###########################################################################################
         ###########################################################################################
-        for step in 1:6
+        for step in 1:7
             
             # K_Xi_S[step] = vcat(K_res, xi_cons)
             A_s = copy(A)
             if step==1
+                # 1) compute undirected degrees
+                n = size(A_s,1)
+                degrees = zeros(S - R)
+                for consumer in (R+1):S
+                    degrees[consumer - R] = count(A_s[consumer, :] .!= 0.0)
+                end
+                mu = mean(degrees)
+
+                # 2) split species
+                high = findall(d -> d > mu, degrees)
+                low  = findall(d -> d <= mu, degrees)
+
+                # 3) gather & reshuffle high-degree consumer weights
+                high_vals = Float64[]
+                high_pos  = Tuple{Int,Int}[]
+                for idx in high
+                    i = R + idx
+                    for j in 1:R
+                        if A_s[i,j] != 0.0
+                            push!(high_vals, A_s[i,j])
+                            push!(high_pos,  (i,j))
+                        end
+                    end
+                end
+                shuffle!(high_vals)
+                for k in eachindex(high_vals)
+                    A_s[high_pos[k]...] = high_vals[k]
+                end
+
+                # 4) gather & reshuffle low-degree consumer weights
+                low_vals = Float64[]
+                low_pos  = Tuple{Int,Int}[]
+                for idx in low
+                    i = R + idx
+                    for j in 1:R
+                        if A_s[i,j] != 0.0
+                            push!(low_vals, A_s[i,j])
+                            push!(low_pos,  (i,j))
+                        end
+                    end
+                end
+                shuffle!(low_vals)
+                for k in eachindex(low_vals)
+                    A_s[low_pos[k]...] = low_vals[k]
+                end
                 A_s = make_A(
                     A_s,R,min(conn, 1.0),scen;
                     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
@@ -289,6 +334,17 @@ function checking_recalculating_demography(
                 # println("In step 1 C_eq_full has size $(size(C_eq_full))")
             elseif step==2
                 A_s = make_A(
+                    A_s,R,min(conn, 1.0),scen;
+                    IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
+                    mod_gamma=mod_gamma,
+                    B_term=B_term,B_term_IS=B_term_IS[1]
+                )
+                # if scen == :PL
+                #     A_s = degree_scaled_A(A_s, R, scen)
+                # end
+                # println("In step 1 C_eq_full has size $(size(C_eq_full))")
+            elseif step==3
+                A_s = make_A(
                     A_s,R,rand(),scen;
                     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
                     mod_gamma=mod_gamma,
@@ -298,7 +354,6 @@ function checking_recalculating_demography(
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
                 # println("In step 2 C_eq_full has size $(size(C_eq_full))")
-            elseif step==3
                 A_s = make_A(
                     A_s,R,conn,scen;
                     IS=IS*2,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
@@ -311,6 +366,17 @@ function checking_recalculating_demography(
                 # println("In step 3 C_eq_full has size $(size(C_eq_full))")
             elseif step==4
                 A_s = make_A(
+                    A_s,R,conn,scen;
+                    IS=IS*2,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
+                    mod_gamma=mod_gamma,
+                    B_term=B_term,B_term_IS=B_term_IS[1]
+                )
+                # if scen == :PL
+                #     A_s = degree_scaled_A(A_s, R, scen)
+                # end
+                # println("In step 3 C_eq_full has size $(size(C_eq_full))")
+            elseif step==5
+                A_s = make_A(
                     A_s,R,rand(),scen;
                     IS=IS*2,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
                     mod_gamma=mod_gamma,
@@ -320,45 +386,15 @@ function checking_recalculating_demography(
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
                 # println("In step 4 C_eq_full has size $(size(C_eq_full))")
-            elseif step==5
-                    # 1) compute undirected degrees
-                    n = size(A_s,1)
-                    degrees = [ count(!=(0.0), A_s[i, :]) + count(!=(0.0), A_s[:, i]) for i in 1:n ]
-                    mu = mean(degrees)
 
-                    # 2) split species
-                    high = findall(d -> d > mu, degrees)
-                    low  = findall(d -> d ≤ mu, degrees)
-
-                    # 3) helper to reshuffle all nonzeros in rows & columns of a group
-                    function reshuffle_group!(A, idxs)
-                        # gather positions (i,j) with
-                        pos = Set{Tuple{Int,Int}}()
-                        for i in idxs, j in 1:n
-                            if A[i,j] != 0.0
-                                push!(pos, (i,j))
-                            end
-                            if A[j,i] != 0.0
-                                push!(pos, (j,i))
-                            end
-                        end
-
-                        # extract & shuffle values
-                        vals = collect(A[i,j] for (i,j) in pos)
-                        shuffle!(vals)
-
-                        # reassign
-                        for ((i,j), v) in zip(pos, vals)
-                            A[i,j] = v
-                        end
-                    end
-
-                    # apply separately
-                    reshuffle_group!(A_s, high)
-                    reshuffle_group!(A_s, low)
-            # 6) preserve high/low‐degree species but reshuffle their weights
             elseif step==6
-                
+                A_s = make_A(
+                    A_s,R,min(conn, 1.0),scen;
+                    IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
+                    mod_gamma=mod_gamma,
+                    B_term=B_term,B_term_IS=B_term_IS[1]
+                )
+            elseif step==7
                 A_s = make_A(
                     A_s,R+5,conn,scen;
                     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
@@ -373,8 +409,8 @@ function checking_recalculating_demography(
                 m_cons = m_cons[6:end]
                 r_res = vcat(r_res, r_res[1:5])
             end
-            temp_C = step != 6 ? C : C-5
-            temp_R = step != 6 ? R : R+5
+            temp_C = step != 7 ? C : C-5
+            temp_R = step != 7 ? R : R+5
             # 5a) Recompute xi_hat
             xi_hat = zeros(temp_C)
             for k in 1:temp_C
@@ -387,7 +423,10 @@ function checking_recalculating_demography(
                 # consumer eq: xi = B_i - gain - loss
                 xi_hat[k] = -C_eq_full[k] + gain + loss
             end
-            # xi_hat = xi_cons
+            if step == 6
+                xi_hat = xi_cons
+                K_hat = K_res
+            end
 
             # 5b) Recompute K_hat
             K_hat = zeros(temp_R)
@@ -436,7 +475,7 @@ function checking_recalculating_demography(
             after_persistence_S[step]  = after_s
             # after_pulse_S[step] = after_pulse3
             # rt_press_S[step]   = mean(filter(!isnan, rt_press2))
-            # rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
+            rt_pulse_S[step]   = mean(filter(!isnan, rt_pulse3))
             # rt_press_vector_S[step] = rt_press2
             # rt_pulse_vector_S[step] = rt_pulse3
             collectivity_S[step] = compute_collectivity(A_s, epsilon)
@@ -497,7 +536,7 @@ function checking_recalculating_demography(
                 Symbol("after_persistence_S$i") => after_persistence_S[i],
                 # Symbol("after_pulse_S$i") => after_pulse_S[i],
                 # Symbol("rt_press_S$i") => rt_press_S[i],
-                # Symbol("rt_pulse_S$i") => rt_pulse_S[i],
+                Symbol("rt_pulse_S$i") => rt_pulse_S[i],
                 Symbol("S_S$i") => S_S[i],
                 Symbol("collectivity_S$i") => collectivity_S[i],
                 Symbol("resilience_S$i") => resilience_S[i],
@@ -531,7 +570,7 @@ function checking_recalculating_demography(
                 # Symbol("rt_pulse_vector_S$i") => rt_pulse_vector_S[i],
 
                 Symbol("sigma_over_min_d_S$i") => sigma_over_min_d_S[i]
-            ] for i in 1:6)
+            ] for i in 1:7)
         ))
 
         rec = (
@@ -576,21 +615,21 @@ end
 R = checking_recalculating_demography(
     50, 20;
     conn_vals=0.01:0.01:1.0,
-    IS_vals=[0.0001, 0.001, 0.01, 0.1, 1.0, 2.0],
+    IS_vals=[0.1, 1.0, 2.0],
     IS_vals_B_term=[0.1, 1.0],
-    scenarios=[:ER],
-    delta_vals=[0.5], #[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
+    scenarios=[:ER, :PL, :MOD],
+    delta_vals=[0.5, 0.3, 0.9, 0.99], #[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
     eps_scales=[1.0, 0.5, 0.1],
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 10000,
+    number_of_combinations = 1000000,
     B_term = false,
     iterations=5,
-    Rmed_iterations=10,
-    pareto_exponents=[5.0],
-    pareto_minimum_degrees=[1.0], #[1.0,2.0,3.0,4.0,5.0,6.0],
-    mod_gammas=[1.0] #[1.0,2.0,3.0,5.0,10.0]
+    Rmed_iterations=5,
+    pareto_exponents=[1.0,1.5,2.0,3.0,4.0,5.0],
+    pareto_minimum_degrees=[1.0,2.0,3.0,4.0,5.0,6.0],
+    mod_gammas=[1.0,2.0,3.0,5.0,10.0]
 )
 
 desired = [
@@ -605,4 +644,4 @@ desired = [
 
 G = R[!, desired]
 
-serialize("checking_changing_groups_100000ER_plusPersistence.jls", R)
+serialize("checking_changing_groups_1000000ALL_plusNotRecalculatingS6.jls", R)
