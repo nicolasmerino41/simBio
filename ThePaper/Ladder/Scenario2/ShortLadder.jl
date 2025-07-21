@@ -123,8 +123,8 @@ function short_ComputingLadder(
         t0 = 0.01
 
         # full-model median return rate
-        Rmed_full = median_return_rate(J_full, fixed; t=t0, n=Rmed_iterations)
-        ssp_rmed_full = species_return_rates(J_full, fixed; t=t0, n=Rmed_iterations)
+        # Rmed_full = median_return_rate(J_full, fixed; t=t0, n=Rmed_iterations)
+        # ssp_rmed_full = species_return_rates(J_full, fixed; t=t0, n=Rmed_iterations)
         analytical_rmed_full = analytical_species_return_rates(J_full; t=0.001)
         ############### TRYING SOMETHING NEW ################
         prob1 = ODEProblem(trophic_ode!, B0, (tspan[1], tpert), p)
@@ -167,22 +167,22 @@ function short_ComputingLadder(
         J_diff_full = norm(J_full - J_full)
         J_full_norm = norm(J_full)
         
-        min_delta_K_full = fill(0.0, R)
+        # min_delta_K_full = fill(0.0, R)
         
-        for i in 1:R
-            min_delta_K_full[i] = find_min_K_reduction(
-                i, B0, p, tspan, tpert; cb
-            )
-        end
+        # for i in 1:R
+        #     min_delta_K_full[i] = find_min_K_reduction(
+        #         i, B0, p, tspan, tpert; cb
+        #     )
+        # end
         
-        min_delta_xi_full = fill(0.0, C)
-        for i in 1:C
-            min_delta_xi_full[i] = find_min_xi_increase(
-                i, B0, p, tspan, tpert; cb
-            )
-        end
-        mean_min_delta_K_full = mean(min_delta_K_full)
-        mean_min_delta_xi_full = mean(min_delta_xi_full)
+        # min_delta_xi_full = fill(0.0, C)
+        # for i in 1:C
+        #     min_delta_xi_full[i] = find_min_xi_increase(
+        #         i, B0, p, tspan, tpert; cb
+        #     )
+        # end
+        # mean_min_delta_K_full = mean(min_delta_K_full)
+        # mean_min_delta_xi_full = mean(min_delta_xi_full)
 
         # 5) ladder persistence
         before_persistence_S = Dict(i => NaN for i in 1:11)
@@ -195,8 +195,8 @@ function short_ComputingLadder(
         reactivity_S  = Dict(i=>NaN for i in 1:11)
         stable_S    = Dict(i=>NaN for i in 1:11)
         
-        Rmed_S    = Dict(i=>NaN for i in 1:11)
-        ssp_rmed_S = Dict(i => Float64[] for i in 1:11)
+        # Rmed_S    = Dict(i=>NaN for i in 1:11)
+        # ssp_rmed_S = Dict(i => Float64[] for i in 1:11)
         analytical_rmed_S = Dict(i => Float64[] for i in 1:11)
         
         tau_S = Dict(i => Float64[] for i in 1:11)
@@ -312,27 +312,27 @@ function short_ComputingLadder(
             J_diff_S[step] = norm(J_s - J_full)
             stable_S[step] = is_locally_stable(J_s)
             
-            Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
-            ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
+            # Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+            # ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
             analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
 
             tau_S[step] = -1 ./ diag(J_s)
             mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
-            min_delta_K_S[step] = fill(0.0, R)
-            for i in 1:R
-                min_delta_K_S[step][i] = find_min_K_reduction(
-                    i, B0, p_s, tspan, tpert; cb
-                )
-            end
-            min_delta_xi_S[step] = fill(0.0, C)
-            for i in 1:C
-                min_delta_xi_S[step][i] = find_min_xi_increase(
-                    i, B0, p_s, tspan, tpert; cb
-                )
-            end
-            mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
-            mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
+            # min_delta_K_S[step] = fill(0.0, R)
+            # for i in 1:R
+            #     min_delta_K_S[step][i] = find_min_K_reduction(
+            #         i, B0, p_s, tspan, tpert; cb
+            #     )
+            # end
+            # min_delta_xi_S[step] = fill(0.0, C)
+            # for i in 1:C
+            #     min_delta_xi_S[step][i] = find_min_xi_increase(
+            #         i, B0, p_s, tspan, tpert; cb
+            #     )
+            # end
+            # mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
+            # mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
         end
         
         for step in 4:11
@@ -386,27 +386,27 @@ function short_ComputingLadder(
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
 
-                Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
-                ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
+                # Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                # ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
                 analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
 
                 tau_S[step] = -1 ./ diag(J_s)
                 mean_tau_S[step] = mean(-1 ./ diag(J_s)) 
 
-                min_delta_K_S[step] = fill(0.0, R)
-                for i in 1:R
-                    min_delta_K_S[step][i] = find_min_K_reduction(
-                        i, B0, p_s, tspan, tpert; cb
-                    )
-                end
-                min_delta_xi_S[step] = fill(0.0, C)
-                for i in 1:C
-                    min_delta_xi_S[step][i] = find_min_xi_increase(
-                        i, B0, p_s, tspan, tpert; cb
-                    )
-                end
-                mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
-                mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
+                # min_delta_K_S[step] = fill(0.0, R)
+                # for i in 1:R
+                #     min_delta_K_S[step][i] = find_min_K_reduction(
+                #         i, B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # min_delta_xi_S[step] = fill(0.0, C)
+                # for i in 1:C
+                #     min_delta_xi_S[step][i] = find_min_xi_increase(
+                #         i, B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
+                # mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
             # -------------------------------------------------------------------------
             # step 18: re-randomise xi_cons
             # -------------------------------------------------------------------------
@@ -461,27 +461,27 @@ function short_ComputingLadder(
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
 
-                Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
-                ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
+                # Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                # ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
                 analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
 
                 tau_S[step] = -1 ./ diag(J_s)
                 mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
-                min_delta_K_S[step] = fill(0.0, R)
-                for i in 1:R
-                    min_delta_K_S[step][i] = find_min_K_reduction(
-                        i, B0, p_s, tspan, tpert; cb
-                    )
-                end
-                min_delta_xi_S[step] = fill(0.0, C)
-                for i in 1:C
-                    min_delta_xi_S[step][i] = find_min_xi_increase(
-                        i, B0, p_s, tspan, tpert; cb
-                    )
-                end
-                mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
-                mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
+                # min_delta_K_S[step] = fill(0.0, R)
+                # for i in 1:R
+                #     min_delta_K_S[step][i] = find_min_K_reduction(
+                #         i, B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # min_delta_xi_S[step] = fill(0.0, C)
+                # for i in 1:C
+                #     min_delta_xi_S[step][i] = find_min_xi_increase(
+                #         i, B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
+                # mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
             # -------------------------------------------------------------------------
             # step 19: re-randomise K_res
             # -------------------------------------------------------------------------
@@ -536,27 +536,27 @@ function short_ComputingLadder(
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 
-                Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
-                ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
+                # Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                # ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
                 analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
 
                 tau_S[step] = -1 ./ diag(J_s)
                 mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
-                min_delta_K_S[step] = fill(0.0, R)
-                for i in 1:R
-                    min_delta_K_S[step][i] = find_min_K_reduction(
-                        i, B0, p_s, tspan, tpert; cb
-                    )
-                end
-                min_delta_xi_S[step] = fill(0.0, C)
-                for i in 1:C
-                    min_delta_xi_S[step][i] = find_min_xi_increase(
-                        i, B0, p_s, tspan, tpert; cb
-                    )
-                end
-                mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
-                mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
+                # min_delta_K_S[step] = fill(0.0, R)
+                # for i in 1:R
+                #     min_delta_K_S[step][i] = find_min_K_reduction(
+                #         i, B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # min_delta_xi_S[step] = fill(0.0, C)
+                # for i in 1:C
+                #     min_delta_xi_S[step][i] = find_min_xi_increase(
+                #         i, B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
+                # mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
             elseif step == 7
                 
                 A_s, epsilon_s = short_transform_for_ladder_step(2, copy(A), copy(epsilon))
@@ -644,27 +644,27 @@ function short_ComputingLadder(
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 
-                Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
-                ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
+                # Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                # ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
                 analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
 
                 tau_S[step] = -1 ./ diag(J_s)
                 mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
-                min_delta_K_S[step] = fill(0.0, R)
-                for i in 1:R
-                    min_delta_K_S[step][i] = find_min_K_reduction(
-                        i, new_B0, p_s, tspan, tpert; cb
-                    )
-                end
-                min_delta_xi_S[step] = fill(0.0, C)
-                for i in 1:C
-                    min_delta_xi_S[step][i] = find_min_xi_increase(
-                        i, new_B0, p_s, tspan, tpert; cb
-                    )
-                end
-                mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
-                mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
+                # min_delta_K_S[step] = fill(0.0, R)
+                # for i in 1:R
+                #     min_delta_K_S[step][i] = find_min_K_reduction(
+                #         i, new_B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # min_delta_xi_S[step] = fill(0.0, C)
+                # for i in 1:C
+                #     min_delta_xi_S[step][i] = find_min_xi_increase(
+                #         i, new_B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
+                # mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
 
             elseif step == 8
                 
@@ -752,8 +752,8 @@ function short_ComputingLadder(
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 
-                Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
-                ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
+                # Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                # ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
                 analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
 
                 J_diff_S[step] = norm(J_s - J_full)
@@ -761,20 +761,20 @@ function short_ComputingLadder(
                 tau_S[step] = -1 ./ diag(J_s)
                 mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
-                min_delta_K_S[step] = fill(0.0, R)
-                for i in 1:R
-                    min_delta_K_S[step][i] = find_min_K_reduction(
-                        i, new_B0, p_s, tspan, tpert; cb
-                    )
-                end
-                min_delta_xi_S[step] = fill(0.0, C)
-                for i in 1:C
-                    min_delta_xi_S[step][i] = find_min_xi_increase(
-                        i, new_B0, p_s, tspan, tpert; cb
-                    )
-                end
-                mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
-                mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
+                # min_delta_K_S[step] = fill(0.0, R)
+                # for i in 1:R
+                #     min_delta_K_S[step][i] = find_min_K_reduction(
+                #         i, new_B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # min_delta_xi_S[step] = fill(0.0, C)
+                # for i in 1:C
+                #     min_delta_xi_S[step][i] = find_min_xi_increase(
+                #         i, new_B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
+                # mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
             elseif step in 9:11
                 if step == 9
                     A_s = make_A(copy(A), R, conn, scen; IS = IS, B_term = B_term)
@@ -869,8 +869,8 @@ function short_ComputingLadder(
                 J_diff_S[step] = norm(J_s - J_full)
                 stable_S[step] = is_locally_stable(J_s)
                 
-                Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
-                ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
+                # Rmed_S[step] = median_return_rate(J_s, B0; t=t0, n=Rmed_iterations)
+                # ssp_rmed_S[step] = species_return_rates(J_s, B0; t=t0, n=Rmed_iterations)
                 analytical_rmed_S[step] = analytical_species_return_rates(J_s; t=0.001)
 
                 J_diff_S[step] = norm(J_s - J_full)
@@ -878,20 +878,20 @@ function short_ComputingLadder(
                 tau_S[step] = -1 ./ diag(J_s)
                 mean_tau_S[step] = mean(-1 ./ diag(J_s))
 
-                min_delta_K_S[step] = fill(0.0, R)
-                for i in 1:R
-                    min_delta_K_S[step][i] = find_min_K_reduction(
-                        i, new_B0, p_s, tspan, tpert; cb
-                    )
-                end
-                min_delta_xi_S[step] = fill(0.0, C)
-                for i in 1:C
-                    min_delta_xi_S[step][i] = find_min_xi_increase(
-                        i, new_B0, p_s, tspan, tpert; cb
-                    )
-                end
-                mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
-                mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
+                # min_delta_K_S[step] = fill(0.0, R)
+                # for i in 1:R
+                #     min_delta_K_S[step][i] = find_min_K_reduction(
+                #         i, new_B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # min_delta_xi_S[step] = fill(0.0, C)
+                # for i in 1:C
+                #     min_delta_xi_S[step][i] = find_min_xi_increase(
+                #         i, new_B0, p_s, tspan, tpert; cb
+                #     )
+                # end
+                # mean_min_delta_K_S[step] = mean(min_delta_K_S[step])
+                # mean_min_delta_xi_S[step] = mean(min_delta_xi_S[step])
             end
         end
 
@@ -908,8 +908,8 @@ function short_ComputingLadder(
 
                 Symbol("stable_S$i") => stable_S[i],
                 
-                Symbol("Rmed_S$i") => Rmed_S[i],
-                Symbol("ssp_rmed_S$i") => ssp_rmed_S[i],
+                # Symbol("Rmed_S$i") => Rmed_S[i],
+                # Symbol("ssp_rmed_S$i") => ssp_rmed_S[i],
                 Symbol("analytical_rmed_S$i") => analytical_rmed_S[i],
                 
                 Symbol("tau_S$i") => tau_S[i],
@@ -918,10 +918,10 @@ function short_ComputingLadder(
                 Symbol("K_Xi_S$i") => K_Xi_S[i],
                 Symbol("J_diff_S$i") => J_diff_S[i],
                 
-                Symbol("min_delta_K_S$i") => min_delta_K_S[i],
-                Symbol("min_delta_xi_S$i") => min_delta_xi_S[i],
-                Symbol("mean_min_delta_K_S$i") => mean_min_delta_K_S[i],
-                Symbol("mean_min_delta_xi_S$i") => mean_min_delta_xi_S[i],
+                # Symbol("min_delta_K_S$i") => min_delta_K_S[i],
+                # Symbol("min_delta_xi_S$i") => min_delta_xi_S[i],
+                # Symbol("mean_min_delta_K_S$i") => mean_min_delta_K_S[i],
+                # Symbol("mean_min_delta_xi_S$i") => mean_min_delta_xi_S[i],
 
                 Symbol("rt_press_vector_S$i") => rt_press_vector_S[i],
                 Symbol("rt_pulse_vector_S$i") => rt_pulse_vector_S[i]
@@ -933,12 +933,13 @@ function short_ComputingLadder(
             before_persistence_full=before_full, after_persistence_full=after_persistence_full, after_pulse_full=after_pulse_full,
             rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
             collectivity_full=collectivity_full, resilience_full=resilience_full, reactivity_full=reactivity_full,
-            Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full, analytical_rmed_full=analytical_rmed_full,
+            # Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full
+            analytical_rmed_full=analytical_rmed_full,
             mean_tau_full=mean_tau_full, tau_full=tau_full, J_full = J_full,
             J_diff_full=J_diff_full, J_full_norm=J_full_norm,
             rt_pulse_vector_full=rt_pulse_full_vector, rt_press_vector_full=rt_press_full_vector,
-            mean_min_delta_K_full = mean_min_delta_K_full, mean_min_delta_xi_full = mean_min_delta_xi_full,
-            min_delta_K_full = min_delta_K_full, min_delta_xi_full = min_delta_xi_full,
+            # mean_min_delta_K_full = mean_min_delta_K_full, mean_min_delta_xi_full = mean_min_delta_xi_full,
+            # min_delta_K_full = min_delta_K_full, min_delta_xi_full = min_delta_xi_full,
             step_pairs...,  # Properly flattened pairs
             p_final = p,
             R_eq = R_eq,
@@ -964,16 +965,16 @@ R = short_ComputingLadder(
     conn_vals=0.01:0.04:0.9,
     IS_vals=[0.01, 0.1, 1.0, 2.0],
     IS_vals_B_term=[0.1, 1.0],
-    scenarios=[:ER, :PL,:MOD],
-    delta_vals=[MAX_DELTA],#[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
+    scenarios=[:ER],
+    delta_vals=[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
     eps_scales=[1.0, 0.5, 0.1],
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
-    number_of_combinations = 14*4,
+    number_of_combinations = 5000,
     B_term = false,
     iterations=1,
-    Rmed_iterations=10
+    Rmed_iterations=1
 )
 
 @info "we reached here"
