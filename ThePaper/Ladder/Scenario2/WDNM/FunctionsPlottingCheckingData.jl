@@ -4,7 +4,8 @@ function plot_scalar_correlations(
     metrics = [
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
         (:mean_tau, "Mean SL"), 
-        (:mean_inverse_tau, "inverse_SL"),
+        # (:mean_inverse_tau, "inverse_SL"),
+        # (:rt_pulse, "RT"),
         # (:analytical_rmed, "Rmed"),
         (:after_persistence, "Persistence"),
         (:collectivity, "Collectivity"),
@@ -14,12 +15,12 @@ function plot_scalar_correlations(
     save_plot::Bool = false,
     resolution = (900, 650)
 )
-    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "sub_grouping", "Changing groups"]
+    step_names = ["sub_grouping", "Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Not recalculating", "Changing groups"]
     for scen in scenarios
         df = G[G.scen .== scen, :]
         fig = Figure(; size=resolution)
         for (i, (sym, label)) in enumerate(metrics)
-            for (j, step) in enumerate((1, 2, 3, 4, 5, 6))
+            for (j, step) in enumerate((2, 3, 4, 5, 6, 7))
                 x = df[!, Symbol(string(sym, "_full"))]
                 y = df[!, Symbol(string(sym, "_S", step))]
 
@@ -34,7 +35,9 @@ function plot_scalar_correlations(
                     titlesize=9,
                     xlabelsize=10, ylabelsize=10,
                     xticklabelsize=10, yticklabelsize=10,
-                    limits = ((mn, mx), (mn, mx))
+                    limits = ((mn, mx), (mn, mx)),
+                    xgridvisible = false,
+                    ygridvisible = false
                 )
 
                 scatter!(ax, x, y; alpha=0.3)
@@ -97,7 +100,7 @@ function plot_vector_correlations(
         :ssp_analytical_rmed => "_full" => "_S"
     )[variable]
 
-    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "sub_grouping", "Changing groups"]
+    step_names = ["sub_grouping", "Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Not recalculating", "Changing groups"]
 
     # color scale
     color_vals = df[!, color_by]
@@ -106,17 +109,19 @@ function plot_vector_correlations(
     for scen in scenarios
         sub = df[df.scen .== scen, :]
         fig = Figure(; size=resolution)
-        Label(fig[0, 1:4], uppercase(string(variable, " correlations")); fontsize=12)
-        for (i, step) in enumerate((1,2, 3, 4, 5, 6))
+        # Label(fig[0, 1:4], uppercase(string(variable, " correlations")); fontsize=12)
+        for (i, step) in enumerate((2, 3, 4, 5, 6, 7))
             col_full = Symbol(string(variable, suffix[1]))
             col_step = Symbol(string(variable, suffix[2], step))
             ax = Axis(fig[(i-1)÷3+1, (i-1)%3+1];
                 # title  = "$(scen) $(variable): full vs S$step",
-                title  = "Full vs $(step_names[step])",
-                xlabel = "full", ylabel = "S$step",
-                titlesize=10,
-                xlabelsize=10, ylabelsize=10,
-                xticklabelsize=10, yticklabelsize=10
+                title  = "$(step_names[step])",
+                xlabel = "SL in full model", ylabel = "SL in step $step",
+                titlesize=16,
+                xlabelsize=14, ylabelsize=14,
+                xticklabelsize=13, yticklabelsize=13,
+                xgridvisible = false,
+                ygridvisible = false
             )
             
             xs = Float64[]
