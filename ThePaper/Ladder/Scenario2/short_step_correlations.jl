@@ -7,14 +7,15 @@ function short_step_correlations(
     # ──────────────────────────────────────────────────────────────────────────
     # 1) define your 19 keys & titles
     step_keys = [
-        "S1","S2","S3","S4","S5","S6", "S7", "S8", "S9", "S10"]
+        "S1","S2","S3","S4","S5","S6", "S7", "S8", "S9", "S10", "S11"]
         # "S7"
     # ]
     step_names = [
         "Full Model", "Global A (Global ϵ)", " Global AE",
         "Randomize m_cons ↻", "Randomize ξ̂ ↻", "Randomize K_res ↻",
         "Global A (Global ϵ) Mean B", "Global AE Mean B",
-        "Rewire network", "Rewire network Randomly"
+        "Rewire network", "Rewire network Randomly",
+        "Rewire network with diff C"
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -75,11 +76,24 @@ function short_step_correlations(
             linestyle = :dash
         )
 
-        r_val = cor(full_vals, ys)
-        text!(ax, "r=$(round(r_val, digits=5))";
-            position = (mx, mn),
-            align    = (:right, :bottom),
-            fontsize = 10
+        # r_val = cor(full_vals, ys)
+        # text!(ax, "r=$(round(r_val, digits=5))";
+        #     position = (mx, mn),
+        #     align    = (:right, :bottom),
+        #     fontsize = 10
+        # )
+
+        # R² to the 1:1 line (y_hat = x)
+        y_hat = full_vals
+        ss_tot = sum((ys .- mean(ys)).^2)
+        ss_res = sum((ys .- y_hat).^2)
+        r2_1to1 = 1 - ss_res / ss_tot
+
+        text!(ax, "R²=$(round(r2_1to1, digits=4))";
+            position=(mx, mn),
+            align=(:right, :bottom),
+            fontsize=10,
+            color=:black
         )
     end
 
@@ -112,7 +126,7 @@ df.SL_resources = mean.(vect_resources)
 begin
     save_plot = false
     color_by = :conn
-    remove_it = false
+    remove_it = true
     rt_press = short_step_correlations(df, :rt_press;  color_by = color_by, remove_unstable=remove_it)
     if save_plot
         save("ThePaper/Ladder/Scenario2/figures/rt_press.png", rt_press)
@@ -143,20 +157,20 @@ begin
         save("ThePaper/Ladder/Scenario2/figures/reactivity.png", reactivity)
     end
 
-    rt_med = short_step_correlations(df, :Rmed; color_by = color_by, remove_unstable=remove_it)
+    # rt_med = short_step_correlations(df, :Rmed; color_by = color_by, remove_unstable=remove_it)
 
-    tau = short_step_correlations(df, :mean_tau; color_by = color_by, remove_unstable=remove_it)
+    # tau = short_step_correlations(df, :mean_tau; color_by = color_by, remove_unstable=remove_it)
 
-    J_diff = short_step_correlations(df, :J_diff; color_by = color_by, remove_unstable=remove_it)
+    # J_diff = short_step_correlations(df, :J_diff; color_by = color_by, remove_unstable=remove_it)
 
-    mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
-    if save_plot
-        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_K.png", mean_min_delta_K)
-    end
-    mean_min_delta_xi = short_step_correlations(df, :mean_min_delta_xi; color_by = color_by, remove_unstable=remove_it)
-    if save_plot
-        save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_C.png", mean_min_delta_C)
-    end
+    # mean_min_delta_K = short_step_correlations(df, :mean_min_delta_K; color_by = color_by, remove_unstable=remove_it)
+    # if save_plot
+    #     save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_K.png", mean_min_delta_K)
+    # end
+    # mean_min_delta_xi = short_step_correlations(df, :mean_min_delta_xi; color_by = color_by, remove_unstable=remove_it)
+    # if save_plot
+    #     save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_C.png", mean_min_delta_C)
+    # end
 end
 
 begin
@@ -171,5 +185,104 @@ begin
     mean_min_delta_xi = short_step_correlations(df, :mean_min_delta_xi; color_by = color_by, remove_unstable=remove_it)
     if save_plot
         save("ThePaper/Ladder/Scenario2/figures/mean_min_delta_C.png", mean_min_delta_C)
+    end
+end
+
+
+function short_step_boxplots(
+    df::DataFrame,
+    var::Symbol;
+    remove_unstable::Bool = false
+)
+    # 1) define steps
+    step_keys  = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11"]
+    step_names = [
+        "Full Model",
+        "Global A (Global ϵ)",
+        "Global AE",
+        "Randomize m_cons",
+        "Randomize ξ̂",
+        "Randomize K_res",
+        "Global A (mean B)",
+        "Global AE (mean B)",
+        "Rewire network",
+        "Rewire randomly",
+        "Rewire w/ diff C"
+    ]
+    ns = length(step_keys)
+
+    # 2) optionally filter unstable runs
+    if remove_unstable
+        res_cols = Symbol.("resilience_" .* step_keys)
+        df = filter(row -> all(row[c] < 0 for c in res_cols), df)
+    end
+
+    # 3) prepare full vs each step errors
+    full_col   = Symbol(string(var)*"_full")
+    panel_cols = Symbol.(string(var)*"_" .* step_keys)
+
+    errors = Vector{Vector{Float64}}(undef, ns)
+    for i in 1:ns
+        x = df[!, full_col]
+        y = df[!, panel_cols[i]]
+        errors[i] = abs.(y .- x)
+    end
+
+    fig = Figure(size=(900,400))
+    ax  = Axis(fig[1,1];
+        title              = "Absolute error: $(var) (full vs step)",
+        ylabel             = "Absolute error",
+        xlabel             = "Modification step",
+        xticklabelrotation = π/4,
+    )
+
+    # flatten errors → xs, ys
+    ys = vcat(errors...)
+    xs = vcat([fill(i, length(errors[i])) for i in 1:ns]...)
+
+    # simple, works every time
+    boxplot!(ax, xs, ys)
+
+    # label the groups
+    ax.xticks = (1:ns, step_names)
+
+    # fig.tightlayout!(padding=10)
+    display(fig)
+
+end
+
+
+begin
+    save_plot = false
+    color_by = :conn
+    remove_it = true
+    rt_press = short_step_boxplots(df, :rt_press; remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/rt_press.png", rt_press)
+    end
+    
+    persistence = short_step_boxplots(df, :after_persistence; remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/persistence.png", persistence)
+    end
+
+    rt_pulse = short_step_boxplots(df, :rt_pulse; remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/rt_pulse.png", rt_pulse)
+    end
+
+    collectivity = short_step_boxplots(df, :collectivity; remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/collectivity.png", collectivity)
+    end
+
+    resilience = short_step_boxplots(df, :resilience; remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/resilience.png", resilience)
+    end
+
+    reactivity = short_step_boxplots(df, :reactivity; remove_unstable=remove_it)
+    if save_plot
+        save("ThePaper/Ladder/Scenario2/figures/reactivity.png", reactivity)
     end
 end
