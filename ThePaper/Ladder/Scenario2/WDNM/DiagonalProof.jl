@@ -238,6 +238,59 @@ for step in steps
 end
 ############################################################################
 ############################################################################
+# your definitions
+step_names       = ["Diagonal", "Off-diagonal", "All"]
+steps            = 1:length(step_names)
+metrics          = (:resilience, :reactivity, :median_return)
+metric_labels    = ("Resilience", "Reactivity", "Median-return")
+dominance_levels = sort(unique(results.dominance))
+dom_labels       = string.(dominance_levels)
+
+begin
+    
+    fig = Figure(size = (1100, 500))
+
+    for (r, step_name) in enumerate(step_names)
+        step = steps[r]  # numeric step 1,2,3
+        # build error table for this step
+        errs = DataFrame(dominance=Float64[], replicate=Int[],
+                        metric=Symbol[], error=Float64[])
+
+        for dom in dominance_levels, rep in unique(results.replicate)
+            orig = filter(row -> row.dominance==dom &&
+                                row.replicate==rep &&
+                                row.step==0, results)
+            shuf = filter(row -> row.dominance==dom &&
+                                row.replicate==rep &&
+                                row.step==step, results)
+            isempty(orig) || isempty(shuf) && continue
+
+            for metr in metrics
+                err = abs(shuf[1, metr] - orig[1, metr])
+                push!(errs, (dom, rep, metr, err))
+            end
+        end
+
+        for (c, metr) in enumerate(metrics)
+            ax = Axis(fig[r, c];
+                title  = "$(step_name) – $(metric_labels[c])",
+                xlabel = "Diagonal Dominance",
+                ylabel = "Absolute error",
+                xticks = (1:length(dominance_levels), dom_labels),
+            )
+
+            sub = filter(row -> row.metric==metr, errs)
+            positions = [ searchsortedfirst(dominance_levels, d) for d in sub.dominance ]
+
+            boxplot!(ax, positions, sub.error)
+        end
+    end
+
+    display(fig)
+end
+
+############################################################################
+############################################################################
 # # metrics to plot
 # steps = 1:3  # make sure all 6 steps are included
 # metrics = (:resilience, :reactivity, :median_return)
