@@ -14,7 +14,7 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_93700
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000MOD_plusPersistence.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000PL_plusPersistence.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_ALL1000000_plussubgroups.jls")
-
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_1000000ALL_plusNotRecalculatingS6.jls")
 ################ CLEANING ################
 desired = [
   :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite, :pex, :p_min_deg, :mod_gamma,
@@ -28,7 +28,7 @@ desired = [
 G = R[!, desired]
 G = R
 
-step_keys = ["_full","_S1","_S2","_S3","_S4", "_S5"]
+step_keys = ["_full","_S1","_S2","_S3","_S4", "_S5", "_S6"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
@@ -40,12 +40,12 @@ sl_cols = Symbol.("SL" .* step_keys)
 G = filter(row -> all(all(x -> x < 1000, row[c]) for c in sl_cols), G)
 ################### FOR SCALAR COMPARISONS ###################
 # To show R² to 1:1 line  
-plot_scalar_correlations_D(
+plot_scalar_correlations(
     G;
     scenarios = [:ER],
     fit_to_1_1_line=true,
-    save_plot = false,
-    resolution = (1100, 450)
+    save_plot = true,
+    resolution = (1400, 1200)
 )
 
 ################### for vector correlations ###################
@@ -58,8 +58,8 @@ begin
         variable=:tau, color_by=colorBy,
         fit_to_1_1_line=want_fit,
         scenarios=scen,
-        save_plot = false,
-        resolution = (750, 450),
+        save_plot = true,
+        resolution = (1200, 800),
         pixels_per_unit = 6.0
     )
 end
