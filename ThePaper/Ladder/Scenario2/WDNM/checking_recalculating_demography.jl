@@ -578,7 +578,8 @@ function checking_recalculating_demography(
             pex=pex, p_min_deg=p_min_deg, mod_gamma=mod_gamma,
             after_persistence_full=after_persistence_full,
             # before_persistence_full=before_full, after_persistence_full=after_persistence_full, after_pulse_full=after_pulse_full,
-            # rt_press_full=rt_press_full, rt_pulse_full=rt_pulse_full,
+            # rt_press_full=rt_press_full
+            rt_pulse_full=rt_pulse_full,
             S_full=S_full, collectivity_full=collectivity_full, 
             resilience_full=resilience_full, reactivity_full=reactivity_full,
             # Rmed_full=Rmed_full, ssp_rmed_full=ssp_rmed_full, 
