@@ -3,13 +3,13 @@ function plot_scalar_correlations(
     scenarios = [:ER, :PL, :MOD],
     metrics = [
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
-        (:mean_tau, "Mean SL"), 
+        # (:mean_tau, "Mean SL"), 
         # (:mean_inverse_tau, "inverse_SL"),
-        # (:rt_pulse, "RT"),
-        # (:analytical_rmed, "Rmed"),
+        (:analytical_rmed, "Rmed"),
+        (:rt_pulse, "Return Time"),
         (:after_persistence, "Persistence"),
         (:collectivity, "Collectivity"),
-        (:sigma_over_min_d, "σ/min(d)")
+        # (:sigma_over_min_d, "σ/min(d)")
     ],
     fit_to_1_1_line::Bool = true,
     save_plot::Bool = false,
@@ -20,10 +20,27 @@ function plot_scalar_correlations(
         df = G[G.scen .== scen, :]
         fig = Figure(; size=resolution)
         for (i, (sym, label)) in enumerate(metrics)
-            for (j, step) in enumerate((2, 3, 4, 5, 6, 7))
+            for (j, step) in enumerate((2, 3, 4, 5, 7))
                 x = df[!, Symbol(string(sym, "_full"))]
                 y = df[!, Symbol(string(sym, "_S", step))]
+                if step == 7
+                    col_step = Symbol(string(sym, "_S7"))
+                    col_full = Symbol(string(sym, "_full"))
 
+                    # Ensure the column exists
+                    if hasproperty(df, col_step)
+                        # Filter only rows where the step-7 resilience is negative
+                        new_df = filter(row -> row[:resilience_S7] < 0, df)
+
+                        # Extract x and y vectors
+                        x = new_df[!, col_full]
+                        y = new_df[!, col_step]
+                    else
+                        @warn "Column $(col_step) not found in DataFrame."
+                        x = Float64[]
+                        y = Float64[]
+                    end
+                end
                 mn = min(minimum(x), minimum(y))
                 mx = max(maximum(x), maximum(y))
 
@@ -182,6 +199,124 @@ function plot_vector_correlations(
         # label = string(color_by),
         # limits=(minimum(cs), maximum(cs))
         # )
+        if save_plot
+            filename = string("vector_correlations_", variable, "_", scen, ".png")
+            save(filename, fig; px_per_unit=pixels_per_unit)
+        end
+
+        display(fig)
+    end
+end
+
+function plot_vector_correlations(
+    df::DataFrame;
+    scenarios=[:ER],
+    variable::Symbol = :tau,
+    fit_to_1_1_line::Bool = true,
+    save_plot::Bool = false,
+    resolution = (900, 650),
+    pixels_per_unit = 2.0
+)
+    suffix = Dict(
+        :tau => "_full" => "_S",
+        :inverse_tau => "_full" => "_S",
+        :SL => "_full" => "_S",
+        :ssp_analytical_rmed => "_full" => "_S"
+    )[variable]
+
+    step_names = ["sub_grouping", "Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Not recalculating", "Changing groups"]
+
+    for scen in scenarios
+        sub = df[df.scen .== scen, :]
+        fig = Figure(; size=resolution)
+
+        for (i, step) in enumerate((2, 3, 4, 5, 6, 7))
+            col_full = Symbol(string(variable, suffix[1]))
+            col_step = Symbol(string(variable, suffix[2], step))
+
+            if step == 7
+                col_step = Symbol(string(variable, "_S7"))
+                col_full = Symbol(string(variable, "_full"))
+
+                # Ensure the column exists
+                if hasproperty(df, col_step)
+                    # Filter only rows where the step-7 resilience is negative
+                    new_df = filter(row -> row[:resilience_S7] < 0 && all(row[:tau_S7] .< 1000.0), df)
+
+                    # Extract x and y vectors
+                    x = new_df[!, col_full]
+                    y = new_df[!, col_step]
+                else
+                    @warn "Column $(col_step) not found in DataFrame."
+                    x = Float64[]
+                    y = Float64[]
+                end
+            end
+
+            ax = Axis(fig[(i-1)÷3+1, (i-1)%3+1];
+                title  = "$(step_names[step])",
+                xlabel = "SL in full model", ylabel = "SL in step $step",
+                titlesize=16,
+                xlabelsize=14, ylabelsize=14,
+                xticklabelsize=13, yticklabelsize=13,
+                xgridvisible = false,
+                ygridvisible = false
+            )
+
+            xs = Float64[]
+            ys = Float64[]
+            colors = []
+
+            for row in eachrow(sub)
+                v_full = row[col_full][31:end]
+                v_step = row[col_step][31:end]
+
+                n_points = min(length(v_full), length(v_step))
+                append!(xs, v_full[1:n_points])
+                append!(ys, v_step[1:n_points])
+
+                for i in 1:n_points
+                    color = i ≤ 30 ? :red : :red
+                    push!(colors, color)
+                end
+
+
+            end
+
+            scatter!(ax, xs, ys;
+                color = colors,
+                markersize = 4,
+                alpha = 1.0
+            )
+
+            mn = min(minimum(xs), minimum(ys))
+            mx = max(maximum(xs), maximum(ys))
+            lines!(ax, [mn, mx], [mn, mx]; color=:black, linestyle=:dash)
+
+            if fit_to_1_1_line
+                ss_tot = sum((ys .- mean(ys)).^2)
+                ss_res = sum((ys .- xs).^2)
+                r2_1to1 = 1 - ss_res / ss_tot
+
+                text!(
+                    ax, "R²=$(round(r2_1to1, digits=3))";
+                    position=(mx, mn),
+                    align=(:right, :bottom),
+                    fontsize=10,
+                    color=:black
+                )
+            else
+                r_val = cor(xs, ys)
+                text!(
+                    ax, "r=$(round(r_val, digits=3))";
+                    position = (mx, mn),
+                    align=(:right, :bottom),
+                    fontsize=10,
+                    color=:black
+                )
+            end
+        end
+
         if save_plot
             filename = string("vector_correlations_", variable, "_", scen, ".png")
             save(filename, fig; px_per_unit=pixels_per_unit)
