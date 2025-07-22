@@ -27,7 +27,7 @@ desired = [
 
 G = R[!, desired]
 G = R
-
+G = filter(row -> row.scen == :MOD, R)
 step_keys = ["_full","_S1","_S2","_S3","_S4", "_S5", "_S6"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
@@ -45,7 +45,7 @@ plot_scalar_correlations(
     scenarios = [:ER],
     fit_to_1_1_line=true,
     save_plot = true,
-    resolution = (1400, 1200)
+    resolution = (1400, 1100)
 )
 
 ################### for vector correlations ###################
@@ -55,7 +55,8 @@ begin
     scen = [:ER]
     plot_vector_correlations(
         G;
-        variable=:tau, color_by=colorBy,
+        variable=:tau,
+        # color_by=colorBy,
         fit_to_1_1_line=want_fit,
         scenarios=scen,
         save_plot = true,
