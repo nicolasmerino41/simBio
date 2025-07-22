@@ -6,7 +6,7 @@ function plot_error_vs_structure(
 )
     # 1) optional filter on stability
     if remove_unstable
-        rescols = Symbol.(string(var) .* "_S" .* string.(steps))
+        rescols = Symbol.(string(:resilience) .* "_S" .* string.(steps))
         df = filter(row -> all(row[c] < 0 for c in rescols), df)
     end
 
@@ -93,8 +93,8 @@ end
 
 
 plot_error_vs_structure(
-    G, :resilience;
-    # steps=1:7,
+    G, :reactivity;
+    steps=[2,3,4,5,7],
     remove_unstable=true
 )
 
@@ -107,7 +107,7 @@ function plot_error_vs_structure_box(
 )
     # 1) optional filter
     if remove_unstable
-        rescols = Symbol.(string(var) .* "_S" .* string.(steps))
+        rescols = Symbol.(string(:resilience) .* "_S" .* string.(steps))
         df = filter(row -> all(row[c] < 0 for c in rescols), df)
     end
 
@@ -140,12 +140,18 @@ function plot_error_vs_structure_box(
     df[!,:mean_degree] = mdeg
     df[!,:modularity]  = modu
 
-    # 3) bin each property into quantile bins
+    # 3) bin each property into quantile bins and print bin edges
     props = [:connectance, :mean_degree, :modularity]
     edges = Dict(p => quantile(df[!,p], range(0,1,length=n_bins+1)) for p in props)
     bins  = Dict{Symbol, Vector{Int}}()
+
+    println("Bin ranges for each property:")
     for p in props
         e = edges[p]
+        println("  $(p):")
+        for i in 1:n_bins
+            println("    Bin $i: $(round(e[i], digits=4)) – $(round(e[i+1], digits=4))")
+        end
         bins[p] = [ min(searchsortedlast(e, v), n_bins) for v in df[!,p] ]
     end
 
@@ -167,8 +173,9 @@ function plot_error_vs_structure_box(
 
         # draw boxplot via scatter+stat summary
         # flatten xs, ys vectors
+        # draw boxplot
         boxplot!(ax, bx, errs)
-        
+
         # label x-axis
         # ax.xticks = (1:n_bins,
         #              [ @sprintf("%.3f–%.3f", edges[p][i], edges[p][i+1]) for i in 1:n_bins ])
@@ -180,8 +187,8 @@ end
 
 
 fig = plot_error_vs_structure_box(
-    G, :resilience;
-    # steps=1:7,
+    G, :collectivity;
+    steps=[2,3,4,5,7],
     remove_unstable=true
 )
 
