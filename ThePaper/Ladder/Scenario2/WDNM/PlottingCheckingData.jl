@@ -59,7 +59,7 @@ begin
         # color_by=colorBy,
         fit_to_1_1_line=want_fit,
         scenarios=scen,
-        save_plot = true,
+        save_plot = false,
         resolution = (1200, 800),
         pixels_per_unit = 6.0
     )
