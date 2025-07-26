@@ -14,7 +14,11 @@ R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_93700
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000MOD_plusPersistence.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_937000PL_plusPersistence.jls")
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_ALL1000000_plussubgroups.jls")
+####################
 R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_1000000ALL_plusNotRecalculatingS6.jls")
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_100000ALL_plusNotRecalculatingS6.jls")
+R = deserialize("ThePaper/Ladder/Outputs/checking/checking_changing_groups_1000000PL_plusNotRecalculatingS6.jls")
+####################
 ################ CLEANING ################
 desired = [
   :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite, :pex, :p_min_deg, :mod_gamma,
@@ -28,7 +32,7 @@ desired = [
 G = R[!, desired]
 G = R
 G = filter(row -> row.scen == :MOD, R)
-step_keys = ["_full","_S1","_S2","_S3","_S4", "_S5", "_S6"]
+step_keys = ["_full", "_S2","_S3","_S4"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
@@ -44,8 +48,8 @@ plot_scalar_correlations(
     G;
     scenarios = [:ER],
     fit_to_1_1_line=true,
-    save_plot = true,
-    resolution = (1400, 1100)
+    save_plot = false,
+    resolution = (1100, 500)
 )
 
 ################### for vector correlations ###################
