@@ -615,20 +615,20 @@ end
 # --------------------------------------------------------------------------------
 R = checking_recalculating_demography(
     50, 20;
-    conn_vals=0.01:0.01:1.0,
-    IS_vals=[0.1, 1.0, 2.0],
-    IS_vals_B_term=[0.1, 1.0],
-    scenarios=[:PL],
-    delta_vals=[0.5], #[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
-    eps_scales=[1.0, 0.5, 0.1],
+    conn_vals=0.01:0.01:0.5,
+    IS_vals=[0.1, 1.0, 2.0, 5.0, 10.0],
+    IS_vals_B_term=[0.1],
+    scenarios=[:ER, :PL, :MOD],
+    delta_vals=[0.9], #[0.1, 0.3, 0.5, 0.75, 0.01, 0.9],
+    eps_scales=[1.0, 0.5, 0.1, 0.01, 2.0],
     mortality_vals=[0.1, 0.2, 0.3, 0.4, 0.5],
     growth_vals=[0.5, 1.0, 3.0, 5.0, 7.0],
     tspan=(0.,500.0), tpert=250.0,
     number_of_combinations = 10000,
     B_term = false,
-    iterations=5,
+    iterations=1,
     Rmed_iterations=5,
-    pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0],
+    pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
     pareto_minimum_degrees=[5.0, 10.0, 15.0, 20.0],
     mod_gammas=[1.0,2.0,3.0,5.0,10.0]
 )
