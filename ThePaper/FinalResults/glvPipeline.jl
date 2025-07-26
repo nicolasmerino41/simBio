@@ -9,7 +9,7 @@ function gLV_rhs!(du, u, p, t)
     K, A = p
     Au = A * u
     @inbounds for i in eachindex(u)
-        du[i] = u[i] * (K[i] - u[i] - Au[i])
+        du[i] = u[i] * (K[i] - u[i] + Au[i])
     end
 end
 
@@ -51,7 +51,7 @@ end
 # --------------------------------------------------------------------------------
 function calibrate_from_K_A(K::Vector{<:Real}, A::AbstractMatrix)
     # Solve (I + A) * u = K
-    u = (I + A) \ K
+    u = (I - A) \ K
     return u
 end
 
@@ -60,7 +60,7 @@ function generate_feasible_thresholds(A::AbstractMatrix; margins=[1.0])
     out = NamedTuple[]
     for marg in margins
         # propose K = abs(randn(S)) * marg
-        K = abs.(rand(Normal(2.0, 1.0), S) .* marg)
+        K = abs.(rand(Normal(2.0, 2.0), S) .* marg)
         K[31:50] .= 0.01
         u_eq = try
             calibrate_from_K_A(K, A)
@@ -169,10 +169,10 @@ function simulate_press_perturbation_glv(
     sol1  = solve(prob1, solver; callback=cb, abstol=1e-8, reltol=1e-8)
     pre_state = sol1.u[end]
     before_persistence = count(x -> x > 1e-6, pre_state) / length(pre_state)
-
+    
     # Phase 2: perturb K by (1 - delta)
     K, A = p
-    K_press = K .* (1 .- delta)
+    K_press = vcat(K[1:30] .* (1 .- delta), K[31:end])
     p_press = (K_press, A)
     prob2 = ODEProblem(gLV_rhs!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2  = solve(prob2, solver; callback=cb, abstol=1e-8, reltol=1e-8)
@@ -209,7 +209,7 @@ function simulate_pulse_perturbation_glv(
     before_persistence = count(x -> x > 1e-6, pre_state) / length(pre_state)
 
     # Apply pulse: u -> u * (1 + delta)
-    pulsed = pre_state .* (1 .+ delta)
+    pulsed = pre_state .* (1 .- delta)
     prob2 = ODEProblem(gLV_rhs!, pulsed, (t_pulse, tspan[2]), p)
     sol2  = solve(prob2, solver; callback=cb, abstol=1e-8, reltol=1e-8)
     eq_state = sol2.u[end]
@@ -231,11 +231,23 @@ function simulate_pulse_perturbation_glv(
     return return_times, before_persistence, after_persistence, eq_state
 end
 
+"""
+    analytical_median_return_rate(J; t=0.01)
+
+Computes the median across species of your fully-analytical
+species-level return-rates, i.e. the direct analogue of
+median_return_rate but without Monte Carlo.
+"""
+function analytical_median_return_rate(J::AbstractMatrix; t::Real=0.01)
+    rates = analytical_species_return_rates(J; t=t)
+    return median(rates)
+end
+
 function checking_recalculating_demography_glv(
     S::Int=50, C::Int=20;
     conn_vals=[0.05, 0.1, 0.2],
     scenarios=[:ER, :PL, :MOD],
-    eps_scales=[1.0, 0.5, 0.1],
+    IS_vals=[0.01, 0.1, 1.0, 2.0],
     delta_vals=[1.0, 3.0],
     margins=[1.0],
     number_of_combinations::Int=100,
@@ -246,14 +258,14 @@ function checking_recalculating_demography_glv(
     R = S - C
     results = Vector{NamedTuple}()
     locki = ReentrantLock()
-    combos = collect(Iterators.product(conn_vals, scenarios, eps_scales, delta_vals, margins, 1:iterations))
+    combos = collect(Iterators.product(conn_vals, scenarios, IS_vals, delta_vals, margins, 1:iterations))
     @info "Computing $(length(combos)) combinations"
     global cb = build_callbacks(50, 1e-6)
-    @threads for (conn, scen, epsi, delta, marg, ite) in
+    @threads for (conn, scen, IS, delta, marg, ite) in
             sample(combos, min(length(combos), number_of_combinations); replace=false)
 
         # 1) build A & callback
-        A  = make_A(zeros(S,S), R, conn, scen; IS=epsi)
+        A  = make_A(zeros(S,S), R, conn, scen; IS=IS)
         
         # 2) collectivity
         phi = compute_collectivity(A)
@@ -291,8 +303,13 @@ function checking_recalculating_demography_glv(
             simulate_pulse_perturbation_glv(u0, (K,A), tspan, tpert, delta; cb=cb)
         rt_pulse_full   = mean(skipmissing(rt_pulse_vec))
 
+        rmed_full = analytical_median_return_rate(J; t=1.0)
+
         # 6) ladder persistence (5 simplified steps)
-        after_persistence_S   = Dict(i=>NaN for i in 1:5)
+        after_press_S   = Dict(i=>NaN for i in 1:5)
+        after_pulse_S   = Dict(i=>NaN for i in 1:5)
+        rt_press_S     = Dict(i=>NaN for i in 1:5)
+        rt_pulse_S     = Dict(i=>NaN for i in 1:5)
         S_S                   = Dict(i=>NaN for i in 1:5)
         collectivity_S        = Dict(i=>NaN for i in 1:5)
         resilience_S          = Dict(i=>NaN for i in 1:5)
@@ -300,20 +317,21 @@ function checking_recalculating_demography_glv(
         sigma_over_min_d_S    = Dict(i=>NaN for i in 1:5)
         SL_S                  = Dict(i=>Float64[] for i in 1:5)
         mean_SL_S             = Dict(i=>NaN for i in 1:5)
+        rmed_S                = Dict(i=>NaN for i in 1:5)
 
         @info "Running ladder steps"
         for step in 1:5
             A_s = copy(A)
             if step == 1
-                A_s = make_A(A_s, R, min(conn, 1.0), scen; IS=epsi)
+                A_s = make_A(A_s, R, min(conn, 1.0), scen; IS=IS)
             elseif step == 2
-                A_s = make_A(A_s, R, min(conn*2, 1.0), scen; IS=epsi)
+                A_s = make_A(A_s, R, min(rand(), 1.0), scen; IS=IS)
             elseif step == 3
-                A_s = make_A(A_s, R, conn, scen; IS=epsi*2)
+                A_s = make_A(A_s, R, conn, scen; IS=IS*10)
             elseif step == 4
-                A_s = make_A(A_s, R, min(conn*2, 1.0), scen; IS=epsi*2)
+                A_s = make_A(A_s, R, min(rand(), 1.0), scen; IS=IS*10)
             elseif step == 5
-                A_s = make_A(A_s, R-5, min(conn, 1.0), scen; IS=epsi)
+                A_s = make_A(A_s, R-5, min(conn, 1.0), scen; IS=IS)
             end
             if step == 5
                K[R-5:end] .= 0.0
@@ -332,15 +350,22 @@ function checking_recalculating_demography_glv(
 
             # record persistence & richness
             S_S[step]                = count(x->x>1e-6, u0_s)
-            rt_s_press, _, after_s, _=
+            rt_s_press, _, after_press_s, _=
                 simulate_press_perturbation_glv(u0_s, (K,A_s), tspan, tpert, delta; cb=cb)
-            after_persistence_S[step]= after_s
+            after_press_S[step]= after_press_s
+            rt_press_S[step]  = mean(skipmissing(rt_s_press))
+            rt_s_pulse, _, after_pulse_s, _=
+                simulate_pulse_perturbation_glv(u0_s, (K,A_s), tspan, tpert, delta; cb=cb)
+            after_pulse_S[step]= after_pulse_s
+            rt_pulse_S[step]  = mean(skipmissing(rt_s_pulse))
 
             # simplified metrics
             collectivity_S[step]     = compute_collectivity(A_s)
             resilience_S[step]       = compute_resilience(u0_s, (K,A_s))
             reactivity_S[step]       = compute_reactivity(u0_s, (K,A_s))
             J_s_sub                 = compute_jacobian_glv(u0_s, (K,A_s))
+
+            rmed_S[step]             = analytical_median_return_rate(J_s_sub; t=1.0)
             # J_s_sub                 = (D_s*M_s)[findall(x->x>1e-6,u0_s),
             #                                      findall(x->x>1e-6,u0_s)]
             sigma_over_min_d_S[step] = sigma_over_min_d(A_s, J_s_sub)
@@ -351,20 +376,25 @@ function checking_recalculating_demography_glv(
 
         # flatten ladder dictionaries
         step_pairs = collect(Iterators.flatten(
-            ([ Symbol("after_persistence_S$i") => after_persistence_S[i],
-               Symbol("S_S$i")               => S_S[i],
-               Symbol("collectivity_S$i")    => collectivity_S[i],
-               Symbol("resilience_S$i")      => resilience_S[i],
-               Symbol("reactivity_S$i")      => reactivity_S[i],
-               Symbol("sigma_over_min_d_S$i")=> sigma_over_min_d_S[i],
-               Symbol("SL_S$i")              => SL_S[i],
-               Symbol("mean_SL_S$i")         => mean_SL_S[i],
+            ([ 
+                Symbol("after_press_S$i") => after_press_S[i],
+                Symbol("after_pulse_S$i")       => after_pulse_S[i],
+                Symbol("rt_press_S$i")          => rt_press_S[i],
+                Symbol("rt_pulse_S$i")          => rt_pulse_S[i],
+                Symbol("S_S$i")               => S_S[i],
+                Symbol("collectivity_S$i")    => collectivity_S[i],
+                Symbol("resilience_S$i")      => resilience_S[i],
+                Symbol("reactivity_S$i")      => reactivity_S[i],
+                Symbol("sigma_over_min_d_S$i")=> sigma_over_min_d_S[i],
+                Symbol("SL_S$i")              => SL_S[i],
+                Symbol("mean_SL_S$i")         => mean_SL_S[i],
+                Symbol("rmed_S$i")            => rmed_S[i],
              ] for i in 1:5)
         ))
 
         # assemble record
         rec = (
-            conn=conn, scen=scen, epsi=epsi, delta=delta, marg=marg, ite=ite,
+            conn=conn, scen=scen, IS=IS, delta=delta, marg=marg, ite=ite,
             S_full=S_full,
             resilience_full=resilience_full,
             reactivity_full=reactivity_full,
@@ -372,10 +402,11 @@ function checking_recalculating_demography_glv(
             SL_full=SL_full,
             mean_SL_full=mean_SL_full,
             sigma_over_min_d_full=sigma_full,
-            rt_press_full=rt_press_full,
-            after_persistence_full=after_press,
-            rt_pulse_full=rt_pulse_full,
+            rmed_full=rmed_full,
+            after_press_full=after_press,
             after_pulse_full=after_pulse,
+            rt_press_full=rt_press_full,
+            rt_pulse_full=rt_pulse_full,
             step_pairs...,
             p_final=(K,A),
             B_eq = u0,
@@ -394,10 +425,10 @@ end
 # Invocation & serialization
 K = checking_recalculating_demography_glv(
     50, 20;
-    conn_vals=0.01:0.01:1.0,
-    scenarios=[:ER],
-    eps_scales=[5.0, 1.0, 0.5, 0.1, 0.01, 10.0],
-    delta_vals=[0.9],
+    conn_vals=0.01:0.01:0.5,
+    scenarios=[:ER, :PL, :MOD],
+    IS_vals=[1.0, 2.0, 3.0, 4.0, 5.0],
+    delta_vals=[0.9, 1.1, 1.5, 2.0, 3.0, 4.0, 5.0],
     margins=[1.0, 2.0, 3.0, 4.0, 5.0, 0.01],
     number_of_combinations=100000,
     iterations=50
