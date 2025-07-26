@@ -16,21 +16,22 @@ function plot_scalar_correlations(
     resolution = (900, 650)
 )
     step_names = ["sub_grouping", "Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Not recalculating", "Changing groups"]
-    for scen in scenarios
-        df = G[G.scen .== scen, :]
+    # for scen in scenarios
+        # df = G[G.scen .== scen, :]
+        df = G
         fig = Figure(; size=resolution)
         for (i, (sym, label)) in enumerate(metrics)
             for (j, step) in enumerate((2, 3, 4, 5, 7))
                 x = df[!, Symbol(string(sym, "_full"))]
                 y = df[!, Symbol(string(sym, "_S", step))]
-                if step == 7
-                    col_step = Symbol(string(sym, "_S7"))
+                if true #step == 7
+                    col_step = Symbol(string(sym, "_S", step))
                     col_full = Symbol(string(sym, "_full"))
 
                     # Ensure the column exists
                     if hasproperty(df, col_step)
                         # Filter only rows where the step-7 resilience is negative
-                        new_df = filter(row -> row[:resilience_S7] < 0, df)
+                        new_df = filter(row -> row[Symbol(string("resilience_S", step))] < 0, df)
 
                         # Extract x and y vectors
                         x = new_df[!, col_full]
@@ -96,7 +97,7 @@ function plot_scalar_correlations(
             save(filename, fig; px_per_unit=6.0)
         end
         display(fig)
-    end
+    # end
 end
 
 function plot_vector_correlations(
