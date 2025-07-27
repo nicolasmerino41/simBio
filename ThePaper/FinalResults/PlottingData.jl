@@ -1,4 +1,4 @@
-G = K
+G = R
 
 step_keys = ["_full","_S1","_S2","_S3","_S4"]
 res_cols = Symbol.("resilience" .* step_keys)
