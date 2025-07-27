@@ -60,7 +60,7 @@ function generate_feasible_thresholds(A::AbstractMatrix; margins=[1.0])
     out = NamedTuple[]
     for marg in margins
         # propose K = abs(randn(S)) * marg
-        K = abs.(rand(Normal(2.0, 2.0), S) .* marg)
+        K = abs.(rand(Normal(2.0, 1.0), S) .* marg)
         K[31:50] .= 0.01
         u_eq = try
             calibrate_from_K_A(K, A)
@@ -131,18 +131,35 @@ function compute_jacobian_glv(Bstar::AbstractVector, p)
     return J
 end
 
-function compute_resilience(u, p)
-    J = compute_jacobian_glv(u, p)
-    ev = eigvals(J)
-    return maximum(real.(ev))
+function compute_resilience(u, p; extinct_species = false)
+    if !extinct_species 
+        J = compute_jacobian_glv(u, p)
+        ev = eigvals(J)
+        return maximum(real.(ev))
+    else
+        extant = findall(bi -> bi > EXTINCTION_THRESHOLD, u)
+        J = compute_jacobian_glv(u, p)
+        Jsub = J[extant, extant]
+        ev = eigvals(Jsub)
+        return maximum(real.(ev))
+    end
 end
 
 # Reactivity: maximum eigenvalue of the symmetric part of the Jacobian.
-function compute_reactivity(B, p)
-    J = compute_jacobian_glv(B, p)
-    J_sym = (J + J') / 2
-    ev_sym = eigvals(J_sym)
-    return maximum(real.(ev_sym))
+function compute_reactivity(B, p; extinct_species = false)
+    if !extinct_species 
+        J = compute_jacobian_glv(B, p)
+        J_sym = (J + J') / 2
+        ev_sym = eigvals(J_sym)
+        return maximum(real.(ev_sym))
+    else
+        extant = findall(bi -> bi > EXTINCTION_THRESHOLD, B)
+        J = compute_jacobian_glv(B, p)
+        Jsub = J[extant, extant]
+        J_sym = (Jsub + Jsub') / 2
+        ev_sym = eigvals(J_sym)
+        return maximum(real.(ev_sym))
+    end
 end
 
 # --------------------------------------------------------------------------------
@@ -253,19 +270,25 @@ function checking_recalculating_demography_glv(
     number_of_combinations::Int=100,
     iterations::Int=1,
     tspan=(0.0, 500.0),
-    tpert::Float64=250.0
+    tpert::Float64=250.0,
+    pareto_exponents=[1.25,1.75,2.0,3.0,4.0,5.0],
+    pareto_minimum_degrees=[1.0],
+    mod_gammas = [1.0,2.0,3.0,5.0,10.0]
 )
     R = S - C
     results = Vector{NamedTuple}()
     locki = ReentrantLock()
-    combos = collect(Iterators.product(conn_vals, scenarios, IS_vals, delta_vals, margins, 1:iterations))
+    combos = collect(Iterators.product(conn_vals, scenarios, IS_vals, delta_vals, margins, 1:iterations, pareto_exponents, pareto_minimum_degrees, mod_gammas))
     @info "Computing $(length(combos)) combinations"
     global cb = build_callbacks(50, 1e-6)
-    @threads for (conn, scen, IS, delta, marg, ite) in
+    @threads for (conn, scen, IS, delta, marg, ite, pex, p_min_deg, mod_gamma) in
             sample(combos, min(length(combos), number_of_combinations); replace=false)
 
         # 1) build A & callback
-        A  = make_A(zeros(S,S), R, conn, scen; IS=IS)
+        A  = make_A(
+            zeros(S,S), R, conn, scen; IS=IS,
+            pareto_exponent=pex,pareto_minimum_degree=p_min_deg,mod_gamma=mod_gamma
+        )
         
         # 2) collectivity
         phi = compute_collectivity(A)
@@ -361,8 +384,8 @@ function checking_recalculating_demography_glv(
 
             # simplified metrics
             collectivity_S[step]     = compute_collectivity(A_s)
-            resilience_S[step]       = compute_resilience(u0_s, (K,A_s))
-            reactivity_S[step]       = compute_reactivity(u0_s, (K,A_s))
+            resilience_S[step]       = compute_resilience(u0_s, (K,A_s); extinct_species=false)
+            reactivity_S[step]       = compute_reactivity(u0_s, (K,A_s); extinct_species=false)
             J_s_sub                 = compute_jacobian_glv(u0_s, (K,A_s))
 
             rmed_S[step]             = analytical_median_return_rate(J_s_sub; t=1.0)
@@ -423,14 +446,21 @@ function checking_recalculating_demography_glv(
 end
 
 # Invocation & serialization
-K = checking_recalculating_demography_glv(
+R = checking_recalculating_demography_glv(
     50, 20;
-    conn_vals=0.01:0.01:0.5,
+    conn_vals=0.01:0.01:0.6,
     scenarios=[:ER, :PL, :MOD],
-    IS_vals=[1.0, 2.0, 3.0, 4.0, 5.0],
+    IS_vals=[0.01, 0.1, 1.0, 2.0],
     delta_vals=[0.9, 1.1, 1.5, 2.0, 3.0, 4.0, 5.0],
     margins=[1.0, 2.0, 3.0, 4.0, 5.0, 0.01],
     number_of_combinations=100000,
-    iterations=50
+    iterations=5,
+    pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
+    pareto_minimum_degrees=[5.0, 10.0, 15.0, 20.0],
+    mod_gammas=[1.0,2.0,3.0,5.0,10.0]
 )
 # serialize("checking_glv_937000ER.jls", R)
+
+include("orderColumns.jl")
+R = reorder_columns(R)
+R = deserialize("checking_glv_38000ALL.jls")
