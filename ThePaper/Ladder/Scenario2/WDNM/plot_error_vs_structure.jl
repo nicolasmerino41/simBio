@@ -17,7 +17,7 @@ function plot_error_vs_structure(
     modu = Vector{Float64}(undef, N)
 
     for (i, row) in enumerate(eachrow(df))
-        A = row.p_final[8]            # S×S interaction matrix
+        A = row.p_final[2]            # S×S interaction matrix
         # build unweighted adjacency
         Adj = A .!= 0.0
         G = SimpleGraph(Adj)
@@ -94,14 +94,14 @@ end
 
 plot_error_vs_structure(
     G, :reactivity;
-    steps=[2,3,4,5,7],
+    steps=[1, 2, 3, 4, 5],
     remove_unstable=true
 )
 
 function plot_error_vs_structure_box(
     df::DataFrame,
     var::Symbol;
-    steps::AbstractVector{Int}=1:7,
+    steps::AbstractVector{Int}=1:5,
     n_bins::Int=5,
     remove_unstable::Bool=false
 )
@@ -118,7 +118,7 @@ function plot_error_vs_structure_box(
     modu = similar(conn)
 
     for (i, row) in enumerate(eachrow(df))
-        A = row.p_final[8]                  # interaction matrix
+        A = row.p_final[2]                  # interaction matrix
         Adj = A .!= 0.0
         G = SimpleGraph(Adj)
 
@@ -187,8 +187,8 @@ end
 
 
 fig = plot_error_vs_structure_box(
-    G, :collectivity;
-    steps=[2,3,4,5,7],
+    G, :resilience;
+    steps=1:5,
     remove_unstable=true
 )
 
