@@ -4,10 +4,10 @@ function plot_scalar_correlations_glv(
     metrics = [
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
         # (:mean_SL, "Mean SL"), 
-        (:rt_press, "RT_press"),
+        # (:rt_press, "RT_press"),
         (:rt_pulse, "RT_pulse"),
         (:after_press, "after_press"),
-        (:after_pulse, "after_pulse"),
+        # (:after_pulse, "after_pulse"),
         # (:rmed, "rmed"),
         # (:after_persistence, "Persistence"),
         # (:collectivity, "Collectivity"),
