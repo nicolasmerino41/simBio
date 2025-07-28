@@ -5,9 +5,9 @@ function plot_scalar_correlations_glv(
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
         # (:mean_SL, "Mean SL"), 
         # (:rt_press, "RT_press"),
-        (:rt_pulse, "RT_pulse"),
-        (:after_press, "after_press"),
-        # (:after_pulse, "after_pulse"),
+        (:rt_pulse, "Return Time"),
+        (:after_press, "Persistence"),
+        # # (:after_pulse, "after_pulse"),
         # (:rmed, "rmed"),
         # (:after_persistence, "Persistence"),
         # (:collectivity, "Collectivity"),
@@ -15,21 +15,34 @@ function plot_scalar_correlations_glv(
     ],
     fit_to_1_1_line::Bool = true,
     save_plot::Bool = false,
-    resolution = (900, 650)
+    resolution = (900, 650),
+    pixels_per_unit = 6.0
 )
     step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Rewiring + ↻C + ↻IS", "Changing groups"]
-    steps = collect(1:length(step_names))
+    # steps = collect(1:length(step_names))
+    steps = [1, 2, 3, 5]
+    
+    # Define red palettes for each metric
+    red_colors = [:firebrick, :orangered, :crimson, :darkred]
 
     df = G
     fig = Figure(; size=resolution)
 
     for (i, (sym, label)) in enumerate(metrics)
+        dot_color = red_colors[mod1(i, length(red_colors))]
+
         for (j, step) in enumerate(steps)
             col_full = Symbol(string(sym, "_full"))
             col_step = Symbol(string(sym, "_S", step))
 
             x_raw = df[!, col_full]
             y_raw = df[!, col_step]
+
+            if sym == :resilience || sym == :reactivity
+                idxf = sample(1:length(x_raw), Int(round(0.6 * length(x_raw))); replace=false)
+                x_raw = x_raw[idxf]
+                y_raw = y_raw[idxf]
+            end
 
             x_finite = Float64[]
             y_finite = Float64[]
@@ -54,17 +67,19 @@ function plot_scalar_correlations_glv(
             mx = max(maximum(x_finite), maximum(y_finite))
 
             ax = Axis(
-                fig[j, i];
-                title = "$label: Full vs $(step_names[step])",
+                fig[i, j];
+                title = "$label: $(step_names[step])",
                 titlesize = 9,
                 xlabelsize = 10,
                 ylabelsize = 10,
                 xticklabelsize = 10,
                 yticklabelsize = 10,
-                limits = ((mn, mx), (mn, mx))
+                limits = ((mn, mx), (mn, mx)),
+                xgridvisible = false,
+                ygridvisible = false
             )
 
-            scatter!(ax, x_finite, y_finite; alpha=0.3)
+            scatter!(ax, x_finite, y_finite; color=dot_color, alpha=0.3)
 
             # 1:1 line
             lines!(ax, [mn, mx], [mn, mx]; color = :black, linestyle = :dash)
@@ -98,8 +113,8 @@ function plot_scalar_correlations_glv(
     end
 
     if save_plot
-        filename = "scalar_correlation_all_scenarios.png"
-        save(filename, fig; px_per_unit = 6.0)
+        filename = "scalar_correlation_all_scenarios_glv.png"
+        save(filename, fig; px_per_unit=pixels_per_unit)
     end
 
     display(fig)
