@@ -34,6 +34,8 @@ end
 # ————————————————————————————————
 # Main structure analysis function
 # ————————————————————————————————
+using DataFrames, Statistics, StatsBase, LinearAlgebra
+
 function analyze_matrix_structures(df::DataFrame)
     results = DataFrame(
         id = Int[],
@@ -42,25 +44,81 @@ function analyze_matrix_structures(df::DataFrame)
         slope_resource = Float64[],
         slope_consumer = Float64[],
         gini_total = Float64[],
-        degree_cv_total = Float64[]  # ← NEW
+        degree_cv_total = Float64[],
+        connectance = Float64[],
+        modularity = Float64[],
+        nestedness = Float64[],
+        # clustering = Float64[]
     )
 
     for (i, row) in enumerate(eachrow(df))
-        A = row.p_final[2]  # interaction matrix
+        A = row.p_final[2]
         Adj = A .!= 0.0
+        S = size(Adj, 1)
 
+        # Degrees
         k_res = sum(Adj[1:30, :], dims=2)[:]
         k_con = sum(Adj[31:end, :], dims=2)[:]
         degs_all = vcat(k_res, k_con)
 
-        slope_res = powerlaw_slope(k_res)
-        slope_con = powerlaw_slope(k_con)
         if mean(k_res) < 1 || mean(k_con) < 1
             println("Skipping ID=$i: deg_res=$(mean(k_res)), deg_con=$(mean(k_con))")
             continue
         end
+
+        # Slopes
+        slope_res = powerlaw_slope(k_res)
+        slope_con = powerlaw_slope(k_con)
+
+        # Inequality
         g = gini(degs_all)
         cv = std(degs_all) / mean(degs_all)
+
+        # Connectance
+        L = count(Adj)
+        conn = L / (S^2)
+
+        # ——— spectral modularity ———
+        k = sum(Adj, dims=2)[:]
+        m = sum(k) / 2
+        B = zeros(Float64, S, S)
+        for u in 1:S, v in 1:S
+            B[u, v] = (Adj[u, v] ? 1.0 : 0.0) - (k[u] * k[v]) / (2m)
+        end
+        vals, vecs = eigen(Symmetric(B))
+        v1 = vecs[:, argmax(vals)]
+        s = map(x -> x >= 0 ? 1.0 : -1.0, v1)
+        Q = (s' * (B * s)) / (4m)
+
+        # ——— nestedness ——— (mean pairwise overlap)
+        nested_sum = 0.0
+        nested_count = 0
+        for u in 1:S, v in u+1:S
+            du = sum(Adj[u, :])
+            dv = sum(Adj[v, :])
+            denom = max(du, dv)
+            if denom > 0
+                overlap = sum(Adj[u, :] .& Adj[v, :]) / denom
+                nested_sum += overlap
+                nested_count += 1
+            end
+        end
+        nestedness = nested_count > 0 ? nested_sum / nested_count : NaN
+
+        # # ——— clustering coefficient ———
+        # triangles = 0
+        # triplets = 0
+        # for u in 1:S
+        #     neighbors = findall(Adj[u, :] .| Adj[:, u]')
+        #     for i in 1:length(neighbors), j in i+1:length(neighbors)
+        #         v, w = neighbors[i], neighbors[j]
+        #         if Adj[v, w] || Adj[w, v]
+        #             triangles += 1
+        #         end
+        #         triplets += 1
+        #     end
+        # end
+        # clustering = triplets > 0 ? (triangles / triplets) : NaN
 
         push!(results, (
             i,
@@ -69,12 +127,17 @@ function analyze_matrix_structures(df::DataFrame)
             slope_res,
             slope_con,
             g,
-            cv
+            cv,
+            conn,
+            Q,
+            nestedness,
+            # clustering
         ))
     end
 
     return results
 end
+
 
 # ————————————————————————————————
 # Summary reporting
@@ -88,7 +151,10 @@ function summarize_structure_ranges(results::DataFrame)
         :slope_resource,
         :slope_consumer,
         :gini_total,
-        :degree_cv_total   # ← NEW
+        :degree_cv_total,   # ← NEW
+        :connectance,
+        :modularity,
+        :nestedness
     ]
 
     for m in metrics
@@ -111,6 +177,22 @@ function summarize_structure_ranges(results::DataFrame)
     println("Matrix with highest degree CV: ID = $(sorted_by_cv.id[1]), CV = $(round(sorted_by_cv.degree_cv_total[1], digits=3))")
     println("Matrix with lowest degree CV: ID = $(sorted_by_cv.id[end]), CV = $(round(sorted_by_cv.degree_cv_total[end], digits=3))")
 
+    sorted_by_mod = sort(results, :modularity, rev=true)
+    println("Matrix with highest modularity: ID = $(sorted_by_mod.id[1]), mod = $(round(sorted_by_mod.modularity[1], digits=3))")
+    println("Matrix with lowest modularity: ID = $(sorted_by_mod.id[end]), mod = $(round(sorted_by_mod.modularity[end], digits=3))")
+
+    sorted_by_conn = sort(results, :connectance, rev=true)
+    println("Matrix with highest connectance: ID = $(sorted_by_conn.id[1]), conn = $(round(sorted_by_conn.connectance[1], digits=3))")
+    println("Matrix with lowest connectance: ID = $(sorted_by_conn.id[end]), conn = $(round(sorted_by_conn.connectance[end], digits=3))")
+
+    sorted_by_nested = sort(results, :nestedness, rev=true)
+    println("Matrix with highest nestedness: ID = $(sorted_by_nested.id[1]), nested = $(round(sorted_by_nested.nestedness[1], digits=3))")
+    println("Matrix with lowest nestedness: ID = $(sorted_by_nested.id[end]), nested = $(round(sorted_by_nested.nestedness[end], digits=3))")
+
+    # sorted_by_clust = sort(results, :clustering_coefficient, rev=true)
+    # println("Matrix with highest clustering coefficient: ID = $(sorted_by_clust.id[1]), clust = $(round(sorted_by_clust.clustering_coefficient[1], digits=3))")
+    # println("Matrix with lowest clustering coefficient: ID = $(sorted_by_clust.id[end]), clust = $(round(sorted_by_clust.clustering_coefficient[end], digits=3))")
+
     return nothing
 end
 
@@ -129,7 +211,7 @@ function plot_random_degree_distributions_makie(df::DataFrame; n::Int = 10, seed
     for (i, idx) in enumerate(chosen)
         A = df.p_final[idx][2]             # interaction matrix
         Adj = A .!= 0.0
-        degrees = vec(sum(Adj, dims=2))[31:end]
+        degrees = vec(sum(Adj, dims=2))[1:30]
         sorted_deg = sort(degrees; rev=true)
 
         ax = Axis(fig[(i - 1) ÷ ncols + 1, (i - 1) % ncols + 1],
@@ -146,3 +228,21 @@ function plot_random_degree_distributions_makie(df::DataFrame; n::Int = 10, seed
 end
 
 plot_random_degree_distributions_makie(G)
+
+function plot_high_cv_distributions(df::DataFrame, res::DataFrame; top_n::Int = 5)
+    top_cv = sort(res, :degree_cv_total, rev=true)[1:top_n, :]
+    fig = Figure(; size=(1000, 200 * top_n))
+    for (i, row) in enumerate(eachrow(top_cv))
+        idx = row.id
+        A = df.p_final[idx][2]
+        Adj = A .!= 0.0
+        degs = vec(sum(Adj, dims=2))
+        sorted_deg = sort(degs; rev=true)
+        ax = Axis(fig[i, 1], title="ID=$(idx), CV=$(round(row.degree_cv_total, digits=3))",
+                  xlabel="Rank", ylabel="Degree", titlesize=11)
+        lines!(ax, 1:length(sorted_deg), sorted_deg)
+    end
+    display(fig)
+end
+
+plot_high_cv_distributions(G, res)
