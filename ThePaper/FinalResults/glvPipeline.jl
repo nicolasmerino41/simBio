@@ -1,6 +1,6 @@
 using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs
 import Base.Threads: @threads
-
+include("Ladder4.1.jl")
 # --------------------------------------------------------------------------------
 # 1) gLV dynamics
 # --------------------------------------------------------------------------------
@@ -87,8 +87,8 @@ function is_locally_stable(J::AbstractMatrix)
     if any(!isfinite, J)
         return false
     end
-    λ = eigvals(J)
-    maximum(real.(λ)) <= 0
+    mu = eigvals(J)
+    maximum(real.(mu)) <= 0
 end
 
 # --------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ function compute_jacobian(u, p)
 end
 
 function compute_jacobian_glv(Bstar::AbstractVector, p)
-    # g(u) returns f(u)---the time‐derivative at state u
+    # g(u) returns f(u)the time‐derivative at state u
     g(u) = begin
         du = similar(u)
         gLV_rhs!(du, u, p, 0.0)
@@ -346,15 +346,23 @@ function checking_recalculating_demography_glv(
         for step in 1:5
             A_s = copy(A)
             if step == 1
-                A_s = make_A(A_s, R, min(conn, 1.0), scen; IS=IS)
+                A_s = make_A(A_s, R, conn, scen; IS=IS)
             elseif step == 2
-                A_s = make_A(A_s, R, min(rand(), 1.0), scen; IS=IS)
+                new_conn = rand()
+                while abs(new_conn - conn) < 0.4
+                    new_conn = rand()
+                end
+                A_s = make_A(A_s, R, new_conn, scen; IS=IS)
             elseif step == 3
                 A_s = make_A(A_s, R, conn, scen; IS=IS*10)
             elseif step == 4
-                A_s = make_A(A_s, R, min(rand(), 1.0), scen; IS=IS*10)
+                new_conn = rand()
+                while abs(new_conn - conn) < 0.4
+                    new_conn = rand()
+                end
+                A_s = make_A(A_s, R, new_conn, scen; IS=IS*10)
             elseif step == 5
-                A_s = make_A(A_s, R-5, min(conn, 1.0), scen; IS=IS)
+                A_s = make_A(A_s, R-5, conn, scen; IS=IS)
             end
             if step == 5
                K[R-5:end] .= 0.0
@@ -448,19 +456,20 @@ end
 # Invocation & serialization
 R = checking_recalculating_demography_glv(
     50, 20;
-    conn_vals=0.01:0.01:0.6,
+    conn_vals=0.01:0.01:1.0,
     scenarios=[:ER, :PL, :MOD],
     IS_vals=[0.01, 0.1, 1.0, 2.0],
-    delta_vals=[0.9, 1.1, 1.5, 2.0, 3.0, 4.0, 5.0],
+    delta_vals=[0.1, 0.9, 1.1, 1.5, 2.0, 3.0, 4.0, 5.0, -1.0, -2.0, -3.0, -4.0, -5.0],
     margins=[1.0, 2.0, 3.0, 4.0, 5.0, 0.01],
-    number_of_combinations=100000,
+    number_of_combinations=10000,
     iterations=5,
     pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
     pareto_minimum_degrees=[5.0, 10.0, 15.0, 20.0],
     mod_gammas=[1.0,2.0,3.0,5.0,10.0]
 )
-# serialize("checking_glv_937000ER.jls", R)
+serialize("checking_glv_10000ALL.jls", R)
 
-include("orderColumns.jl")
-R = reorder_columns(R)
-R = deserialize("checking_glv_38000ALL.jls")
+# include("orderColumns.jl")
+# R = reorder_columns(R)
+R = deserialize("checking_glv_50000ALL.jls")
+R = deserialize("checking_10000ALL.jls")
