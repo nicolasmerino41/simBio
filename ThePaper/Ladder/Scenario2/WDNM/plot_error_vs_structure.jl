@@ -15,6 +15,8 @@ function plot_error_vs_structure(
     conn = Vector{Float64}(undef, N)
     mdeg = Vector{Float64}(undef, N)
     modu = Vector{Float64}(undef, N)
+    nest = Vector{Float64}(undef, N)
+    degree_cv = Vector{Float64}(undef, N)
 
     for (i, row) in enumerate(eachrow(df))
         A = row.p_final[2]            # S×S interaction matrix
@@ -28,6 +30,7 @@ function plot_error_vs_structure(
 
         # mean degree
         mdeg[i] = mean(degree(G))
+        cv = std(degree(G)) / mean(degree(G))
 
         # —— spectral modularity —— 
         # build modularity matrix B = A_uw - (k kᵀ)/(2m)
@@ -46,11 +49,30 @@ function plot_error_vs_structure(
 
         # Q = (1/(4m)) sᵀ B s
         modu[i] = (s' * (B * s)) / (4m)
+
+        nested_sum = 0.0
+        nested_count = 0
+        for u in 1:S, v in u+1:S
+            du = sum(Adj[u, :])
+            dv = sum(Adj[v, :])
+            denom = max(du, dv)
+            if denom > 0
+                overlap = sum(Adj[u, :] .& Adj[v, :]) / denom
+                nested_sum += overlap
+                nested_count += 1
+            end
+        end
+        nest[i] = nested_count > 0 ? nested_sum / nested_count : NaN
+
+        # degree CV
+        degree_cv[i] = cv
     end
 
     df[!,:connectance] = conn
     df[!,:mean_degree] = mdeg
     df[!,:modularity]  = modu
+    df[!,:nestedness]  = nest
+    df[!,:degree_cv]   = degree_cv
 
     # 3) build long form of errors
     long = DataFrame(prop=String[], step=Int[], error=Float64[], value=Float64[])
@@ -63,13 +85,15 @@ function plot_error_vs_structure(
             push!(long, ("connectance", s, err, row.connectance))
             push!(long, ("mean_degree", s, err, row.mean_degree))
             push!(long, ("modularity", s, err, row.modularity))
+            push!(long, ("nestedness", s, err, row.nestedness))
+            push!(long, ("degree_cv", s, err, row.degree_cv))
         end
     end
 
     # 4) plot 3×1 scatter + trend
     fig = Figure(size=(1000,450))
-    props  = ["connectance"]#,"mean_degree","modularity"]
-    titles = ["Connectance"]#,"Mean degree","Modularity"]
+    props  = ["connectance", "modularity", "degree_cv"]#,"mean_degree","modularity"]
+    titles = ["Connectance", "Modularity", "Degree CV"]#,"Mean degree","Modularity"]
 
     for (i, prop) in enumerate(props)
         ax = Axis(fig[i,1]; title=titles[i], xlabel=titles[i], ylabel="Absolute error")
@@ -94,7 +118,7 @@ end
 
 plot_error_vs_structure(
     G, :reactivity;
-    steps=[1, 2, 3, 4, 5],
+    steps=[1, 2, 3, 5],
     remove_unstable=true
 )
 
@@ -103,7 +127,8 @@ function plot_error_vs_structure_box(
     var::Symbol;
     steps::AbstractVector{Int}=1:5,
     n_bins::Int=5,
-    remove_unstable::Bool=false
+    remove_unstable::Bool=false,
+    save_plot::Bool=false
 )
     # 1) optional filter
     if remove_unstable
@@ -111,11 +136,13 @@ function plot_error_vs_structure_box(
         df = filter(row -> all(row[c] < 0 for c in rescols), df)
     end
 
-    # 2) compute structural properties
+    # 2) extract structural props
     N = nrow(df)
-    conn = similar(Vector{Float64}(undef, N))
-    mdeg = similar(conn)
-    modu = similar(conn)
+    conn = Vector{Float64}(undef, N)
+    mdeg = Vector{Float64}(undef, N)
+    modu = Vector{Float64}(undef, N)
+    nest = Vector{Float64}(undef, N)
+    degree_cv = Vector{Float64}(undef, N)
 
     for (i, row) in enumerate(eachrow(df))
         A = row.p_final[2]                  # interaction matrix
@@ -125,23 +152,52 @@ function plot_error_vs_structure_box(
         S = size(A,1)
         conn[i] = ne(G) / (S*(S-1))         # connectance
         mdeg[i] = mean(degree(G))           # mean degree
+        cv = std(degree(G)) / mean(degree(G))
 
-        # spectral modularity
-        k = sum(Adj, dims=2)[:]             # degrees
-        m = sum(k) / 2
-        B = Adj .- (k * k')/(2m)
+        # —— spectral modularity —— 
+        # build modularity matrix B = A_uw - (k kᵀ)/(2m)
+        k = sum(Adj, dims=2)[:]              # degree vector
+        m = sum(k) / 2                       # number of edges
+        B = zeros(Float64, S, S)
+        for u in 1:S, v in 1:S
+            B[u,v] = (Adj[u,v] ? 1.0 : 0.0) - (k[u]*k[v])/(2m)
+        end
+
+        # leading eigenvector of B (symmetric)
         vals, vecs = eigen(Symmetric(B))
         v1 = vecs[:, argmax(vals)]
-        signs = map(x -> x >= 0 ? 1.0 : -1.0, v1)
-        modu[i] = (signs' * (B * signs)) / (4m)
+        # partition by sign of v1 → s ∈ {+1, -1}
+        s = map(x-> x >= 0 ?  1.0 : -1.0, v1)
+
+        # Q = (1/(4m)) sᵀ B s
+        modu[i] = (s' * (B * s)) / (4m)
+
+        nested_sum = 0.0
+        nested_count = 0
+        for u in 1:S, v in u+1:S
+            du = sum(Adj[u, :])
+            dv = sum(Adj[v, :])
+            denom = max(du, dv)
+            if denom > 0
+                overlap = sum(Adj[u, :] .& Adj[v, :]) / denom
+                nested_sum += overlap
+                nested_count += 1
+            end
+        end
+        nest[i] = nested_count > 0 ? nested_sum / nested_count : NaN
+
+        # degree CV
+        degree_cv[i] = cv
     end
 
     df[!,:connectance] = conn
     df[!,:mean_degree] = mdeg
     df[!,:modularity]  = modu
+    df[!,:nestedness]  = nest
+    df[!,:degree_cv]   = degree_cv
 
     # 3) bin each property into quantile bins and print bin edges
-    props = [:connectance, :mean_degree, :modularity]
+    props = [:connectance, :modularity, :nestedness, :degree_cv]
     edges = Dict(p => quantile(df[!,p], range(0,1,length=n_bins+1)) for p in props)
     bins  = Dict{Symbol, Vector{Int}}()
 
@@ -182,15 +238,151 @@ function plot_error_vs_structure_box(
     end
 
     display(fig)
-    return fig
+    if save_plot
+        filename = "errorVsStructureAndSteps_$(var).png"
+        save(filename, fig; px_per_unit=6.0)
+    end
+    
 end
 
 
 fig = plot_error_vs_structure_box(
-    G, :resilience;
-    steps=1:5,
-    remove_unstable=true
+    G, :reactivity;
+    steps=[1,2,3,5],
+    remove_unstable=true,
+    save_plot=false
 )
 
-filename = "errorVsStructureAndSteps.png"
-save(filename, fig; px_per_unit=6.0)
+function plot_error_vs_structure_points_continuous(
+    df::DataFrame,
+    var::Symbol;
+    steps::AbstractVector{Int}=1:5,
+    remove_unstable::Bool=false,
+    save_plot::Bool=false
+)
+    if remove_unstable
+        rescols = Symbol.(string(:resilience) .* "_S" .* string.(steps))
+        df = filter(row -> all(row[c] < 0 for c in rescols), df)
+    end
+
+    N = nrow(df)
+    conn = Vector{Float64}(undef, N)
+    mdeg = Vector{Float64}(undef, N)
+    modu = Vector{Float64}(undef, N)
+    nest = Vector{Float64}(undef, N)
+    degree_cv = Vector{Float64}(undef, N)
+
+    for (i, row) in enumerate(eachrow(df))
+        A = row.p_final[2]
+        Adj = A .!= 0.0
+        G = SimpleGraph(Adj)
+        S = size(A, 1)
+
+        conn[i] = ne(G) / (S*(S-1))
+        mdeg[i] = mean(degree(G))
+        degree_cv[i] = std(degree(G)) / mdeg[i]
+
+        k = sum(Adj, dims=2)[:]
+        m = sum(k) / 2
+        B = zeros(Float64, S, S)
+        for u in 1:S, v in 1:S
+            B[u,v] = (Adj[u,v] ? 1.0 : 0.0) - (k[u]*k[v]) / (2m)
+        end
+        vals, vecs = eigen(Symmetric(B))
+        v1 = vecs[:, argmax(vals)]
+        s = map(x -> x >= 0 ? 1.0 : -1.0, v1)
+        modu[i] = (s' * (B * s)) / (4m)
+
+        nested_sum = 0.0
+        nested_count = 0
+        for u in 1:S, v in u+1:S
+            du, dv = sum(Adj[u,:]), sum(Adj[v,:])
+            denom = max(du, dv)
+            if denom > 0
+                overlap = sum(Adj[u,:] .& Adj[v,:]) / denom
+                nested_sum += overlap
+                nested_count += 1
+            end
+        end
+        nest[i] = nested_count > 0 ? nested_sum / nested_count : NaN
+    end
+
+    df[!,:connectance] = conn
+    df[!,:mean_degree] = mdeg
+    df[!,:modularity]  = modu
+    df[!,:nestedness]  = nest
+    df[!,:degree_cv]   = degree_cv
+
+    props = [:connectance, :modularity, :nestedness, :degree_cv]
+    fullcol = Symbol(string(var)*"_full")
+
+    fig = Figure(size=(1000, 1000))
+    for (r, s) in enumerate(steps), (c, p) in enumerate(props)
+        ax = Axis(fig[r, c];
+            title = "$var S$(s) vs Full | $(p)",
+            xlabel = string(p),
+            ylabel = "|error|"
+        )
+
+        scol = Symbol(string(var)*"_S$(s)")
+        errs = abs.(df[!, scol] .- df[!, fullcol])
+        xs = df[!, p]
+
+        scatter!(ax, xs, errs; markersize=3, color=:black, alpha=0.3)
+    end
+
+    for (s) in steps
+        scol = Symbol(string(var)*"_S$(s)")
+        fullcol = Symbol(string(var)*"_full")
+
+        raw_errs = df[!, scol] .- df[!, fullcol]
+        rel_errs = raw_errs
+        # rel_errs = abs.(raw_errs) ./ (abs.(df[!, fullcol]) .+ 1e-6)
+        # rel_errs = (rel_errs .+ 1e-6) ./ (1 + 2e-6)  # squeeze into (0,1)
+        
+        println("=== Step S$s ===")
+        for p in props
+            df_tmp = DataFrame(y=rel_errs, x=df[!, p])
+            model = lm(@formula(y ~ x), df_tmp)
+            println("Metric: ", p)
+            display(coeftable(model))
+        end
+    end
+
+    display(fig)
+    if save_plot
+        filename = "errorVsStructureAndSteps_continuous_$(var).png"
+        save(filename, fig; px_per_unit=6.0)
+    end
+
+    return df
+end
+
+
+T = G
+G = T
+G = filter(row -> row.IS > 0.01, G)
+
+for met in [:resilience, :reactivity, :rt_pulse, :after_press]
+    println("=== $(met) ===")
+    fig = plot_error_vs_structure_points_continuous(
+        G, 
+        :resilience;
+        steps=[1, 2, 3, 5],
+        remove_unstable=true,
+        save_plot=true
+    )
+end
+
+df=fig
+count(<(0.05), df.degree_cv)
+
+using Plots
+
+histogram(
+    df.degree_cv;
+    bins=100,
+    xlabel="Degree CV",
+    ylabel="Frequency",
+    # title="Distribution of Degree CV across Networks"
+)
