@@ -277,57 +277,57 @@ function checking_recalculating_demography(
             # K_Xi_S[step] = vcat(K_res, xi_cons)
             A_s = copy(A)
             if step==1
-                # 1) compute undirected degrees
-                n = size(A_s,1)
-                degrees = zeros(S - R)
-                for consumer in (R+1):S
-                    degrees[consumer - R] = count(A_s[consumer, :] .!= 0.0)
-                end
-                mu = mean(degrees)
+                # # 1) compute undirected degrees
+                # n = size(A_s,1)
+                # degrees = zeros(S - R)
+                # for consumer in (R+1):S
+                #     degrees[consumer - R] = count(A_s[consumer, :] .!= 0.0)
+                # end
+                # mu = mean(degrees)
 
-                # 2) split species
-                high = findall(d -> d > mu, degrees)
-                low  = findall(d -> d <= mu, degrees)
+                # # 2) split species
+                # high = findall(d -> d > mu, degrees)
+                # low  = findall(d -> d <= mu, degrees)
 
-                # 3) gather & reshuffle high-degree consumer weights
-                high_vals = Float64[]
-                high_pos  = Tuple{Int,Int}[]
-                for idx in high
-                    i = R + idx
-                    for j in 1:R
-                        if A_s[i,j] != 0.0
-                            push!(high_vals, A_s[i,j])
-                            push!(high_pos,  (i,j))
-                        end
-                    end
-                end
-                shuffle!(high_vals)
-                for k in eachindex(high_vals)
-                    A_s[high_pos[k]...] = high_vals[k]
-                end
+                # # 3) gather & reshuffle high-degree consumer weights
+                # high_vals = Float64[]
+                # high_pos  = Tuple{Int,Int}[]
+                # for idx in high
+                #     i = R + idx
+                #     for j in 1:R
+                #         if A_s[i,j] != 0.0
+                #             push!(high_vals, A_s[i,j])
+                #             push!(high_pos,  (i,j))
+                #         end
+                #     end
+                # end
+                # shuffle!(high_vals)
+                # for k in eachindex(high_vals)
+                #     A_s[high_pos[k]...] = high_vals[k]
+                # end
 
-                # 4) gather & reshuffle low-degree consumer weights
-                low_vals = Float64[]
-                low_pos  = Tuple{Int,Int}[]
-                for idx in low
-                    i = R + idx
-                    for j in 1:R
-                        if A_s[i,j] != 0.0
-                            push!(low_vals, A_s[i,j])
-                            push!(low_pos,  (i,j))
-                        end
-                    end
-                end
-                shuffle!(low_vals)
-                for k in eachindex(low_vals)
-                    A_s[low_pos[k]...] = low_vals[k]
-                end
-                A_s = make_A(
-                    A_s,R,min(conn, 1.0),scen;
-                    IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
-                    mod_gamma=mod_gamma,
-                    B_term=B_term,B_term_IS=B_term_IS[1]
-                )
+                # # 4) gather & reshuffle low-degree consumer weights
+                # low_vals = Float64[]
+                # low_pos  = Tuple{Int,Int}[]
+                # for idx in low
+                #     i = R + idx
+                #     for j in 1:R
+                #         if A_s[i,j] != 0.0
+                #             push!(low_vals, A_s[i,j])
+                #             push!(low_pos,  (i,j))
+                #         end
+                #     end
+                # end
+                # shuffle!(low_vals)
+                # for k in eachindex(low_vals)
+                #     A_s[low_pos[k]...] = low_vals[k]
+                # end
+                # A_s = make_A(
+                #     A_s,R,min(conn, 1.0),scen;
+                #     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
+                #     mod_gamma=mod_gamma,
+                #     B_term=B_term,B_term_IS=B_term_IS[1]
+                # )
                 # if scen == :PL
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
@@ -344,8 +344,12 @@ function checking_recalculating_demography(
                 # end
                 # println("In step 1 C_eq_full has size $(size(C_eq_full))")
             elseif step==3
+                new_conn = rand()
+                while abs(new_conn - conn) < 0.4
+                    new_conn = rand()
+                end
                 A_s = make_A(
-                    A_s,R,rand(),scen;
+                    A_s,R,new_conn,scen;
                     IS=IS,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
                     mod_gamma=mod_gamma,
                     B_term=B_term,B_term_IS=B_term_IS[1]
@@ -367,7 +371,7 @@ function checking_recalculating_demography(
             elseif step==4
                 A_s = make_A(
                     A_s,R,conn,scen;
-                    IS=IS*2,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
+                    IS=IS*10,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
                     mod_gamma=mod_gamma,
                     B_term=B_term,B_term_IS=B_term_IS[1]
                 )
@@ -376,12 +380,12 @@ function checking_recalculating_demography(
                 # end
                 # println("In step 3 C_eq_full has size $(size(C_eq_full))")
             elseif step==5
-                A_s = make_A(
-                    A_s,R,rand(),scen;
-                    IS=IS*2,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
-                    mod_gamma=mod_gamma,
-                    B_term=B_term,B_term_IS=B_term_IS[1]
-                )
+                # A_s = make_A(
+                #     A_s,R,rand(),scen;
+                #     IS=IS*2,pareto_exponent=pex,pareto_minimum_degree=p_min_deg,
+                #     mod_gamma=mod_gamma,
+                #     B_term=B_term,B_term_IS=B_term_IS[1]
+                # )
                 # if scen == :PL
                 #     A_s = degree_scaled_A(A_s, R, scen)
                 # end
@@ -615,7 +619,7 @@ end
 # --------------------------------------------------------------------------------
 R = checking_recalculating_demography(
     50, 20;
-    conn_vals=0.01:0.01:0.5,
+    conn_vals=0.01:0.01:1.0,
     IS_vals=[0.1, 1.0, 2.0, 5.0, 10.0],
     IS_vals_B_term=[0.1],
     scenarios=[:ER, :PL, :MOD],
@@ -633,16 +637,16 @@ R = checking_recalculating_demography(
     mod_gammas=[1.0,2.0,3.0,5.0,10.0]
 )
 
-desired = [
-  :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite, :pex, :p_min_deg, :mod_gamma,
-  :S_full, :resilience_full, :reactivity_full, :collectivity_full, :tau_full, :mean_tau_full, :sigma_over_min_d_full, :SL_full, :mean_SL_full, :inverse_tau_full, :mean_inverse_tau_full, :analytical_rmed_full, :ssp_analytical_rmed_full,
-  :S_S1,:resilience_S1, :reactivity_S1, :collectivity_S1, :tau_S1, :mean_tau_S1, :sigma_over_min_d_S1, :SL_S1, :mean_SL_S1, :inverse_tau_S1, :mean_inverse_tau_S1, :analytical_rmed_S1, :ssp_analytical_rmed_S1,
-  :S_S2,:resilience_S2, :reactivity_S2, :collectivity_S2, :tau_S2, :mean_tau_S2, :sigma_over_min_d_S2, :SL_S2, :mean_SL_S2, :inverse_tau_S2, :mean_inverse_tau_S2, :analytical_rmed_S2, :ssp_analytical_rmed_S2,
-  :S_S3,:resilience_S3, :reactivity_S3, :collectivity_S3, :tau_S3, :mean_tau_S3, :sigma_over_min_d_S3, :SL_S3, :mean_SL_S3, :inverse_tau_S3, :mean_inverse_tau_S3, :analytical_rmed_S3, :ssp_analytical_rmed_S3,
-  :S_S4,:resilience_S4, :reactivity_S4, :collectivity_S4, :tau_S4, :mean_tau_S4, :sigma_over_min_d_S4, :SL_S4, :mean_SL_S4, :inverse_tau_S4, :mean_inverse_tau_S4, :analytical_rmed_S4, :ssp_analytical_rmed_S4,
-  :S_S5,:resilience_S5, :reactivity_S5, :collectivity_S5, :tau_S5, :mean_tau_S5, :sigma_over_min_d_S5, :SL_S5, :mean_SL_S5, :inverse_tau_S5, :mean_inverse_tau_S5, :analytical_rmed_S5, :ssp_analytical_rmed_S5
-]
+# desired = [
+#   :conn, :IS, :scen, :delta, :epsi, :m_val, :g_val, :ite, :pex, :p_min_deg, :mod_gamma,
+#   :S_full, :resilience_full, :reactivity_full, :collectivity_full, :tau_full, :mean_tau_full, :sigma_over_min_d_full, :SL_full, :mean_SL_full, :inverse_tau_full, :mean_inverse_tau_full, :analytical_rmed_full, :ssp_analytical_rmed_full,
+#   :S_S1,:resilience_S1, :reactivity_S1, :collectivity_S1, :tau_S1, :mean_tau_S1, :sigma_over_min_d_S1, :SL_S1, :mean_SL_S1, :inverse_tau_S1, :mean_inverse_tau_S1, :analytical_rmed_S1, :ssp_analytical_rmed_S1,
+#   :S_S2,:resilience_S2, :reactivity_S2, :collectivity_S2, :tau_S2, :mean_tau_S2, :sigma_over_min_d_S2, :SL_S2, :mean_SL_S2, :inverse_tau_S2, :mean_inverse_tau_S2, :analytical_rmed_S2, :ssp_analytical_rmed_S2,
+#   :S_S3,:resilience_S3, :reactivity_S3, :collectivity_S3, :tau_S3, :mean_tau_S3, :sigma_over_min_d_S3, :SL_S3, :mean_SL_S3, :inverse_tau_S3, :mean_inverse_tau_S3, :analytical_rmed_S3, :ssp_analytical_rmed_S3,
+#   :S_S4,:resilience_S4, :reactivity_S4, :collectivity_S4, :tau_S4, :mean_tau_S4, :sigma_over_min_d_S4, :SL_S4, :mean_SL_S4, :inverse_tau_S4, :mean_inverse_tau_S4, :analytical_rmed_S4, :ssp_analytical_rmed_S4,
+#   :S_S5,:resilience_S5, :reactivity_S5, :collectivity_S5, :tau_S5, :mean_tau_S5, :sigma_over_min_d_S5, :SL_S5, :mean_SL_S5, :inverse_tau_S5, :mean_inverse_tau_S5, :analytical_rmed_S5, :ssp_analytical_rmed_S5
+# ]
 
-G = R[!, desired]
+# G = R[!, desired]
 
-serialize("checking_changing_groups_1000000ALL_plusNotRecalculatingS6.jls", R)
+serialize("checking_10000ALL.jls", R)
