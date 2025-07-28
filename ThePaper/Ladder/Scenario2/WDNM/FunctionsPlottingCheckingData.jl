@@ -5,10 +5,10 @@ function plot_scalar_correlations(
         (:resilience, "Resilience"), (:reactivity, "Reactivity"),
         # (:mean_tau, "Mean SL"), 
         # (:mean_inverse_tau, "inverse_SL"),
-        (:analytical_rmed, "Rmed"),
+        # (:analytical_rmed, "Rmed"),
         (:rt_pulse, "Return Time"),
         (:after_persistence, "Persistence"),
-        (:collectivity, "Collectivity"),
+        # (:collectivity, "Collectivity"),
         # (:sigma_over_min_d, "σ/min(d)")
     ],
     fit_to_1_1_line::Bool = true,
