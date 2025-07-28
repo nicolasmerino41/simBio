@@ -1,6 +1,6 @@
 G = R
-
-step_keys = ["_full","_S1","_S2","_S3","_S4"]
+G = filter(row -> row.IS > 0.01, G)
+step_keys = ["_full","_S1","_S2","_S3"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
@@ -18,7 +18,7 @@ for x in [:ER]
         scenarios = [x],
         fit_to_1_1_line=true,
         save_plot = false,
-        resolution = (1000, 450)
+        resolution = (950, 405)
     )
 end
 
