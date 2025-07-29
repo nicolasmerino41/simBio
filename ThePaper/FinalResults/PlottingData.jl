@@ -17,8 +17,8 @@ for x in [:ER]
         G;
         scenarios = [x],
         fit_to_1_1_line=true,
-        save_plot = false,
-        resolution = (950, 405)
+        save_plot = true,
+        resolution = (1100, 950)
     )
 end
 
