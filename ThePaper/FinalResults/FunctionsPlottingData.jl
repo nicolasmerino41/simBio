@@ -69,11 +69,11 @@ function plot_scalar_correlations_glv(
             ax = Axis(
                 fig[i, j];
                 title = "$label: $(step_names[step])",
-                titlesize = 9,
-                xlabelsize = 10,
-                ylabelsize = 10,
-                xticklabelsize = 10,
-                yticklabelsize = 10,
+                titlesize = 12,
+                xlabelsize = 11,
+                ylabelsize = 11,
+                xticklabelsize = 11,
+                yticklabelsize = 11,
                 limits = ((mn, mx), (mn, mx)),
                 xgridvisible = false,
                 ygridvisible = false
@@ -91,11 +91,14 @@ function plot_scalar_correlations_glv(
                 r2_1to1 = ss_tot == 0 ? NaN : 1 - ss_res / ss_tot
 
                 if isfinite(r2_1to1) && isfinite(mx) && isfinite(mn)
+                    x_pos = sym == :after_press && j == 3 ? mx - 0.32*(mx - mn) : mx
+                    # x_pos = mx - 0.28*(mx - mn)
+                    align = sym == :after_press && j == 3 ? (:left, :bottom) : (:right, :bottom)
                     text!(ax, "R²=$(round(r2_1to1, digits=3))";
-                        position = (mx, mn),
-                        align = (:right, :bottom),
-                        fontsize = 10,
-                        color = :black
+                        position=(x_pos, mn),
+                        align=align,
+                        fontsize=12,
+                        color=:black
                     )
                 end
             else
