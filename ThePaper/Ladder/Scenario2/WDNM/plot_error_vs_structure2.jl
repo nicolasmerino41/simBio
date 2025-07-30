@@ -211,7 +211,8 @@ function plot_error_vs_structure_metrics_binned_lines(
     n_bins::Int=50,
     save_plot::Bool=false,
     error_bars::Bool=true,
-    outlier_quantile  = nothing
+    outlier_quantile  = nothing,
+    outlier_quantile_x = 0.9
 )
     # 1) Filter out runs whose resilience at any step is unstable
     if remove_unstable
@@ -232,9 +233,12 @@ function plot_error_vs_structure_metrics_binned_lines(
         Adj = A .!= 0.0
         S   = size(A, 1)
 
+        g = SimpleGraph(A .!= 0)         # unweighted graph
+        degs = degree(g)
+        degree_cv[i] = std(degs) / mean(degs)
+
         conn[i]      = sum(Adj) / (S*(S-1))
         mdeg[i]      = mean(sum(Adj, dims=2))
-        degree_cv[i] = std(sum(Adj, dims=2)) / mdeg[i]
 
         # modularity (Newman’s leading eigenvector)
         k = sum(Adj, dims=2)[:]
@@ -284,12 +288,15 @@ function plot_error_vs_structure_metrics_binned_lines(
     nM = length(metrics)
     fig = Figure(; size = (1100, 1100))
     colors = [:red, :blue, :green, :orange, :purple]
+    step_names = ["Rewiring", "Rewiring + ↻C", "Rewiring + ↻IS", "Changing groups"]
 
     for (pi, p) in enumerate(props), (mi, m) in enumerate(metrics)
         ax = Axis(fig[mi, pi];
             title  = "$(titles[m]) Vs $(props_names[pi])",
             xlabel = "$(props_names[pi])",
-            ylabel = "Relative error"
+            ylabel = "Relative error",
+            xgridvisible = false,
+            ygridvisible = false
         )
 
         # overlay one line per step
@@ -303,14 +310,19 @@ function plot_error_vs_structure_metrics_binned_lines(
             errs = (e .+ 1e-6) ./ (1 + 2e-6)
 
             xs = df[!, p]
+            xs[xs .<= 0.0] .= 0.0
 
             if outlier_quantile !== nothing
                 thresh = quantile(errs, outlier_quantile)
                 keep   = errs .<= thresh
                 xs     = xs[keep]
                 errs   = errs[keep]
+                thresh = quantile(xs, outlier_quantile_x)
+                keep   = xs .<= thresh
+                xs     = xs[keep]
+                errs   = errs[keep]
             end
-
+            println("max metric value is: for metric $(p) and step $(s): $(maximum(xs))")
             # bin into n_bins
             xmin, xmax = minimum(xs), maximum(xs)
             edges = range(xmin, xmax, length = n_bins+1)
@@ -329,7 +341,7 @@ function plot_error_vs_structure_metrics_binned_lines(
             lines!(ax, mx, my;
                 color     = colors[si],
                 linewidth = 2,
-                label     = "Step $(s==5 ? "4" : s)"
+                label     = step_names[si]
             )
             if error_bars
                 errorbars!(ax, mx, my, sy; color = colors[si])
@@ -337,9 +349,17 @@ function plot_error_vs_structure_metrics_binned_lines(
         end
 
         # show legend only in top-left panel
-        if pi == 2 && mi == 1
-            axislegend(ax; position = :ct)
-        end
+        # Show legend only in top-left panel, with smaller size
+        if pi == 1 && mi == 1
+            axislegend(
+                ax;
+                position = :rt,
+                # labelsize = 11,     # font size of legend labels
+                # markersize = 9,     # size of legend markers
+                # patchsize = (10, 10) # size of legend box patches
+            )
+end
+
     end
 
     display(fig)
@@ -350,12 +370,15 @@ function plot_error_vs_structure_metrics_binned_lines(
     return df
 end
 
-plot_error_vs_structure_metrics_binned_lines(
-    G;
-    steps=[1, 2, 3, 5],
-    remove_unstable=true,
-    n_bins=100,
-    save_plot=false,
-    error_bars=true,
-    outlier_quantile=0.65
-)
+for i in [30]
+    plot_error_vs_structure_metrics_binned_lines(
+        G;
+        steps=[1, 2, 3, 5],
+        remove_unstable=false,
+        n_bins=i,
+        save_plot=true,
+        error_bars=false,
+        outlier_quantile=0.9,
+        outlier_quantile_x=1.0
+    )
+end
