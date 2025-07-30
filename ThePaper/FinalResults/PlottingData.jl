@@ -1,6 +1,6 @@
 G = R
-G = filter(row -> row.IS > 0.01, G)
-step_keys = ["_full","_S1","_S2","_S3"]
+# G = filter(row -> row.delta == -5.0, G)
+step_keys = ["_full","_S1","_S2","_S3","_S5"]
 res_cols = Symbol.("resilience" .* step_keys)
 G = filter(row -> all(row[c] < 0 for c in res_cols), G)
 println("subset size: ", nrow(G))
