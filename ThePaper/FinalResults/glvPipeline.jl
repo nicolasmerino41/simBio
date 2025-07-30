@@ -453,23 +453,38 @@ function checking_recalculating_demography_glv(
     return DataFrame(results)
 end
 
-# Invocation & serialization
-R = checking_recalculating_demography_glv(
-    50, 20;
-    conn_vals=0.01:0.01:1.0,
-    scenarios=[:ER, :PL, :MOD],
-    IS_vals=[0.01, 0.1, 1.0, 2.0],
-    delta_vals=[0.1, 0.9, 1.1, 1.5, 2.0, 3.0, 4.0, 5.0, -1.0, -2.0, -3.0, -4.0, -5.0],
-    margins=[1.0, 2.0, 3.0, 4.0, 5.0, 0.01],
-    number_of_combinations=10000,
-    iterations=5,
-    pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
-    pareto_minimum_degrees=[5.0, 10.0, 15.0, 20.0],
-    mod_gammas=[1.0,2.0,3.0,5.0,10.0]
-)
-serialize("checking_glv_10000ALL.jls", R)
+function run_all_glv()
+    R_all = DataFrame()
+    for i in [(100, 40), (50, 20), (200, 80), (300, 120)]
+        a, b = i[1], i[2]
+        R = checking_recalculating_demography_glv(
+            a, b;
+            conn_vals=0.01:0.01:1.0,
+            scenarios=[:ER, :PL, :MOD],
+            IS_vals=[0.01, 0.1, 1.0, 2.0],
+            delta_vals=[0.1, 0.9, 1.1, 1.5, 2.0, 3.0, 4.0, 5.0, -1.0, -2.0, -3.0, -4.0, -5.0],
+            margins=[1.0, 2.0, 3.0, 4.0, 5.0, 0.01],
+            number_of_combinations=50000,
+            iterations=1,
+            pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
+            pareto_minimum_degrees=[5.0, 10.0, 15.0, 20.0],
+            mod_gammas=[1.0,2.0,3.0,5.0,10.0]
+        )
+        R_all = vcat(R_all, R; cols=:union)
+    end
+    return R_all
+end
+
+R_all = run_all_glv()
+serialize("checking_glv_50000perSpeciesN.jls", R_all)
+
+# serialize("checking_glv_50000perSpeciesN.jls", R_all)
 
 # include("orderColumns.jl")
 # R = reorder_columns(R)
 R = deserialize("checking_glv_50000ALL.jls")
-R = deserialize("checking_10000ALL.jls")
+R = deserialize("checking_glv_50000perSpeciesN.jls")
+# R = deserialize("checking_10000ALL.jls")
+
+# Assuming df1 and df2 are already defined DataFrames with the same column names
+# merged_df = vcat(G, T)
