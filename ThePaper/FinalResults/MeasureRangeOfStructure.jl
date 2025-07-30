@@ -61,18 +61,22 @@ function analyze_matrix_structures(df::DataFrame)
         k_con = sum(Adj[31:end, :], dims=2)[:]
         degs_all = vcat(k_res, k_con)
 
-        if mean(k_res) < 1 || mean(k_con) < 1
-            println("Skipping ID=$i: deg_res=$(mean(k_res)), deg_con=$(mean(k_con))")
-            continue
-        end
+        g = SimpleGraph(A .!= 0)         # unweighted graph
+        degs = degree(g)
+        degree_cv = std(degs) / mean(degs)
+
+        # if mean(k_res) < 1 || mean(k_con) < 1
+        #     println("Skipping ID=$i: deg_res=$(mean(k_res)), deg_con=$(mean(k_con))")
+        #     continue
+        # end
 
         # Slopes
         slope_res = powerlaw_slope(k_res)
         slope_con = powerlaw_slope(k_con)
 
         # Inequality
-        g = gini(degs_all)
-        cv = std(degs_all) / mean(degs_all)
+        g = gini(degs)
+        # cv = std(degs_all) / mean(degs_all)
 
         # Connectance
         L = count(Adj)
@@ -127,7 +131,7 @@ function analyze_matrix_structures(df::DataFrame)
             slope_res,
             slope_con,
             g,
-            cv,
+            degree_cv,
             conn,
             Q,
             nestedness,
@@ -211,7 +215,7 @@ function plot_random_degree_distributions_makie(df::DataFrame; n::Int = 10, seed
     for (i, idx) in enumerate(chosen)
         A = df.p_final[idx][2]             # interaction matrix
         Adj = A .!= 0.0
-        degrees = vec(sum(Adj, dims=2))[1:30]
+        degrees = vec(sum(Adj, dims=2))[31:end]
         sorted_deg = sort(degrees; rev=true)
 
         ax = Axis(fig[(i - 1) ÷ ncols + 1, (i - 1) % ncols + 1],
