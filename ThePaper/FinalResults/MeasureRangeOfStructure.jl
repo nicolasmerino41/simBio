@@ -203,7 +203,6 @@ end
 res = analyze_matrix_structures(G)
 summarize_structure_ranges(res)
 
-
 function plot_random_degree_distributions_makie(df::DataFrame; n::Int = 10, seed::Int = 42)
     # Random.seed!(seed)
     chosen = rand(1:nrow(df), n)
