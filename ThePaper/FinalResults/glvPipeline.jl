@@ -55,13 +55,13 @@ function calibrate_from_K_A(K::Vector{<:Real}, A::AbstractMatrix)
     return u
 end
 
-function generate_feasible_thresholds(A::AbstractMatrix; margins=[1.0])
+function generate_feasible_thresholds(A::AbstractMatrix, R; margins=[1.0])
     S = size(A,1)
     out = NamedTuple[]
     for marg in margins
         # propose K = abs(randn(S)) * marg
         K = abs.(rand(Normal(2.0, 1.0), S) .* marg)
-        K[31:50] .= 0.01
+        K[R+1:end] .= 0.01
         u_eq = try
             calibrate_from_K_A(K, A)
         catch
@@ -178,7 +178,7 @@ end
 # 10) Press perturbation
 ##########################
 function simulate_press_perturbation_glv(
-    u0, p, tspan, t_perturb, delta;
+    u0, p, tspan, t_perturb, delta, R;
     solver=Tsit5(), plot=false, cb=nothing
 )
     # Phase 1: pre-perturb
@@ -189,7 +189,7 @@ function simulate_press_perturbation_glv(
     
     # Phase 2: perturb K by (1 - delta)
     K, A = p
-    K_press = vcat(K[1:30] .* (1 .- delta), K[31:end])
+    K_press = vcat(K[1:R] .* (1 .- delta), K[R+1:end])
     p_press = (K_press, A)
     prob2 = ODEProblem(gLV_rhs!, pre_state, (t_perturb, tspan[2]), p_press)
     sol2  = solve(prob2, solver; callback=cb, abstol=1e-8, reltol=1e-8)
@@ -294,7 +294,7 @@ function checking_recalculating_demography_glv(
         phi = compute_collectivity(A)
 
         # 3) find feasible K & equilibrium
-        thr_sets = generate_feasible_thresholds(A; margins=[marg])
+        thr_sets = generate_feasible_thresholds(A, R; margins=[marg])
         isempty(thr_sets) && continue
         tset = thr_sets[1]
         K    = tset.K
@@ -318,7 +318,7 @@ function checking_recalculating_demography_glv(
 
         # 5a) press perturbation
         rt_press_vec, before_press, after_press, _ =
-            simulate_press_perturbation_glv(u0, (K,A), tspan, tpert, delta; cb=cb)
+            simulate_press_perturbation_glv(u0, (K,A), tspan, tpert, delta, R; cb=cb)
         rt_press_full   = mean(skipmissing(rt_press_vec))
 
         # 5b) pulse perturbation
@@ -382,7 +382,7 @@ function checking_recalculating_demography_glv(
             # record persistence & richness
             S_S[step]                = count(x->x>1e-6, u0_s)
             rt_s_press, _, after_press_s, _=
-                simulate_press_perturbation_glv(u0_s, (K,A_s), tspan, tpert, delta; cb=cb)
+                simulate_press_perturbation_glv(u0_s, (K,A_s), tspan, tpert, delta, R; cb=cb)
             after_press_S[step]= after_press_s
             rt_press_S[step]  = mean(skipmissing(rt_s_press))
             rt_s_pulse, _, after_pulse_s, _=
@@ -464,7 +464,7 @@ function run_all_glv()
             IS_vals=[0.01, 0.1, 1.0, 2.0],
             delta_vals=[0.1, 0.9, 1.1, 1.5, 2.0, 3.0, 4.0, 5.0, -1.0, -2.0, -3.0, -4.0, -5.0],
             margins=[1.0, 2.0, 3.0, 4.0, 5.0, 0.01],
-            number_of_combinations=50000,
+            number_of_combinations=100,
             iterations=1,
             pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
             pareto_minimum_degrees=[5.0, 10.0, 15.0, 20.0],
