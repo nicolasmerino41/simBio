@@ -15,7 +15,7 @@ G = filter(row -> all(all(x -> x < 1000 && x > 0.0, row[c]) for c in sl_cols), G
 for x in [:ER]
     plot_scalar_correlations_glv(
         G;
-        scenarios = [x],
+        scenarios = [:ER, :PL, :MOD],
         fit_to_1_1_line=true,
         save_plot = true,
         resolution = (1100, 950)
