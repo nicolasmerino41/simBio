@@ -9,22 +9,8 @@
     using DifferentialEquations, Random, LinearAlgebra, Statistics, DataFrames, Graphs
     using Distributions, Serialization
     import Base.Threads: @threads
-    # include("Ladder/Scenario2/Ladder4.1.jl")
-    # using CSV, DataFrames
-    # using NamedArrays, StaticArrays, OrderedCollections
-    # # using Rasters, RasterDataSources #, DimensionalData
-    # # using DynamicGrids, Dispersal
-    # using Dates, Distributions, Serialization, StatsBase, Random, GLM #JLD2
-    # using ColorSchemes, Colors #Crayons, 
-    using CairoMakie # ImageMagick
-    # using DifferentialEquations, DiffEqCallbacks, LinearAlgebra, Logging, ForwardDiff
-    # using Graphs, CategoricalArrays
-    # # if end_true
-    # #     using DifferentialEquations # EcologicalNetworksDynamics, 
-    # # end
-    # # using Plots
-    # const MK, DF = Makie, DataFrames
-    # const COLORMAPS = [:magma, :viridis, :cividis, :inferno, :delta, :seaborn_icefire_gradient, :seaborn_rocket_gradient, :hot]
+    
+    using CairoMakie
 end
 
 # Pkg.add("DifferentialEquations")
