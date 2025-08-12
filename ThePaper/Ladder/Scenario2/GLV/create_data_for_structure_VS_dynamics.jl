@@ -119,7 +119,7 @@ end
 
 R_all = run_all_exploring()
 serialize("data_for_structureVsDynamics.jls", R_all)
-
+R_all = deserialize("data_for_structureVsDynamics.jls")
 # serialize("checking_glv_50000perSpeciesN.jls", R_all)
 
 # include("orderColumns.jl")
