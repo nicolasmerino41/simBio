@@ -75,14 +75,14 @@ function plot_full_scatter(R::DataFrame)
     end
 
     display(fig)
-    return fig
+    # return fig
 end
 
 # ───────────────────────────────────────────────────────────────
 # Pipeline:
 # ───────────────────────────────────────────────────────────────
-add_structural_columns!(R)
-fig = plot_full_scatter(R)
+add_structural_columns!(R_all)
+fig = plot_full_scatter(R_all)
 
 function plot_one_scatter(R::DataFrame, xcol::Symbol, ycol::Symbol)
     Rclean = dropmissing(copy(R), [xcol, ycol])
@@ -93,6 +93,6 @@ function plot_one_scatter(R::DataFrame, xcol::Symbol, ycol::Symbol)
     return fig
 end
 
-# Example:
-# plot_one_scatter(R, :connectance, :reactivity_full)
+# Example:  
+plot_one_scatter(R, :connectance, :reactivity_full)
 
