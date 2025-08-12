@@ -106,7 +106,7 @@ function run_all_exploring()
             IS_vals=[0.1],
             delta_vals=[0.1],
             margins=[1.0, 2.0, 3.0, 4.0, 5.0, 0.01],
-            number_of_combinations=10000,
+            number_of_combinations=100,
             iterations=10,
             pareto_exponents=[1.0, 1.25, 1.75, 2.0, 3.0, 4.0, 5.0],
             pareto_minimum_degrees=[5.0, 10.0, 15.0, 20.0],
