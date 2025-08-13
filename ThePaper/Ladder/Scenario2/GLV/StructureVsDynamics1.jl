@@ -58,18 +58,25 @@ end
 # Makie plotting
 # ───────────────────────────────────────────────────────────────
 function plot_full_scatter(R::DataFrame; save_plot=false, pixels_per_unit=3)
-    dyns = [:resilience_full, :reactivity_full, :rt_pulse_full, :after_press_full]
+    dyns = [:rt_pulse_full]
     structs = [:modularity, :degree_cv, :connectance]
 
     # Drop rows with missing values in any relevant column
     cols = vcat(dyns, structs)
     Rclean = dropmissing(copy(R), cols)
 
-    fig = Figure(; size=(1200, 1400))
+    fig = Figure(
+        ; size=(600, 450),
+        )
 
     for (i, y) in enumerate(dyns)
         for (j, x) in enumerate(structs)
-            ax = Axis(fig[i, j], xlabel=String(x), ylabel=String(y))
+            ax = Axis(
+                fig[i, j],
+                xlabel=String(x), ylabel=String(y),
+                yscale=log10,
+                # xscale=log10
+                )
             scatter!(ax, Rclean[!, x], Rclean[!, y], color=:blue, markersize=5, transparency=true)
         end
     end
@@ -86,7 +93,7 @@ end
 # Pipeline:
 # ───────────────────────────────────────────────────────────────
 add_structural_columns!(R_all)
-fig = plot_full_scatter(R_all; save_plot=true)
+fig = plot_full_scatter(R_subset; save_plot=true)
 
 function plot_one_scatter(R::DataFrame, xcol::Symbol, ycol::Symbol)
     Rclean = dropmissing(copy(R), [xcol, ycol])
@@ -99,4 +106,3 @@ end
 
 # Example:  
 plot_one_scatter(R, :connectance, :reactivity_full)
-
