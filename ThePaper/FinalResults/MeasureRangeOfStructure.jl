@@ -200,7 +200,7 @@ function summarize_structure_ranges(results::DataFrame)
     return nothing
 end
 
-res = analyze_matrix_structures(G)
+res = analyze_matrix_structures(R_all)
 summarize_structure_ranges(res)
 
 function plot_random_degree_distributions_makie(df::DataFrame; n::Int = 10, seed::Int = 42)
