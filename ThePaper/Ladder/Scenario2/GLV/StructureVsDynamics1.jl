@@ -58,7 +58,7 @@ end
 # Makie plotting
 # ───────────────────────────────────────────────────────────────
 function plot_full_scatter(R::DataFrame; save_plot=false, pixels_per_unit=3)
-    dyns = [:rt_pulse_full]
+    dyns = [:resilience_full]
     structs = [:modularity, :degree_cv, :connectance]
 
     # Drop rows with missing values in any relevant column
@@ -77,7 +77,7 @@ function plot_full_scatter(R::DataFrame; save_plot=false, pixels_per_unit=3)
                 yscale=log10,
                 # xscale=log10
                 )
-            scatter!(ax, Rclean[!, x], Rclean[!, y], color=:blue, markersize=5, transparency=true)
+            scatter!(ax, Rclean[!, x], abs.(Rclean[!, y]), color=:blue, markersize=5, transparency=true)
         end
     end
 
@@ -92,7 +92,7 @@ end
 # ───────────────────────────────────────────────────────────────
 # Pipeline:
 # ───────────────────────────────────────────────────────────────
-add_structural_columns!(R_all)
+add_structural_columns!(R_subset)
 fig = plot_full_scatter(R_subset; save_plot=true)
 
 function plot_one_scatter(R::DataFrame, xcol::Symbol, ycol::Symbol)
