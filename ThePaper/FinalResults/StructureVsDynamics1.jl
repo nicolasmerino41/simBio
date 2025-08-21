@@ -66,7 +66,7 @@ function plot_full_scatter(R::DataFrame; save_plot=false, pixels_per_unit=3)
     Rclean = dropmissing(copy(R), cols)
 
     fig = Figure(
-        ; size=(600, 450),
+        ; size=(950, 450),
         )
 
     for (i, y) in enumerate(dyns)
@@ -93,7 +93,7 @@ end
 # Pipeline:
 # ───────────────────────────────────────────────────────────────
 add_structural_columns!(R_subset)
-fig = plot_full_scatter(R_subset; save_plot=true)
+fig = plot_full_scatter(R_subset; save_plot=false)
 
 function plot_one_scatter(R::DataFrame, xcol::Symbol, ycol::Symbol)
     Rclean = dropmissing(copy(R), [xcol, ycol])
