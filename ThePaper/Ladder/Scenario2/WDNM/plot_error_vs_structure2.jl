@@ -373,10 +373,10 @@ end
 for i in [30]
     plot_error_vs_structure_metrics_binned_lines(
         G;
-        steps=[1, 2, 3, 5],
+        steps=[1],
         remove_unstable=false,
         n_bins=i,
-        save_plot=true,
+        save_plot=false,
         error_bars=false,
         outlier_quantile=0.9,
         outlier_quantile_x=1.0
